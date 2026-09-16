@@ -1,0 +1,198 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus"
+    }
+  ],
+  "title": "LLM Gateway - Overview",
+  "uid": "llm-gateway-overview",
+  "tags": ["llm-gateway", "proxy", "monitoring"],
+  "timezone": "browser",
+  "editable": true,
+  "panels": [
+    {
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"llm-gateway\"}[1m])",
+          "legendFormat": "{{method}} {{status}}"
+        }
+      ]
+    },
+    {
+      "title": "Latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{service=\"llm-gateway\"}[5m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service=\"llm-gateway\"}[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{service=\"llm-gateway\"}[5m]))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate (4xx + 5xx)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{service=\"llm-gateway\",status=~\"4..|5..\"}[5m])) / sum(rate(http_requests_total{service=\"llm-gateway\"}[5m])) * 100",
+          "legendFormat": "Error %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Rate Limited (429)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{service=\"llm-gateway\",status=\"429\"}[5m])) * 60",
+          "legendFormat": "429/min"
+        }
+      ]
+    },
+    {
+      "title": "Active Backends",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "llm_gateway_backends_active",
+          "legendFormat": "Active"
+        }
+      ]
+    },
+    {
+      "title": "Circuit Breakers Open",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "expr": "llm_gateway_circuit_breakers_open",
+          "legendFormat": "Open"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Token Usage (prompt + completion)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "sum(rate(llm_token_count_prompt_total{service=\"llm-gateway\"}[5m])) * 60",
+          "legendFormat": "Prompt tokens/min"
+        },
+        {
+          "expr": "sum(rate(llm_token_count_completion_total{service=\"llm-gateway\"}[5m])) * 60",
+          "legendFormat": "Completion tokens/min"
+        }
+      ]
+    },
+    {
+      "title": "Backend Latency by Provider",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(llm_request_duration_seconds_bucket{service=\"llm-gateway\"}[5m]))",
+          "legendFormat": "{{backend}} p95"
+        }
+      ]
+    },
+    {
+      "title": "DB Connection Pool",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sqlalchemy_pool_checked_out{service=\"llm-gateway\"}",
+          "legendFormat": "Active connections"
+        },
+        {
+          "expr": "sqlalchemy_pool_size{service=\"llm-gateway\"}",
+          "legendFormat": "Pool size"
+        }
+      ]
+    },
+    {
+      "title": "Cache Hit Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "llm_gateway_cache_hits / (llm_gateway_cache_hits + llm_gateway_cache_misses) * 100",
+          "legendFormat": "Hit Rate %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus"
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "changes(process_start_time_seconds{service=\"llm-gateway\"}[1m]) > 0",
+        "tagKeys": "deployment"
+      }
+    ]
+  }
+}

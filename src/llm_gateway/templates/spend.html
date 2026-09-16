@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Spend & Cost Governance - LLM Gateway{% endblock %}
+{% block content %}
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+  <div>
+    <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+      <i data-lucide="coins" class="text-amber-500 w-8 h-8" aria-hidden="true"></i> Financial Governance & Spend
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+      Track real-time LLM token spend, budget thresholds, and cost distributions by model and owner.
+    </p>
+  </div>
+  <div class="flex gap-3">
+    <button
+      onclick="loadSpendData()"
+      class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg text-slate-800 dark:text-white"
+    >
+      <i data-lucide="refresh-cw" class="text-amber-400 group-hover:rotate-180 transition-transform duration-500 w-3.5 h-3.5" aria-hidden="true"></i>
+      Refresh Spend
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Spend (Month)</span>
+      <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-lg">
+        <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+      </div>
+    </div>
+    <div id="statTotalCost" class="text-3xl font-black mt-3 text-slate-900 dark:text-white">$0.0000</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Current calendar month</div>
+  </div>
+
+  <div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Input Tokens</span>
+      <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-lg">
+        <i data-lucide="arrow-down" class="w-5 h-5"></i>
+      </div>
+    </div>
+    <div id="statInputTokens" class="text-3xl font-black mt-3 text-slate-900 dark:text-white">0</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Prompt tokens processed</div>
+  </div>
+
+  <div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Output Tokens</span>
+      <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-lg">
+        <i data-lucide="arrow-up" class="w-5 h-5"></i>
+      </div>
+    </div>
+    <div id="statOutputTokens" class="text-3xl font-black mt-3 text-slate-900 dark:text-white">0</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Completion tokens generated</div>
+  </div>
+
+  <div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Invocations</span>
+      <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-lg">
+        <i data-lucide="zap" class="w-5 h-5"></i>
+      </div>
+    </div>
+    <div id="statTotalRequests" class="text-3xl font-black mt-3 text-slate-900 dark:text-white">0</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Metered proxy requests</div>
+  </div>
+</div>
+
+<!-- Spend Breakdown by Owner -->
+<div class="mb-8 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+      <i data-lucide="users" class="text-blue-500 w-5 h-5"></i> Spend by Owner
+    </h2>
+  </div>
+  <div class="p-1 overflow-x-auto">
+    <table class="w-full text-left text-sm border-separate border-spacing-0">
+      <thead class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        <tr>
+          <th class="p-4 rounded-tl-2xl">Owner ID</th>
+          <th class="p-4">Requests</th>
+          <th class="p-4">Input Tokens</th>
+          <th class="p-4">Output Tokens</th>
+          <th class="p-4 rounded-tr-2xl text-right">Total Cost (USD)</th>
+        </tr>
+      </thead>
+      <tbody id="ownerSpendTbody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+        <tr>
+          <td colspan="5" class="p-8 text-center text-slate-400">Loading spend records...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Spend Breakdown by Model -->
+<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+      <i data-lucide="cpu" class="text-indigo-500 w-5 h-5"></i> Spend by Model
+    </h2>
+  </div>
+  <div class="p-1 overflow-x-auto">
+    <table class="w-full text-left text-sm border-separate border-spacing-0">
+      <thead class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        <tr>
+          <th class="p-4 rounded-tl-2xl">Model</th>
+          <th class="p-4">Provider</th>
+          <th class="p-4">Requests</th>
+          <th class="p-4 rounded-tr-2xl text-right">Total Cost (USD)</th>
+        </tr>
+      </thead>
+      <tbody id="modelSpendTbody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+        <tr>
+          <td colspan="4" class="p-8 text-center text-slate-400">Loading model records...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function loadSpendData() {
+  try {
+    const [resSummary, resByModel] = await Promise.all([
+      fetch('/admin/spend/summary'),
+      fetch('/admin/spend/by-model')
+    ]);
+
+    if (!resSummary.ok || !resByModel.ok) {
+      console.warn("Could not load spend endpoints");
+      return;
+    }
+
+    const owners = await resSummary.json();
+    const models = await resByModel.json();
+
+    let totalCost = 0;
+    let totalIn = 0;
+    let totalOut = 0;
+    let totalReq = 0;
+
+    const ownerTbody = document.getElementById('ownerSpendTbody');
+    if (!owners || owners.length === 0) {
+      ownerTbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">No spend records recorded for this calendar month.</td></tr>';
+    } else {
+      ownerTbody.innerHTML = owners.map(o => {
+        totalCost += o.total_cost || 0;
+        totalIn += o.total_input_tokens || 0;
+        totalOut += o.total_output_tokens || 0;
+        totalReq += o.request_count || 0;
+        return `
+          <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+            <td class="p-4 font-bold text-slate-900 dark:text-white">${o.owner_id}</td>
+            <td class="p-4 text-slate-600 dark:text-slate-300">${o.request_count.toLocaleString()}</td>
+            <td class="p-4 text-slate-600 dark:text-slate-300">${o.total_input_tokens.toLocaleString()}</td>
+            <td class="p-4 text-slate-600 dark:text-slate-300">${o.total_output_tokens.toLocaleString()}</td>
+            <td class="p-4 font-mono font-bold text-amber-500 text-right">$${Number(o.total_cost).toFixed(4)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('statTotalCost').textContent = '$' + totalCost.toFixed(4);
+    document.getElementById('statInputTokens').textContent = totalIn.toLocaleString();
+    document.getElementById('statOutputTokens').textContent = totalOut.toLocaleString();
+    document.getElementById('statTotalRequests').textContent = totalReq.toLocaleString();
+
+    const modelTbody = document.getElementById('modelSpendTbody');
+    if (!models || models.length === 0) {
+      modelTbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-400">No model usage recorded.</td></tr>';
+    } else {
+      modelTbody.innerHTML = models.map(m => `
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+          <td class="p-4 font-bold text-slate-900 dark:text-white">${m.model}</td>
+          <td class="p-4"><span class="px-2.5 py-1 text-xs rounded-full bg-indigo-500/10 text-indigo-400 font-semibold uppercase">${m.provider}</span></td>
+          <td class="p-4 text-slate-600 dark:text-slate-300">${m.request_count.toLocaleString()}</td>
+          <td class="p-4 font-mono font-bold text-amber-500 text-right">$${Number(m.total_cost).toFixed(4)}</td>
+        </tr>
+      `).join('');
+    }
+
+  } catch (err) {
+    console.error("Failed to load spend data", err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadSpendData);
+</script>
+{% endblock %}

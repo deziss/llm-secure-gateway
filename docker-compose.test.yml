@@ -1,0 +1,15 @@
+services:
+  test:
+    build: .
+    container_name: llm-gateway-test
+    environment:
+    - ENCRYPTION_KEY=ikwBWtl7m0nMqsbZohd3Lbjqf0QMlWgENLVOAxkAbWY=
+    - AUTH_SECRET=test-auth-secret
+    - "DATABASE_URL=sqlite+aiosqlite:///:memory:"
+    - DEFAULT_ADMIN_EMAIL=admin@example.com
+    - DEFAULT_ADMIN_PASSWORD=testpassword
+    command: python -m pytest tests/ -v --tb=short -x 
+      --ignore=tests/test_provider_integration.py --ignore=tests/test_phoenix.py
+networks:
+  default:
+    name: llm_secure_gateway_test_default_net
