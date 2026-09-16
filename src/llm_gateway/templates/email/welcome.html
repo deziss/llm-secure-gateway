@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3>Welcome aboard! 🚀</h3>
+<p>Hi {{ email }},</p>
+<p>Thank you for registering with <strong>LLM Gateway</strong>. You now have access to our secure, unified interface for
+    managing LLM backends.</p>
+<p>You can manage your API keys and usage from the dashboard.</p>
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ login_url }}" class="btn">Go to Dashboard</a>
+</div>
+<p>If you have any questions, feel free to reply to this email.</p>
+{% endblock %}

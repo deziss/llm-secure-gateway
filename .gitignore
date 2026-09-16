@@ -1,0 +1,106 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Virtual Environments
+# =========================
+venv/
+.venv/
+env/
+ENV/
+
+# =========================
+# FastAPI / Uvicorn
+# =========================
+*.log
+uvicorn.log
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Testing / Coverage
+# =========================
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# =========================
+# Build / Packaging
+# =========================
+build/
+dist/
+*.egg-info/
+
+# =========================
+# IDEs / Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Databases
+# =========================
+*.sqlite3
+*.db
+
+# =========================
+# Logs & Temp
+# =========================
+logs/
+tmp/
+*.tmp
+
+# =========================
+# Docker
+# =========================
+*.pid
+docker-compose.override.yml
+
+# =========================
+# Observability configs (local only)
+# =========================
+otel/
+prometheus/
+
+# =========================
+# Backup files
+# =========================
+*.bak
+
+# =========================
+# Secrets & dumps
+# =========================
+cookies.txt
+*.sql
+!alembic/**/*.sql
+
+# =========================
+# Workspace tools
+# =========================
+.qoder/
+node_modules/
+package-lock.json
+graphify-out/
+CHANGELOG.md
+README.md
+gateway_db.sql
+TELEMETRY_GUIDE.md
+UPGRADE.md

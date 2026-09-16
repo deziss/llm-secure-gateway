@@ -1,0 +1,458 @@
+{% extends "base.html" %} {% block title %}Backends - LLM Gateway{% endblock %}
+{% block content %}
+<div
+  class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
+>
+  <div>
+    <h1
+      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
+    >
+      <i class="fas fa-server text-blue-500" aria-hidden="true"></i> LLM Backends
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+      Manage and monitor your model providers in real-time.
+    </p>
+  </div>
+  {% if user and user_role == 'admin' %}
+  <div class="flex gap-3">
+    <button
+      onclick="syncAllBackends()"
+      class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg"
+    >
+      <i
+        class="fas fa-sync-alt text-blue-400 group-hover:rotate-180 transition-transform duration-500"
+        aria-hidden="true"
+      ></i>
+      Sync All Models
+    </button>
+    <button
+      onclick="document.getElementById('addModal').classList.remove('hidden')"
+      class="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-50 to-indigo-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20"
+    >
+      <i class="fas fa-plus" aria-hidden="true"></i>
+      Add Backend
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Backends Table Section -->
+<div
+  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+>
+  <div class="p-1">
+    <table
+      id="backendsTable"
+      class="w-full text-left text-sm border-separate border-spacing-0"
+    >
+      <thead
+        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+      >
+        <tr>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Backend Info</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Type & Status</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Models Available</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50 text-slate-700 dark:text-slate-300">
+        <!-- populated via js -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Backend Modal -->
+<div
+  id="addModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-xl shadow-2xl transform transition-all"
+  >
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-plus-circle text-blue-500" aria-hidden="true"></i> Register Backend
+      </h2>
+      <button
+        onclick="document.getElementById('addModal').classList.add('hidden')"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <form id="addForm" class="space-y-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <label
+            for="addBackendName"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Display Name</label
+          >
+          <input
+            type="text"
+            id="addBackendName"
+            name="name"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            placeholder="Ollama Local"
+            required
+          />
+        </div>
+        <div>
+          <label
+            for="addBackendType"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Backend Type</label
+          >
+          <select
+            id="addBackendType"
+            name="backend_type"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+          >
+            <option value="ollama">Ollama</option>
+            <option value="vllm">vLLM</option>
+            <option value="openai">OpenAI</option>
+            <option value="groq">Groq</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="google">Google Gemini</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="addBackendUrl"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Base API URL</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="url"
+            id="addBackendUrl"
+            name="base_url"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            placeholder="http://localhost:11434"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="addBackendApiKey"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >API Key (Optional)</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="password"
+            id="addBackendApiKey"
+            name="api_key"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            placeholder="sk-..."
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <label
+            for="addTranslationMode"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Translation Bridge Mode</label
+          >
+          <select
+            id="addTranslationMode"
+            name="translation_mode"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+          >
+            <option value="none">None (Pass-through)</option>
+            <option value="anthropic_to_openai">Anthropic ➔ OpenAI</option>
+            <option value="openai_to_anthropic">OpenAI ➔ Anthropic</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-800/55 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700/50 mt-5">
+          <div>
+            <h4 class="font-bold text-slate-850 dark:text-slate-100 text-xs">Normalize Thinking</h4>
+            <p class="text-[9px] text-slate-500 mt-0.5">Strip thinking blocks from response streams.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              id="addNormalizeThinking"
+              name="normalize_thinking"
+              class="sr-only peer"
+            />
+            <div
+              class="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"
+            ></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onclick="document.getElementById('addModal').classList.add('hidden')"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+        >
+          Save Backend
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Backend Modal -->
+<div
+  id="editModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-xl shadow-2xl transform transition-all"
+  >
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-edit text-blue-500" aria-hidden="true"></i> Edit Backend
+      </h2>
+      <button
+        onclick="document.getElementById('editModal').classList.add('hidden')"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <form id="editForm" class="space-y-5">
+      <input type="hidden" name="name" id="editName" />
+      <div>
+        <label
+          for="editBaseUrl"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Base API URL</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="url"
+            name="base_url"
+            id="editBaseUrl"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="editBackendApiKey"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >API Key (Leave empty to keep current)</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="password"
+            id="editBackendApiKey"
+            name="api_key"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            placeholder="••••••••••••"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <label
+            for="editTranslationMode"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Translation Bridge Mode</label
+          >
+          <select
+            id="editTranslationMode"
+            name="translation_mode"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+          >
+            <option value="none">None (Pass-through)</option>
+            <option value="anthropic_to_openai">Anthropic ➔ OpenAI</option>
+            <option value="openai_to_anthropic">OpenAI ➔ Anthropic</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-800/55 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700/50 mt-5">
+          <div>
+            <h4 class="font-bold text-slate-850 dark:text-slate-100 text-xs">Normalize Thinking</h4>
+            <p class="text-[9px] text-slate-500 mt-0.5">Strip thinking blocks from response streams.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              id="editNormalizeThinking"
+              name="normalize_thinking"
+              class="sr-only peer"
+            />
+            <div
+              class="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"
+            ></div>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="editAllowedEndpoints"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Allowed Endpoints
+          <span class="normal-case tracking-normal font-normal text-slate-600 ml-1">(one per line, or * for all)</span>
+        </label>
+        <textarea
+          id="editAllowedEndpoints"
+          name="allowed_endpoints"
+          rows="4"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
+          placeholder="/api/chat&#10;/api/embeddings&#10;/v1/chat/completions"
+          aria-describedby="editAllowedEndpointsHint"
+        ></textarea>
+        <p id="editAllowedEndpointsHint" class="text-[10px] text-slate-600 mt-1">
+          Controls which proxy paths this backend accepts. Use <code class="text-slate-500">*</code> to allow everything.
+        </p>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onclick="document.getElementById('editModal').classList.add('hidden')"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+        >
+          Update Backend
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Manage Models Modal -->
+<div
+  id="manageModelsModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+  >
+    <div
+      class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+    >
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+          <i class="fas fa-cubes text-indigo-500" aria-hidden="true"></i> Manage Models
+        </h2>
+        <p
+          class="text-indigo-400 text-sm font-bold mt-1"
+          id="manageBackendName"
+        ></p>
+      </div>
+      <button
+        onclick="
+          document.getElementById('manageModelsModal').classList.add('hidden')
+        "
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="p-8 flex-1 overflow-y-auto space-y-8">
+      <!-- Pull Section -->
+      <div class="relative group">
+        <div
+          class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition"
+        ></div>
+        <div
+          class="relative bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-6 rounded-2xl"
+        >
+          <h3 class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2">
+            <i class="fas fa-cloud-download-alt text-blue-400" aria-hidden="true"></i> Pull New
+            Model
+          </h3>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="pullModelName"
+              placeholder="e.g. llama3.1:8b"
+              aria-label="Model name to pull"
+              class="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+            />
+            <button
+              onclick="pullModel()"
+              id="pullBtn"
+              class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition flex items-center gap-2 whitespace-nowrap"
+            >
+              <i class="fas fa-download" aria-hidden="true"></i> Start Pull
+            </button>
+          </div>
+          <pre
+            id="pullOutput"
+            class="mt-4 text-[11px] font-mono text-emerald-400 bg-slate-200 dark:bg-black/60 p-4 rounded-xl hidden h-40 overflow-y-auto border border-slate-200 dark:border-slate-800 shadow-inner custom-scrollbar"
+          ></pre>
+        </div>
+      </div>
+
+      <!-- Models List -->
+      <div>
+        <h3
+          class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
+        >
+          <i class="fas fa-database" aria-hidden="true"></i> Registered Models
+        </h3>
+        <div
+          class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden"
+        >
+          <ul id="manageModelsList" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+            <!-- populated via js -->
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/backends.js"></script>
+{% endblock %}

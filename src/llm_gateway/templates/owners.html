@@ -1,0 +1,613 @@
+{% extends "base.html" %} {% block title %}Owners - LLM Gateway{% endblock %} {%
+block content %}
+<div
+  class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
+>
+  <div>
+    <h1
+      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
+    >
+      <i class="fas fa-id-card text-indigo-500" aria-hidden="true"></i> API Owners
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+      Manage API consumers and their granular access permissions.
+    </p>
+  </div>
+  {% if user and user_role in ['admin', 'manager'] %}
+  <button
+    onclick="document.getElementById('addModal').classList.remove('hidden')"
+    class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+  >
+    <i class="fas fa-plus" aria-hidden="true"></i>
+    Register Owner
+  </button>
+  {% endif %}
+</div>
+
+<!-- Owners Table Section -->
+<div
+  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+>
+  <div class="p-1">
+    <table
+      id="ownersTable"
+      class="w-full text-left text-sm border-separate border-spacing-0"
+    >
+      <thead
+        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+      >
+        <tr>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Identity & Identity</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Classification</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Description</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Access Status</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">
+            Operations
+          </th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50 text-slate-700 dark:text-slate-300">
+        <!-- populated via js -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Owner Modal -->
+<div
+  id="addModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+  >
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-user-plus text-indigo-500" aria-hidden="true"></i> New API Owner
+      </h2>
+      <button
+        onclick="document.getElementById('addModal').classList.add('hidden')"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <form id="addForm" class="space-y-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <label
+            for="addOwnerId"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Owner ID (Unique)</label
+          >
+          <input
+            type="text"
+            id="addOwnerId"
+            name="id"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            placeholder="e.g. user_123"
+            required
+          />
+        </div>
+        <div>
+          <label
+            for="addOwnerName"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Display Name</label
+          >
+          <input
+            type="text"
+            id="addOwnerName"
+            name="name"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            placeholder="John Doe"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="addOwnerEmail"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Contact Email</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="email"
+            id="addOwnerEmail"
+            name="email"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            placeholder="owner@example.com"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="addOwnerType"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Owner Type</label
+        >
+        <select
+          id="addOwnerType"
+          name="type"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer"
+        >
+          <option value="user">Individual User</option>
+          <option value="project">Service Account / Project</option>
+        </select>
+      </div>
+
+      <div>
+        <label
+          for="addOwnerDescription"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Description (Optional)</label
+        >
+        <textarea
+          id="addOwnerDescription"
+          name="description"
+          rows="2"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition resize-none"
+          placeholder="What is this owner/project used for?"
+        ></textarea>
+      </div>
+
+      <div>
+        <label
+          for="addOwnerMaxKeys"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Max Active API Keys</label
+        >
+        <input
+          type="number"
+          id="addOwnerMaxKeys"
+          name="max_keys"
+          value="5"
+          min="1"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+          required
+        />
+      </div>
+
+      <div
+        class="bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-2xl flex items-start gap-4"
+      >
+        <div class="bg-indigo-500/20 p-2.5 rounded-xl">
+          <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
+        </div>
+        <div class="flex-1">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-200"
+              >Security Hardening</span
+            >
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="blockEndpointsAdd"
+                name="block_endpoints"
+                class="sr-only peer"
+                checked
+              />
+              <div
+                class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
+              ></div>
+            </label>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Restricts destructive model management API calls (pull, delete,
+            create).
+          </p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onclick="document.getElementById('addModal').classList.add('hidden')"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20"
+        >
+          Create Owner
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Owner Modal -->
+<div
+  id="editModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+  >
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-edit text-blue-500" aria-hidden="true"></i> Edit API Owner
+      </h2>
+      <button
+        onclick="document.getElementById('editModal').classList.add('hidden')"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <form id="editForm" class="space-y-5">
+      <input type="hidden" name="id" id="editId" />
+      <div>
+        <label
+          for="editName"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Display Name</label
+        >
+        <input
+          type="text"
+          name="name"
+          id="editName"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          required
+        />
+      </div>
+
+      <div>
+        <label
+          for="editEmail"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Contact Email</label
+        >
+        <input
+          type="email"
+          name="email"
+          id="editEmail"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+        />
+      </div>
+
+      <div>
+        <label
+          for="editType"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Owner Type</label
+        >
+        <select
+          name="type"
+          id="editType"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+        >
+          <option value="user">Individual User</option>
+          <option value="project">Service Account / Project</option>
+        </select>
+      </div>
+
+      <div
+        class="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-5 rounded-2xl flex items-start gap-4"
+      >
+        <div class="bg-indigo-500/20 p-2.5 rounded-xl">
+          <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
+        </div>
+        <div class="flex-1">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-200"
+              >Security Hardening</span
+            >
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="blockEndpointsEdit"
+                name="block_endpoints"
+                class="sr-only peer"
+              />
+              <div
+                class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
+              ></div>
+            </label>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">
+            Blocks dangerous model management API calls.
+          </p>
+        </div>
+      </div>
+
+      <div
+        class="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-5 rounded-2xl flex items-start gap-4"
+      >
+        <div class="bg-emerald-500/20 p-2.5 rounded-xl">
+          <i class="fas fa-toggle-on text-emerald-400" aria-hidden="true"></i>
+        </div>
+        <div class="flex-1">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Active Status</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="isActiveEdit"
+                name="is_active"
+                class="sr-only peer"
+                checked
+              />
+              <div
+                class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"
+              ></div>
+            </label>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">
+            Deactivating will reject all API requests for this owner.
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="editDescription"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Description</label
+        >
+        <textarea
+          name="description"
+          id="editDescription"
+          rows="2"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
+          placeholder="What is this owner/project used for?"
+        ></textarea>
+      </div>
+
+      <div>
+        <label
+          for="editMaxKeys"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >Max Active API Keys</label
+        >
+        <input
+          type="number"
+          name="max_keys"
+          id="editMaxKeys"
+          min="1"
+          max="100"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+        />
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onclick="document.getElementById('editModal').classList.add('hidden')"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+        >
+          Sync Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Permissions Modal -->
+<div
+  id="permissionsModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+  >
+    <div
+      class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+    >
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+          <i class="fas fa-lock text-emerald-500" aria-hidden="true"></i> Manage Permissions
+        </h2>
+        <p
+          class="text-emerald-400 text-sm font-mono font-bold mt-1"
+          id="permOwnerIdDisplay"
+        ></p>
+      </div>
+      <button
+        onclick="
+          document.getElementById('permissionsModal').classList.add('hidden')
+        "
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="p-8 flex-1 overflow-y-auto space-y-8">
+      <!-- Active Permissions -->
+      <div>
+        <h3
+          class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
+        >
+          <i class="fas fa-stream" aria-hidden="true"></i> Active Grant Access
+        </h3>
+        <div
+          class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden"
+        >
+          <table class="w-full text-left text-xs">
+            <thead
+              class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-[9px] font-bold"
+            >
+              <tr>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">
+                  Backend Provider
+                </th>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Allowed Models</th>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50 text-right"></th>
+              </tr>
+            </thead>
+            <tbody id="permissionsList" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="addPermissionContainer">
+        <hr class="border-slate-200 dark:border-slate-800 mb-8" id="addPermissionDivider" />
+        <h3
+          class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2"
+          id="addPermissionHeader"
+        >
+          <i class="fas fa-plus-circle text-blue-400" aria-hidden="true"></i> Grant New Permission
+        </h3>
+        <form
+          id="addPermissionForm"
+          class="space-y-4 bg-slate-100/50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50"
+        >
+          <input type="hidden" id="permFormOwnerId" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                for="permBackend"
+                class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+                >Backend Provider</label
+              >
+              <select
+                id="permBackend"
+                class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                required
+              ></select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+                Endpoint Authorization
+              </label>
+              <div class="w-full bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+                <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
+                Controlled by API Key Scopes (configured per key)
+              </div>
+              <input type="hidden" id="permEndpoints" value="*" />
+            </div>
+          </div>
+          <div>
+            <label
+              for="permModels"
+              class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+              >Allowed Models (CSV or *)</label
+            >
+            <input
+              type="text"
+              id="permModels"
+              value="*"
+              class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+              required
+            />
+          </div>
+          <div class="flex justify-end pt-2">
+            <button
+              type="submit"
+              class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20"
+            >
+              Add Permission Grant
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Keys Modal -->
+<div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all">
+    <div class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i class="fas fa-key text-amber-500" aria-hidden="true"></i> Manage API Keys</h2>
+        <p class="text-amber-400 text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
+      </div>
+      <button onclick="document.getElementById('keysModal').classList.add('hidden')" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i class="fas fa-times text-xl" aria-hidden="true"></i></button>
+    </div>
+    <div class="p-8 flex-1 overflow-y-auto space-y-8">
+      <div>
+        <h3 class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i class="fas fa-list" aria-hidden="true"></i> Active Keys</h3>
+        <div class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-[9px] font-bold">
+              <tr>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Key Prefix</th>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Scopes</th>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Created</th>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Expires</th>
+                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50 text-right">Revoke</th>
+              </tr>
+            </thead>
+            <tbody id="keysList" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Scope selector for new keys -->
+      <div class="bg-slate-100/50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-4">
+        <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 text-sm">
+          <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i> New Key Scopes
+        </h3>
+        <div id="scopeCheckboxes" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+            <input type="checkbox" name="newKeyScope" value="llm:chat" checked class="accent-indigo-500" />
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:chat</span>
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+            <input type="checkbox" name="newKeyScope" value="llm:embed" class="accent-indigo-500" />
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:embed</span>
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+            <input type="checkbox" name="newKeyScope" value="llm:read" class="accent-indigo-500" />
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:read</span>
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+            <input type="checkbox" name="newKeyScope" value="llm:*" class="accent-indigo-500" />
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:*</span>
+            <span class="text-[9px] text-slate-500">(all LLM)</span>
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+            <input type="checkbox" name="newKeyScope" value="admin:*" class="accent-indigo-500" />
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">admin:*</span>
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-rose-700/50 rounded-xl cursor-pointer hover:border-rose-500/50 transition has-[:checked]:border-rose-500 has-[:checked]:bg-rose-500/10">
+            <input type="checkbox" name="newKeyScope" value="*" class="accent-rose-500" />
+            <span class="text-xs font-bold text-rose-400">* (full access)</span>
+          </label>
+        </div>
+        <div class="flex justify-end pt-2">
+          <button onclick="createKeyFromModal()" class="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 to-orange-500 text-white font-bold rounded-xl transition shadow-lg shadow-amber-500/20">
+            <i class="fas fa-plus mr-2" aria-hidden="true"></i> Issue New Key
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/owners.js"></script>
+{% endblock %}

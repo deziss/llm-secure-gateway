@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="alert">🚨 System Alert: {{ title }}</h3>
+<p>Hello Admin,</p>
+<p>The following event requires your attention:</p>
+<div style="background: #eee; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-wrap;">
+    {{ details }}
+</div>
+<p class="footer">Please check the dashboard for more info.</p>
+{% endblock %}

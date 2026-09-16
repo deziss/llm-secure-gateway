@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}Side-by-Side Model Arena - LLM Gateway{% endblock %}
+{% block content %}
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+  <div>
+    <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+      <i data-lucide="columns-2" class="text-cyan-500 w-8 h-8"></i> Side-by-Side Model Arena
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+      Benchmark quality, latency, and tokens across any backends or models simultaneously with identical prompts.
+    </p>
+  </div>
+  <div class="flex items-center gap-3">
+    <button onclick="fetchBackendsAndModels()" class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 flex items-center gap-1.5 transition">
+      <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Backends
+    </button>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  <!-- Model A Pane -->
+  <div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col h-[560px]">
+    <!-- Header with Backend Filter & Searchable Dropdown -->
+    <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-2 min-w-fit">
+        <span class="w-3 h-3 rounded-full bg-cyan-500 animate-pulse"></span>
+        <span class="font-bold text-sm text-slate-900 dark:text-white">Model A</span>
+      </div>
+
+      <div class="flex items-center gap-2 flex-1 justify-end">
+        <!-- Backend Filter -->
+        <div class="relative">
+          <select id="backendFilterA" onchange="onBackendFilterChange('A')" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer max-w-[140px] truncate" title="Filter by Backend">
+            <option value="">All Backends</option>
+          </select>
+        </div>
+
+        <!-- Searchable Dropdown Container -->
+        <div class="relative w-52 sm:w-64" id="comboContainerA">
+          <div class="relative flex items-center">
+            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 text-slate-400 pointer-events-none"></i>
+            <input 
+              id="modelAInput" 
+              placeholder="Search or type model..." 
+              value="llama-3.1-8b" 
+              autocomplete="off"
+              class="w-full pl-8 pr-7 py-1.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-cyan-500/50 transition" 
+              onclick="openDropdown('A')"
+              oninput="onSearchInput('A')"
+              onkeydown="onInputKeydown(event, 'A')"
+            />
+            <button type="button" onclick="toggleDropdown('A')" class="absolute right-2 text-slate-400 hover:text-slate-200 p-0.5">
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <!-- Dropdown Panel -->
+          <div id="dropdownA" class="hidden absolute top-full mt-1.5 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl max-h-64 overflow-y-auto divide-y divide-slate-800/80">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Box -->
+    <div id="outputA" class="p-4 flex-1 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-slate-800 dark:text-slate-200">
+      <span class="text-slate-400">Response A will stream here...</span>
+    </div>
+
+    <!-- Metrics Footer -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs flex justify-between text-slate-500 font-mono">
+      <span id="latencyA">Latency: -- ms</span>
+      <span id="tokensA">Tokens: --</span>
+    </div>
+  </div>
+
+  <!-- Model B Pane -->
+  <div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col h-[560px]">
+    <!-- Header with Backend Filter & Searchable Dropdown -->
+    <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-2 min-w-fit">
+        <span class="w-3 h-3 rounded-full bg-purple-500 animate-pulse"></span>
+        <span class="font-bold text-sm text-slate-900 dark:text-white">Model B</span>
+      </div>
+
+      <div class="flex items-center gap-2 flex-1 justify-end">
+        <!-- Backend Filter -->
+        <div class="relative">
+          <select id="backendFilterB" onchange="onBackendFilterChange('B')" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer max-w-[140px] truncate" title="Filter by Backend">
+            <option value="">All Backends</option>
+          </select>
+        </div>
+
+        <!-- Searchable Dropdown Container -->
+        <div class="relative w-52 sm:w-64" id="comboContainerB">
+          <div class="relative flex items-center">
+            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 text-slate-400 pointer-events-none"></i>
+            <input 
+              id="modelBInput" 
+              placeholder="Search or type model..." 
+              value="qwen-2.5-14b" 
+              autocomplete="off"
+              class="w-full pl-8 pr-7 py-1.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500/50 transition" 
+              onclick="openDropdown('B')"
+              oninput="onSearchInput('B')"
+              onkeydown="onInputKeydown(event, 'B')"
+            />
+            <button type="button" onclick="toggleDropdown('B')" class="absolute right-2 text-slate-400 hover:text-slate-200 p-0.5">
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <!-- Dropdown Panel -->
+          <div id="dropdownB" class="hidden absolute top-full mt-1.5 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl max-h-64 overflow-y-auto divide-y divide-slate-800/80">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Box -->
+    <div id="outputB" class="p-4 flex-1 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-slate-800 dark:text-slate-200">
+      <span class="text-slate-400">Response B will stream here...</span>
+    </div>
+
+    <!-- Metrics Footer -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs flex justify-between text-slate-500 font-mono">
+      <span id="latencyB">Latency: -- ms</span>
+      <span id="tokensB">Tokens: --</span>
+    </div>
+  </div>
+</div>
+
+<!-- Shared Prompt Box -->
+<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xl">
+  <div class="flex flex-col sm:flex-row gap-4">
+    <textarea id="promptInput" rows="2" placeholder="Type prompt to send to both models simultaneously..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+    <button onclick="runComparison()" id="sendBtn" class="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition whitespace-nowrap">
+      <i data-lucide="send" class="w-4 h-4"></i> Run Arena
+    </button>
+  </div>
+</div>
+
+<script>
+// State
+let allBackends = []; // [{name, backend_type, base_url, models}]
+let allModels = [];   // [{model, backend, backend_type}]
+
+document.addEventListener("DOMContentLoaded", () => {
+  fetchBackendsAndModels();
+
+  // Close dropdowns on outside click
+  document.addEventListener("click", (e) => {
+    const comboA = document.getElementById("comboContainerA");
+    const comboB = document.getElementById("comboContainerB");
+    if (comboA && !comboA.contains(e.target)) {
+      document.getElementById("dropdownA").classList.add("hidden");
+    }
+    if (comboB && !comboB.contains(e.target)) {
+      document.getElementById("dropdownB").classList.add("hidden");
+    }
+  });
+});
+
+async function fetchBackendsAndModels() {
+  try {
+    // 1. Fetch backends
+    const bRes = await fetch("/admin/backends?limit=100", { credentials: "include" });
+    if (bRes.ok) {
+      allBackends = await bRes.json();
+    }
+  } catch (err) {
+    console.debug("Admin backends fetch failed, fallback:", err);
+  }
+
+  try {
+    // 2. Fetch models from admin or v1
+    const mRes = await fetch("/admin/models?limit=500", { credentials: "include" });
+    if (mRes.ok) {
+      const data = await mRes.json();
+      allModels = data.models || [];
+    } else {
+      const v1Res = await fetch("/v1/models");
+      if (v1Res.ok) {
+        const v1Data = await v1Res.json();
+        allModels = (v1Data.data || []).map(m => ({
+          model: m.id,
+          backend: m.owned_by || "default",
+          backend_type: "llm"
+        }));
+      }
+    }
+  } catch (err) {
+    console.debug("Models fetch fallback:", err);
+  }
+
+  // Populate models from backends if allModels is empty
+  if (allModels.length === 0 && allBackends.length > 0) {
+    allBackends.forEach(b => {
+      (b.models || []).forEach(m => {
+        allModels.push({
+          model: m,
+          backend: b.name,
+          backend_type: b.backend_type?.value || b.backend_type || "vllm"
+        });
+      });
+    });
+  }
+
+  // Populate backend filters
+  populateBackendFilters();
+
+  // Set smart initial values if inputs are default placeholders
+  if (allModels.length > 0) {
+    const inputA = document.getElementById("modelAInput");
+    const inputB = document.getElementById("modelBInput");
+    if (inputA.value === "gpt-4o" || !inputA.value) {
+      inputA.value = allModels[0].model;
+    }
+    if (inputB.value === "claude-3-5-sonnet-20241022" || !inputB.value) {
+      inputB.value = allModels[1] ? allModels[1].model : allModels[0].model;
+    }
+  }
+
+  // Render initial dropdowns
+  renderDropdown('A');
+  renderDropdown('B');
+
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+}
+
+function populateBackendFilters() {
+  const filterA = document.getElementById("backendFilterA");
+  const filterB = document.getElementById("backendFilterB");
+
+  const optionsHtml = ['<option value="">All Backends (' + allModels.length + ')</option>'];
+
+  if (allBackends.length > 0) {
+    allBackends.forEach(b => {
+      const count = (b.models || []).length;
+      const bType = b.backend_type?.value || b.backend_type || "vllm";
+      optionsHtml.push(`<option value="${b.name}">${b.name} (${bType}) [${count}]</option>`);
+    });
+  } else {
+    // Collect unique backends from allModels
+    const uniqueBackends = [...new Set(allModels.map(m => m.backend))];
+    uniqueBackends.forEach(b => {
+      const count = allModels.filter(m => m.backend === b).length;
+      optionsHtml.push(`<option value="${b}">${b} [${count}]</option>`);
+    });
+  }
+
+  filterA.innerHTML = optionsHtml.join("");
+  filterB.innerHTML = optionsHtml.join("");
+}
+
+function onBackendFilterChange(pane) {
+  renderDropdown(pane);
+  openDropdown(pane);
+}
+
+function onSearchInput(pane) {
+  renderDropdown(pane);
+  openDropdown(pane);
+}
+
+function onInputKeydown(e, pane) {
+  if (e.key === "Enter") {
+    closeDropdown(pane);
+  }
+}
+
+function toggleDropdown(pane) {
+  const dd = document.getElementById(`dropdown${pane}`);
+  if (dd.classList.contains("hidden")) {
+    openDropdown(pane);
+  } else {
+    closeDropdown(pane);
+  }
+}
+
+function openDropdown(pane) {
+  renderDropdown(pane);
+  const otherPane = pane === 'A' ? 'B' : 'A';
+  document.getElementById(`dropdown${otherPane}`).classList.add("hidden");
+  document.getElementById(`dropdown${pane}`).classList.remove("hidden");
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+}
+
+function closeDropdown(pane) {
+  document.getElementById(`dropdown${pane}`).classList.add("hidden");
+}
+
+function selectModel(pane, modelName) {
+  document.getElementById(`model${pane}Input`).value = modelName;
+  closeDropdown(pane);
+}
+
+function renderDropdown(pane) {
+  const dd = document.getElementById(`dropdown${pane}`);
+  const filterBackend = document.getElementById(`backendFilter${pane}`).value.toLowerCase();
+  const searchInput = document.getElementById(`model${pane}Input`).value.toLowerCase().trim();
+
+  // Filter items
+  let filtered = allModels.filter(item => {
+    // 1. Backend filter
+    if (filterBackend && (item.backend || "").toLowerCase() !== filterBackend) {
+      return false;
+    }
+    // 2. Search query
+    if (searchInput) {
+      const matchModel = (item.model || "").toLowerCase().includes(searchInput);
+      const matchBackend = (item.backend || "").toLowerCase().includes(searchInput);
+      const matchType = (item.backend_type || "").toLowerCase().includes(searchInput);
+      return matchModel || matchBackend || matchType;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    dd.innerHTML = `
+      <div class="p-3 text-center text-xs text-slate-400">
+        No models found. Press enter to use "<span class="font-mono text-cyan-400">${searchInput || 'custom'}</span>"
+      </div>
+    `;
+    return;
+  }
+
+  // Group by backend
+  const groups = {};
+  filtered.forEach(item => {
+    const bKey = item.backend || "Default Backend";
+    if (!groups[bKey]) groups[bKey] = [];
+    groups[bKey].push(item);
+  });
+
+  let html = "";
+  for (const [bName, items] of Object.entries(groups)) {
+    const bType = items[0]?.backend_type || "vllm";
+    const accentColor = pane === 'A' ? 'text-cyan-400' : 'text-purple-400';
+    const dotColor = pane === 'A' ? 'bg-cyan-400' : 'bg-purple-400';
+
+    html += `
+      <div class="bg-slate-900/90">
+        <div class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${accentColor} bg-slate-800/80 sticky top-0 flex items-center justify-between border-y border-slate-700/50">
+          <span class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>
+            Backend: ${bName}
+          </span>
+          <span class="text-slate-400 text-[9px] font-mono normal-case bg-slate-700/50 px-1.5 py-0.5 rounded">${bType}</span>
+        </div>
+        <div class="py-1">
+    `;
+
+    items.forEach(item => {
+      const isSelected = document.getElementById(`model${pane}Input`).value.trim() === item.model;
+      const selectClass = isSelected 
+        ? (pane === 'A' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'bg-purple-500/20 text-purple-300 font-bold') 
+        : 'text-slate-300 hover:bg-slate-800/70 hover:text-white';
+
+      html += `
+        <button 
+          type="button"
+          onclick="selectModel('${pane}', '${item.model}')" 
+          class="w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer ${selectClass}"
+        >
+          <span class="font-mono truncate pr-2">${item.model}</span>
+          <span class="text-[10px] text-slate-500 font-mono flex-shrink-0">${bName}</span>
+        </button>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  dd.innerHTML = html;
+}
+
+// Model Query Execution
+async function queryModel(modelName, prompt, outputElem, latencyElem, tokenElem) {
+  outputElem.textContent = "Requesting...";
+  latencyElem.textContent = "Latency: streaming...";
+  const t0 = performance.now();
+
+  try {
+    const res = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const elapsed = Math.round(performance.now() - t0);
+    latencyElem.textContent = `Latency: ${elapsed} ms`;
+
+    if (!res.ok) {
+      const err = await res.text();
+      outputElem.textContent = `Error (${res.status}): ${err}`;
+      return;
+    }
+
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || 
+                  data.choices?.[0]?.message?.reasoning || 
+                  JSON.stringify(data, null, 2);
+    outputElem.textContent = reply;
+
+    if (data.usage) {
+      tokenElem.textContent = `Tokens: in=${data.usage.prompt_tokens || 0} out=${data.usage.completion_tokens || 0}`;
+    }
+  } catch (err) {
+    outputElem.textContent = `Network error: ${err.message}`;
+    latencyElem.textContent = `Latency: failed`;
+  }
+}
+
+function runComparison() {
+  const prompt = document.getElementById('promptInput').value.trim();
+  if (!prompt) return;
+  const modelA = document.getElementById('modelAInput').value.trim();
+  const modelB = document.getElementById('modelBInput').value.trim();
+
+  const outA = document.getElementById('outputA');
+  const latA = document.getElementById('latencyA');
+  const tokA = document.getElementById('tokensA');
+
+  const outB = document.getElementById('outputB');
+  const latB = document.getElementById('latencyB');
+  const tokB = document.getElementById('tokensB');
+
+  queryModel(modelA, prompt, outA, latA, tokA);
+  queryModel(modelB, prompt, outB, latB, tokB);
+}
+</script>
+{% endblock %}
