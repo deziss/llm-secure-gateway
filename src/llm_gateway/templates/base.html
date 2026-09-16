@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}LLM Gateway Admin{% endblock %}</title>
+    <!-- Local Tailwind build — always available, no network required -->
+    <link rel="stylesheet" href="/static/css/tailwind.min.css" />
+    <!-- Tailwind CDN (JIT) — enhances with dynamic class support when online -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/jquery.dataTables.min.css" integrity="sha384-1QCPE0Isvkd7i/DO1KTZ5GqTLhlGv8kAWBNQDo2jFBkImeSuFxZcEPU0SANETyv5" crossorigin="anonymous" />
+    <!-- Favicon & Brand Logo -->
+    <link rel="icon" type="image/png" href="/static/img/logo.png" />
+    <!-- Lucide Vector Icons (Replaces FontAwesome) -->
+    <script src="/static/js/lucide.min.js"></script>
+    <script src="/static/js/icons.js"></script>
+    <style>
+      /* Lucide SVG icon sizing & alignment */
+      i[data-lucide], svg.lucide {
+        display: inline-block;
+        vertical-align: middle;
+        width: 1.15em;
+        height: 1.15em;
+        stroke-width: 2;
+        stroke: currentColor;
+        fill: none;
+      }
+      .lucide-spin, .fa-spin {
+        animation: lucide-spin 1s linear infinite;
+      }
+      @keyframes lucide-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
+    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js" integrity="sha384-xbKh5PcHqYD2znaTJ+mPanTq8ERw8yRfp72Nt8CGRG51FffJAXidmePtdknCjEh9 sha384-qKeEdstPx/+fff0gqMDuJG0Qppe3/i+y7TJYYlEmFO78H9uYf3ZTDJl3iHbwuD8p" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
+    <script>
+        const BASE_URL = "{{ base_url }}";
+        const USER_ROLE = "{{ user_role }}";
+    </script>
+    <script src="/static/js/globals.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script>
+        // Apply theme immediately to prevent FOUC
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+  </head>
+
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
+    {% if not hide_header %} {% include 'header.html' %} {% endif %}
+
+    <div class="container mx-auto p-6">{% block content %}{% endblock %}</div>
+
+    <!-- Global Confirmation Modal -->
+    <div id="globalConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="globalConfirmContent">
+        <div class="text-center">
+          <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+            <i class="fas fa-exclamation-triangle text-2xl" aria-hidden="true"></i>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2" id="globalConfirmTitle">Confirm Action</h3>
+          <p class="text-slate-500 dark:text-slate-400 text-sm mb-8" id="globalConfirmMessage">Are you sure you want to proceed with this action?</p>
+          <div class="flex gap-3">
+            <button id="globalConfirmCancel" class="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-bold text-sm transition-all border border-slate-200 dark:border-slate-700">
+              Cancel
+            </button>
+            <button id="globalConfirmAction" class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-red-600/20">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Notification/Toast -->
+    <div id="globalToast" class="fixed bottom-8 right-8 z-[9999] transform transition-all translate-y-20 opacity-0 pointer-events-none" role="alert" aria-live="assertive">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[300px]">
+            <div id="toastIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg"></div>
+            <div>
+                <p id="toastTitle" class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5"></p>
+                <p id="toastMessage" class="text-sm text-slate-700 dark:text-slate-200 font-medium"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/ui-components.js"></script>
+  </body>
+</html>

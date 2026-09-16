@@ -1,0 +1,98 @@
+# Docker Compose configuration for LLM Gateway v0.6.0 with PostgreSQL 18 & Optional Redis
+
+services:
+  # ── One-shot migration service ──────────────────────────────────────
+  # Runs once on first `docker compose up`, applies migrations, then exits.
+  # The gateway waits for this to complete before starting.
+  migrate:
+    build: .
+    container_name: llm-gateway-migrate
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://gateway:password@postgres:5432/gateway_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "scripts/migrate.py"]
+    volumes:
+    - ./src:/app/src
+    - ./alembic:/app/alembic
+    - ./alembic.ini:/app/alembic.ini
+    - ./scripts:/app/scripts
+    restart: "no"   # run once, never restart
+
+  # ── Main gateway service ────────────────────────────────────────────
+  gateway:
+    build: .
+    container_name: llm-gateway
+    security_opt:
+    - seccomp=unconfined
+    - apparmor=unconfined
+    ports:
+    - "6130:8000"
+    environment:
+    - PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT:-http://host.docker.internal:6006}
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318   # Points to host
+    - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+    - LOG_LEVEL=debug
+    - UVICORN_LOOP=asyncio
+    - DATABASE_URL=postgresql+asyncpg://gateway:password@postgres:5432/gateway_db
+    - AUTH_SECRET=${AUTH_SECRET}
+    - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    - BASE_URL=${BASE_URL}
+    - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+    - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-admin123}
+      # SMTP Settings (Configure these in .env)
+    - SMTP_HOST=${SMTP_HOST:-localhost}
+    - SMTP_PORT=${SMTP_PORT:-587}
+    - SMTP_USER=${SMTP_USER}
+    - SMTP_PASSWORD=${SMTP_PASSWORD}
+    - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL:-admin@llmgateway.io}
+    - ADMIN_EMAIL=${ADMIN_EMAIL:-superadmin@example.com}
+    - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+    - ./src:/app/src
+    - ./alembic:/app/alembic
+    - ./alembic.ini:/app/alembic.ini
+    - ./pyproject.toml:/app/pyproject.toml
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:18-alpine
+    container_name: llm-gateway-postgres
+    security_opt:
+    - seccomp=unconfined
+    - apparmor=unconfined
+    environment:
+      POSTGRES_USER: gateway
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gateway_db
+    volumes:
+    - postgres18_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis Cache (Optional) ─────────────────────────────────────────
+  redis:
+    image: redis:alpine
+    container_name: llm-gateway-redis
+    ports:
+    - "6382:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres18_data:
+networks:
+  default:
+    name: llm_secure_gateway_default_net

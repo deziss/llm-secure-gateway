@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+{% block title %}Model Aliases & Fallback Chains - LLM Gateway{% endblock %}
+{% block content %}
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+  <div>
+    <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+      <i data-lucide="network" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> Model Virtualization & Resilience
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+      Define virtual model aliases (e.g. "smart-model") and cross-provider fallback chains for 429/5xx failover.
+    </p>
+  </div>
+  <div class="flex gap-3">
+    <button
+      id="btnNewFallbackChain"
+      onclick="openAddChainModal()"
+      class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg text-slate-800 dark:text-white cursor-pointer"
+    >
+      <i data-lucide="link" class="text-purple-400 w-4 h-4" aria-hidden="true"></i>
+      New Fallback Chain
+    </button>
+    <button
+      id="btnAddAlias"
+      onclick="openAddAliasModal()"
+      class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20 cursor-pointer"
+    >
+      <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
+      Add Alias
+    </button>
+  </div>
+</div>
+
+<!-- Aliases Table -->
+<div class="mb-10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+      <i data-lucide="tags" class="text-indigo-500 w-5 h-5"></i> Virtual Model Aliases
+    </h2>
+  </div>
+  <div class="p-1 overflow-x-auto">
+    <table class="w-full text-left text-sm border-separate border-spacing-0">
+      <thead class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        <tr>
+          <th class="p-4 rounded-tl-2xl">Virtual Alias</th>
+          <th class="p-4">Target Backend</th>
+          <th class="p-4">Real Model Name</th>
+          <th class="p-4">Fallback Chain</th>
+          <th class="p-4 rounded-tr-2xl text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="aliasesTbody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+        <tr>
+          <td colspan="5" class="p-8 text-center text-slate-400">Loading model aliases...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Fallback Chains Table -->
+<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+      <i data-lucide="shield" class="text-purple-500 w-5 h-5"></i> Cross-Provider Fallback Chains
+    </h2>
+  </div>
+  <div class="p-1 overflow-x-auto">
+    <table class="w-full text-left text-sm border-separate border-spacing-0">
+      <thead class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        <tr>
+          <th class="p-4 rounded-tl-2xl">Chain ID</th>
+          <th class="p-4">Chain Name</th>
+          <th class="p-4">Target Providers / Models</th>
+          <th class="p-4 rounded-tr-2xl text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="chainsTbody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+        <tr>
+          <td colspan="4" class="p-8 text-center text-slate-400">Loading fallback chains...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Alias Modal -->
+<div id="addAliasModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <i data-lucide="tags" class="w-5 h-5 text-indigo-500"></i> Create Model Alias
+      </h3>
+      <button type="button" onclick="closeAddAliasModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form onsubmit="submitCreateAlias(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alias Name</label>
+        <input id="aliasInput" required placeholder="e.g. smart-model" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Backend</label>
+        <select id="backendSelectInput" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" onchange="onAliasBackendChange(this)">
+          <option value="">Select Backend...</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Real Model Name</label>
+        <input id="modelNameInput" required placeholder="e.g. llama-3.1-8b" list="aliasModelDatalist" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" />
+        <datalist id="aliasModelDatalist"></datalist>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fallback Chain (Optional)</label>
+        <select id="chainSelectInput" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm">
+          <option value="">None (No fallback)</option>
+        </select>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" onclick="closeAddAliasModal()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
+        <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20">Save Alias</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Fallback Chain Modal -->
+<div id="addChainModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <i data-lucide="link" class="w-5 h-5 text-purple-400"></i> Create Fallback Chain
+      </h3>
+      <button type="button" onclick="closeAddChainModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form onsubmit="submitCreateChain(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Chain Name</label>
+        <input id="chainNameInput" required placeholder="e.g. production-failover" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" />
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <label class="block text-xs font-bold text-slate-500 uppercase">Ordered Failover Targets</label>
+          <button type="button" onclick="addChainTargetRow()" class="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Target
+          </button>
+        </div>
+        <div id="chainTargetsContainer" class="space-y-2.5">
+          <!-- Dynamically added targets -->
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1.5">If Target #1 fails with 429/5xx, the proxy seamlessly cascades to Target #2, and so forth.</p>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" onclick="closeAddChainModal()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
+        <button type="submit" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/20">Save Chain</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let cachedBackends = [];
+let cachedChains = [];
+
+async function loadAliasesAndChains() {
+  try {
+    const [resAliases, resChains, resBackends] = await Promise.all([
+      fetch('/admin/aliases'),
+      fetch('/admin/fallback-chains'),
+      fetch('/admin/backends').catch(() => ({ json: () => [] }))
+    ]);
+    const aliases = await resAliases.json();
+    cachedChains = await resChains.json();
+    try { cachedBackends = await resBackends.json(); } catch(e) { cachedBackends = []; }
+
+    // Render Aliases Table
+    const aliasTbody = document.getElementById('aliasesTbody');
+    if (!aliases || aliases.length === 0) {
+      aliasTbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">No virtual aliases configured yet.</td></tr>';
+    } else {
+      aliasTbody.innerHTML = aliases.map(a => `
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+          <td class="p-4 font-bold text-indigo-500">${escapeHtml(a.alias)}</td>
+          <td class="p-4 text-slate-700 dark:text-slate-300 font-mono text-xs">${escapeHtml(a.backend_name)}</td>
+          <td class="p-4 text-slate-700 dark:text-slate-300 font-mono text-xs">${escapeHtml(a.model_name)}</td>
+          <td class="p-4">${a.fallback_chain_id ? `<span class="px-2.5 py-1 text-xs rounded-full bg-purple-500/10 text-purple-400 font-semibold">Chain #${a.fallback_chain_id}</span>` : '<span class="text-slate-400 text-xs">None</span>'}</td>
+          <td class="p-4 text-right">
+            <button onclick="deleteAlias('${escapeHtml(a.alias)}')" class="text-rose-500 hover:text-rose-700 p-2 cursor-pointer" title="Delete Alias">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Render Chains Table
+    const chainsTbody = document.getElementById('chainsTbody');
+    if (!cachedChains || cachedChains.length === 0) {
+      chainsTbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-400">No fallback chains configured yet.</td></tr>';
+    } else {
+      chainsTbody.innerHTML = cachedChains.map(c => `
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+          <td class="p-4 font-mono text-xs text-slate-400">#${c.id}</td>
+          <td class="p-4 font-bold text-slate-900 dark:text-white">${escapeHtml(c.name)}</td>
+          <td class="p-4">
+            <div class="flex flex-wrap gap-1.5">
+              ${(c.targets || []).map((t, idx) => `
+                <span class="px-2 py-0.5 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md font-mono text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <span class="text-purple-400 font-bold">${idx + 1}.</span> ${escapeHtml(t.backend_name)} &rarr; ${escapeHtml(t.model || '*')}
+                  ${t.translate ? '<span class="text-[9px] bg-indigo-500/10 text-indigo-400 px-1 rounded">translate</span>' : ''}
+                </span>
+              `).join('')}
+            </div>
+          </td>
+          <td class="p-4 text-right">
+            <button onclick="deleteChain(${c.id})" class="text-rose-500 hover:text-rose-700 p-2 cursor-pointer" title="Delete Chain">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Populate dropdowns in modals
+    populateModalDropdowns();
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  } catch (err) {
+    console.error("Failed to load aliases and chains", err);
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function populateModalDropdowns() {
+  // Populate backendSelectInput in Alias modal
+  const backendSelect = document.getElementById('backendSelectInput');
+  if (backendSelect && cachedBackends) {
+    const currentVal = backendSelect.value;
+    backendSelect.innerHTML = '<option value="">Select Backend...</option>' + 
+      cachedBackends.map(b => `<option value="${escapeHtml(b.name)}" ${b.name === currentVal ? 'selected' : ''}>${escapeHtml(b.name)} (${b.backend_type || 'LLM'})</option>`).join('');
+  }
+
+  // Populate chainSelectInput in Alias modal
+  const chainSelect = document.getElementById('chainSelectInput');
+  if (chainSelect && cachedChains) {
+    const currentVal = chainSelect.value;
+    chainSelect.innerHTML = '<option value="">None (No fallback)</option>' + 
+      cachedChains.map(c => `<option value="${c.id}" ${String(c.id) === currentVal ? 'selected' : ''}>#${c.id} - ${escapeHtml(c.name)}</option>`).join('');
+  }
+}
+
+function onAliasBackendChange(selectEl) {
+  const backendName = selectEl.value;
+  const datalist = document.getElementById('aliasModelDatalist');
+  datalist.innerHTML = '';
+  const backend = cachedBackends.find(b => b.name === backendName);
+  if (backend && backend.models && backend.models.length > 0) {
+    backend.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      datalist.appendChild(opt);
+    });
+  }
+}
+
+/* ── Fallback Chain Modal Functions ───────────────────────────────── */
+function openAddChainModal() {
+  const modal = document.getElementById('addChainModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  const container = document.getElementById('chainTargetsContainer');
+  if (container && container.children.length === 0) {
+    addChainTargetRow();
+    addChainTargetRow();
+  }
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+function closeAddChainModal() {
+  const modal = document.getElementById('addChainModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function addChainTargetRow(backend = '', model = '', translate = false) {
+  const container = document.getElementById('chainTargetsContainer');
+  if (!container) return;
+  const index = container.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'target-row p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex flex-col gap-2';
+  
+  let backendOptions = '<option value="">Select Backend...</option>';
+  if (cachedBackends && cachedBackends.length > 0) {
+    backendOptions += cachedBackends.map(b => `<option value="${escapeHtml(b.name)}" ${b.name === backend ? 'selected' : ''}>${escapeHtml(b.name)}</option>`).join('');
+  }
+
+  row.innerHTML = `
+    <div class="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+      <span class="row-label">Priority Target #${index}</span>
+      <button type="button" onclick="this.closest('.target-row').remove(); reindexTargets();" class="text-rose-500 hover:text-rose-700 cursor-pointer p-1" title="Remove Target">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div>
+        <label class="block text-[10px] text-slate-400 font-bold uppercase mb-0.5">Target Backend</label>
+        <select class="target-backend w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs" required onchange="onTargetBackendSelect(this)">
+          ${backendOptions}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] text-slate-400 font-bold uppercase mb-0.5">Model Name (or * for all)</label>
+        <input type="text" class="target-model w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs" placeholder="e.g. llama-3.1-8b or *" value="${escapeHtml(model)}" required />
+      </div>
+    </div>
+    <label class="inline-flex items-center gap-2 cursor-pointer mt-0.5">
+      <input type="checkbox" class="target-translate rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500" ${translate ? 'checked' : ''} />
+      <span class="text-[11px] text-slate-500 dark:text-slate-400">Protocol Translation (OpenAI &harr; Anthropic)</span>
+    </label>
+  `;
+  container.appendChild(row);
+  reindexTargets();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+function onTargetBackendSelect(selectEl) {
+  const backendName = selectEl.value;
+  const backend = cachedBackends.find(b => b.name === backendName);
+  const row = selectEl.closest('.target-row');
+  const modelInput = row ? row.querySelector('.target-model') : null;
+  if (backend && backend.models && backend.models.length > 0 && modelInput && !modelInput.value) {
+    modelInput.value = backend.models[0];
+  }
+}
+
+function reindexTargets() {
+  const container = document.getElementById('chainTargetsContainer');
+  if (!container) return;
+  const rows = container.querySelectorAll('.target-row');
+  rows.forEach((r, idx) => {
+    const label = r.querySelector('.row-label');
+    if (label) label.textContent = `Priority Target #${idx + 1}`;
+  });
+}
+
+async function submitCreateChain(e) {
+  e.preventDefault();
+  const name = document.getElementById('chainNameInput').value.trim();
+  const rows = document.querySelectorAll('#chainTargetsContainer .target-row');
+  const targets = [];
+
+  rows.forEach(r => {
+    const backend_name = r.querySelector('.target-backend').value.trim();
+    const model = r.querySelector('.target-model').value.trim();
+    const translate = r.querySelector('.target-translate').checked;
+    if (backend_name && model) {
+      targets.push({ backend_name, model, translate });
+    }
+  });
+
+  if (targets.length === 0) {
+    alert('Please specify at least one backend and model target.');
+    return;
+  }
+
+  try {
+    const res = await (window.fetchWithCsrf || fetch)('/admin/fallback-chains', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, targets })
+    });
+    if (res.ok) {
+      closeAddChainModal();
+      document.getElementById('chainNameInput').value = '';
+      document.getElementById('chainTargetsContainer').innerHTML = '';
+      await loadAliasesAndChains();
+    } else {
+      const err = await res.json();
+      alert('Error: ' + (err.detail || 'Failed to create fallback chain'));
+    }
+  } catch (err) {
+    console.error("Network error creating fallback chain", err);
+    alert('Network error: Could not reach the administration service');
+  }
+}
+
+/* ── Model Alias Modal Functions ──────────────────────────────────── */
+function openAddAliasModal() { 
+  document.getElementById('addAliasModal').classList.remove('hidden'); 
+  populateModalDropdowns();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+function closeAddAliasModal() { 
+  document.getElementById('addAliasModal').classList.add('hidden'); 
+}
+
+async function submitCreateAlias(e) {
+  e.preventDefault();
+  const alias = document.getElementById('aliasInput').value.trim();
+  const backend_name = document.getElementById('backendSelectInput').value.trim();
+  const model_name = document.getElementById('modelNameInput').value.trim();
+  const chain_val = document.getElementById('chainSelectInput').value.trim();
+  const fallback_chain_id = chain_val ? parseInt(chain_val, 10) : null;
+
+  try {
+    const res = await (window.fetchWithCsrf || fetch)('/admin/aliases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, backend_name, model_name, fallback_chain_id })
+    });
+    if (res.ok) {
+      closeAddAliasModal();
+      document.getElementById('aliasInput').value = '';
+      document.getElementById('modelNameInput').value = '';
+      await loadAliasesAndChains();
+    } else {
+      const err = await res.json();
+      alert('Error: ' + (err.detail || 'Failed to create alias'));
+    }
+  } catch (err) {
+    console.error("Network error creating alias", err);
+    alert('Network error: Could not reach the administration service');
+  }
+}
+
+async function deleteAlias(aliasName) {
+  if (!confirm(`Delete virtual alias '${aliasName}'?`)) return;
+  try {
+    const res = await (window.fetchWithCsrf || fetch)(`/admin/aliases/${encodeURIComponent(aliasName)}`, { method: 'DELETE' });
+    if (res.ok) loadAliasesAndChains();
+  } catch (err) {
+    console.error("Failed to delete alias", err);
+  }
+}
+
+async function deleteChain(chainId) {
+  if (!confirm(`Delete fallback chain #${chainId}?`)) return;
+  try {
+    const res = await (window.fetchWithCsrf || fetch)(`/admin/fallback-chains/${chainId}`, { method: 'DELETE' });
+    if (res.ok) loadAliasesAndChains();
+  } catch (err) {
+    console.error("Failed to delete fallback chain", err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadAliasesAndChains);
+</script>
+{% endblock %}

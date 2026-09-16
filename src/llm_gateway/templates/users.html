@@ -1,0 +1,295 @@
+{% extends "base.html" %} {% block title %}Users - LLM Gateway{% endblock %} {%
+block content %}
+<div
+  class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
+>
+  <div>
+    <h1
+      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
+    >
+      <i class="fas fa-users-cog text-indigo-500" aria-hidden="true"></i> User Management
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+      Manage system access, roles, and security permissions.
+    </p>
+  </div>
+  <div class="flex gap-3">
+    <button
+      onclick="document.getElementById('addUserModal').classList.remove('hidden')"
+      class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+    >
+      <i class="fas fa-user-plus" aria-hidden="true"></i>
+      Add User
+    </button>
+    <button
+      onclick="window.location.href = '/admin/view/settings#invites'"
+      class="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg"
+    >
+      <i class="fas fa-ticket-alt text-indigo-400" aria-hidden="true"></i>
+      Manage Invites
+    </button>
+  </div>
+</div>
+
+<!-- Users Table Section -->
+<div
+  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+>
+  <div class="p-1">
+    <table
+      id="usersTable"
+      class="w-full text-left text-sm border-separate border-spacing-0"
+    >
+      <thead
+        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+      >
+        <tr>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">User Access</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Status & Role</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Activity Log</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50 text-slate-700 dark:text-slate-300">
+        <!-- populated via js -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div
+  id="editModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+  >
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-user-edit text-blue-500" aria-hidden="true"></i> Edit User
+      </h2>
+      <button
+        onclick="document.getElementById('editModal').classList.add('hidden')"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <form id="editForm" class="space-y-6">
+      <input type="hidden" name="id" id="editId" />
+
+      <div>
+        <label
+          for="editEmail"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >User Email</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-600"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="email"
+            id="editEmail"
+            class="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-slate-500 dark:text-slate-400 outline-none cursor-not-allowed"
+            disabled
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label
+            for="editRole"
+            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            >Assign Role</label
+          >
+          <select
+            id="editRole"
+            name="role"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+          >
+            <option value="VIEWER">Viewer</option>
+            <option value="DEVELOPER">Developer</option>
+            <option value="MANAGER">Manager</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+        <div class="flex flex-col justify-end">
+          <label
+            class="flex items-center gap-3 cursor-pointer group bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+          >
+            <input
+              type="checkbox"
+              name="is_active"
+              id="editActive"
+              class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0"
+            />
+            <span
+              class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-white transition"
+              >Active Account</span
+            >
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onclick="document.getElementById('editModal').classList.add('hidden')"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+        >
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i class="fas fa-user-plus text-indigo-500" aria-hidden="true"></i> Register User</h2>
+      <button onclick="document.getElementById('addUserModal').classList.add('hidden')" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i class="fas fa-times text-xl" aria-hidden="true"></i></button>
+    </div>
+    <form id="addUserForm" class="space-y-6">
+      <div>
+        <label for="addUserEmail" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">User Email</label>
+        <div class="relative">
+          <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true"></i>
+          <input type="email" id="addUserEmail" name="email" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="admin@example.com" />
+        </div>
+      </div>
+      <div>
+        <label for="addUserPassword" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Password</label>
+        <div class="relative">
+          <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true"></i>
+          <input type="password" id="addUserPassword" name="password" minlength="8" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="Min 8 characters" />
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label for="addUserRole" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Role</label>
+          <select id="addUserRole" name="role" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer">
+            <option value="VIEWER">Viewer</option>
+            <option value="DEVELOPER">Developer</option>
+            <option value="MANAGER">Manager</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+        <div class="flex flex-col justify-end">
+          <label class="flex items-center gap-3 cursor-pointer group bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+            <input type="checkbox" id="addUserActive" name="is_active" checked class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 focus:ring-0 focus:ring-offset-0" />
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-white transition">Active Account</span>
+          </label>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button type="button" onclick="document.getElementById('addUserModal').classList.add('hidden')" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition">Cancel</button>
+        <button type="submit" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20">Register</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div
+  id="resetPasswordModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+  >
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-shield-alt text-rose-500" aria-hidden="true"></i> Reset Password
+      </h2>
+      <button
+        onclick="
+          document.getElementById('resetPasswordModal').classList.add('hidden')
+        "
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl mb-6">
+      <p class="text-rose-400 text-sm leading-relaxed">
+        You are overriding the password for
+        <span
+          id="resetEmail"
+          class="font-bold text-slate-900 dark:text-white underline decoration-rose-500/50"
+        ></span
+        >. The user will not be notified of this change automatically.
+      </p>
+    </div>
+
+    <form id="resetPasswordForm" class="space-y-6">
+      <input type="hidden" name="id" id="resetId" />
+      <div>
+        <label
+          for="resetNewPassword"
+          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          >New Security Password</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            type="password"
+            id="resetNewPassword"
+            name="password"
+            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/50 outline-none transition"
+            required
+            minlength="8"
+            placeholder="Enter at least 8 characters"
+          />
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onclick="
+            document
+              .getElementById('resetPasswordModal')
+              .classList.add('hidden')
+          "
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-8 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition shadow-lg shadow-rose-500/20"
+        >
+          Force Reset
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/static/js/users.js"></script>
+{% endblock %}

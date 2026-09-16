@@ -1,0 +1,73 @@
+# docker-compose.fresh-test.yml
+# Test a FRESH install — clean Postgres, clean migrations.
+# Usage:
+#   docker compose -f docker-compose.fresh-test.yml up -d --build
+#   docker compose -f docker-compose.fresh-test.yml logs -f migrate
+#   docker compose -f docker-compose.fresh-test.yml exec gateway python scripts/migrate.py --status
+#
+# Cleanup:
+#   docker compose -f docker-compose.fresh-test.yml down -v
+
+services:
+  migrate:
+    build: .
+    container_name: llm-gw-test-migrate
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://gateway_test:testpass@postgres-test:5432/gateway_test_db
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    command: ["python", "scripts/migrate.py"]
+    volumes:
+    - ./src:/app/src
+    - ./alembic:/app/alembic
+    - ./alembic.ini:/app/alembic.ini
+    - ./scripts:/app/scripts
+    restart: "no"
+
+  gateway:
+    build: .
+    container_name: llm-gw-test
+    ports:
+    - "6131:8000"
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://gateway_test:testpass@postgres-test:5432/gateway_test_db
+    - AUTH_SECRET=test-secret-key-for-fresh-install
+    - ENCRYPTION_KEY=hCxuEIIaEsQzPAakcKQTMN56R3tA18dfr1pAQgmpGFE=
+    - DEFAULT_ADMIN_EMAIL=admin@test.local
+    - DEFAULT_ADMIN_PASSWORD=admin123
+    - LOG_LEVEL=debug
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+    - ./src:/app/src
+    - ./alembic:/app/alembic
+    - ./alembic.ini:/app/alembic.ini
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  postgres-test:
+    image: postgres:18-alpine
+    container_name: llm-gw-test-postgres
+    environment:
+      POSTGRES_USER: gateway_test
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: gateway_test_db
+    volumes:
+    - postgres18_test_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_test -d gateway_test_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres18_test_data:
+networks:
+  default:
+    name: llm_secure_gateway_fresh_test_default_net

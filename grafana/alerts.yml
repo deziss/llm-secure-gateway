@@ -1,0 +1,75 @@
+# Prometheus alert rules for LLM Gateway
+# Import into Prometheus/Grafana alerting
+
+groups:
+  - name: llm-gateway
+    rules:
+      # Error rate exceeds 5% for 5 minutes
+      - alert: HighErrorRate
+        expr: >
+          sum(rate(http_requests_total{service="llm-gateway",status=~"5.."}[5m]))
+          / sum(rate(http_requests_total{service="llm-gateway"}[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM Gateway error rate above 5%"
+          runbook: "Check backend health, circuit breaker status, and recent deployments"
+
+      # Any circuit breaker is open
+      - alert: CircuitBreakerOpen
+        expr: llm_gateway_circuit_breakers_open > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "One or more backend circuit breakers are open"
+          runbook: "Check /admin/metrics for backend health. Circuit recovers automatically after 30s."
+
+      # Latency p95 above 5 seconds
+      - alert: HighLatency
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{service="llm-gateway"}[5m])
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM Gateway p95 latency above 5s"
+          runbook: "Check backend response times and connection pool saturation"
+
+      # Rate limiting triggered frequently
+      - alert: HighRateLimitRate
+        expr: >
+          sum(rate(http_requests_total{service="llm-gateway",status="429"}[5m])) * 60
+          > 10
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "More than 10 rate-limited requests per minute"
+          runbook: "Review API key RPM limits or check for abuse patterns"
+
+      # DB connection pool near saturation
+      - alert: DBPoolSaturation
+        expr: >
+          sqlalchemy_pool_checked_out{service="llm-gateway"}
+          / sqlalchemy_pool_size{service="llm-gateway"}
+          > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DB connection pool >80% utilized"
+          runbook: "Consider increasing pool_size or adding PgBouncer"
+
+      # Gateway process restarted
+      - alert: GatewayRestarted
+        expr: changes(process_start_time_seconds{service="llm-gateway"}[5m]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: "LLM Gateway process restarted"
+          runbook: "Check container logs for crash cause"

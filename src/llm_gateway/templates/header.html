@@ -1,0 +1,355 @@
+<style>
+  /* Premium header styles */
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #94a3b8;
+    transition:
+      background 0.15s,
+      color 0.15s;
+    position: relative;
+  }
+  .nav-link:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: #e2e8f0;
+  }
+  .nav-link.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+  }
+
+  /* Playground dropdown */
+  .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: rgba(15, 17, 30, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    padding: 8px;
+    min-width: 220px;
+    z-index: 9999;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: dropIn 0.15s ease;
+  }
+  /* Invisible bridge to prevent hover loss */
+  .dropdown-menu::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+  }
+  @keyframes dropIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .dropdown:hover .dropdown-menu {
+    display: block;
+  }
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    transition:
+      background 0.1s,
+      color 0.1s;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .dropdown-item:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: #e2e8f0;
+  }
+  .dropdown-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+  }
+  .dropdown-divider {
+    border: none;
+    border-top: 1px solid rgba(99, 102, 241, 0.1);
+    margin: 4px 0;
+  }
+  .dropdown-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 12px 2px;
+  }
+
+  .exp-badge {
+    font-size: 0.6rem;
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 999px;
+    padding: 1px 5px;
+    font-weight: 700;
+  }
+
+  /* Light mode overrides */
+  html:not(.dark) .nav-header {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-bottom-color: rgba(99, 102, 241, 0.15) !important;
+  }
+  html:not(.dark) .nav-link {
+    color: #475569;
+  }
+  html:not(.dark) .nav-link:hover {
+    background: rgba(99, 102, 241, 0.08);
+    color: #1e293b;
+  }
+  html:not(.dark) .nav-link.active {
+    color: #4f46e5;
+  }
+  html:not(.dark) .dropdown-menu {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(99, 102, 241, 0.15);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  }
+  html:not(.dark) .dropdown-item {
+    color: #475569;
+  }
+  html:not(.dark) .dropdown-item:hover {
+    background: rgba(99, 102, 241, 0.08);
+    color: #1e293b;
+  }
+  html:not(.dark) .dropdown-label {
+    color: #94a3b8;
+  }
+  html:not(.dark) .dropdown-divider {
+    border-top-color: rgba(99, 102, 241, 0.08);
+  }
+  html:not(.dark) .font-medium.text-slate-200,
+  html:not(.dark) .dropdown-item .font-medium {
+    color: #1e293b !important;
+  }
+</style>
+
+<nav
+  class="nav-header"
+  aria-label="Main navigation"
+  style="
+    background: rgba(10, 12, 22, 0.98);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+    padding: 10px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+  "
+>
+  <div class="container mx-auto flex justify-between items-center">
+    <a href="/admin/dashboard" class="flex items-center gap-2.5 group">
+      <img src="/static/img/logo.png" alt="LLM Secure Gateway Logo" class="w-8 h-8 rounded-lg shadow-sm border border-indigo-500/30 object-cover group-hover:scale-105 transition-transform" />
+      <span style="font-size: 0.95rem;font-weight: 700;background: linear-gradient(90deg, #818cf8, #7c3aed, #06b6d4);-webkit-background-clip: text;background-clip: text;-webkit-text-fill-color: transparent;">LLM Gateway</span>
+    </a>
+
+    <div class="flex items-center gap-1">
+      <a href="/admin/dashboard" class="nav-link"
+        ><i data-lucide="line-chart" class="text-xs"></i>Dashboard</a
+      >
+
+      {% if user and user_role in ['admin', 'manager'] %}
+      <a href="/admin/view/backends" class="nav-link"
+        ><i data-lucide="server" class="text-xs"></i>Backends</a
+      >
+      {% endif %} {% if user and user_role in ['admin', 'manager', 'developer']
+      %}
+      <a href="/admin/view/owners" class="nav-link"
+        ><i data-lucide="users" class="text-xs"></i>Owners</a
+      >
+      {% endif %} {% if user and user_role in ['admin', 'manager'] %}
+      <a href="/admin/view/users" class="nav-link"
+        ><i data-lucide="user-check" class="text-xs"></i>Users</a
+      >
+      {% endif %}
+
+      {% if user and user_role in ['admin', 'manager'] %}
+      <a href="/admin/view/bots" class="nav-link"
+        ><i data-lucide="bot" class="text-xs"></i>Bots</a
+      >
+      <a href="/admin/view/spend" class="nav-link"
+        ><i data-lucide="dollar-sign" class="text-xs"></i>Spend</a
+      >
+      <a href="/admin/view/aliases" class="nav-link"
+        ><i data-lucide="git-branch" class="text-xs"></i>Aliases</a
+      >
+      {% endif %}
+
+      <!-- Playground Dropdown -->
+      <div class="dropdown" id="playgroundDropdown">
+        <button
+          class="nav-link"
+          style="cursor: pointer; background: none; border: none"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="playgroundMenu"
+          onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); this.closest('.dropdown').querySelector('.dropdown-menu').classList.toggle('hidden')"
+          onkeydown="if(event.key==='Escape'){this.setAttribute('aria-expanded','false');this.closest('.dropdown').querySelector('.dropdown-menu').classList.add('hidden');this.focus()}"
+        >
+          <i data-lucide="flask-conical" class="text-xs"></i>Playground
+          <i data-lucide="chevron-down"
+            style="font-size: 0.6rem; opacity: 0.6"
+            aria-hidden="true"
+          ></i>
+        </button>
+        <div class="dropdown-menu" id="playgroundMenu" role="menu">
+          <p class="dropdown-label">Playgrounds</p>
+          <a href="/admin/view/playground" class="dropdown-item" role="menuitem">
+            <div
+              class="dropdown-item-icon"
+              style="background: rgba(99, 102, 241, 0.2); color: #818cf8"
+            >
+              <i data-lucide="terminal" class="text-xs"></i>
+            </div>
+            <div>
+              <div class="font-medium text-slate-700 dark:text-slate-200" style="font-size: 0.8rem">
+                API Tester
+              </div>
+              <div style="font-size: 0.68rem; color: #6b7280">
+                Raw API requests
+              </div>
+            </div>
+          </a>
+          <a href="/admin/view/playground/chat" class="dropdown-item" role="menuitem">
+            <div
+              class="dropdown-item-icon"
+              style="background: rgba(16, 185, 129, 0.2); color: #34d399"
+            >
+              <i data-lucide="message-square" class="text-xs"></i>
+            </div>
+            <div>
+              <div class="font-medium text-slate-700 dark:text-slate-200" style="font-size: 0.8rem">
+                Chat Playground
+              </div>
+              <div style="font-size: 0.68rem; color: #6b7280">
+                Chat + Vision support
+              </div>
+            </div>
+          </a>
+          <a href="/admin/view/playground/embed" class="dropdown-item" role="menuitem">
+            <div
+              class="dropdown-item-icon"
+              style="background: rgba(6, 182, 212, 0.2); color: #22d3ee"
+            >
+              <i data-lucide="network" class="text-xs"></i>
+            </div>
+            <div>
+              <div class="font-medium text-slate-700 dark:text-slate-200" style="font-size: 0.8rem">
+                Embedding Viz
+              </div>
+              <div style="font-size: 0.68rem; color: #6b7280">
+                2D semantic mapping
+              </div>
+            </div>
+          </a>
+          <a href="/admin/view/playground/compare" class="dropdown-item" role="menuitem">
+            <div
+              class="dropdown-item-icon"
+              style="background: rgba(236, 72, 153, 0.2); color: #f472b6"
+            >
+              <i data-lucide="columns" class="text-xs"></i>
+            </div>
+            <div>
+              <div class="font-medium text-slate-700 dark:text-slate-200" style="font-size: 0.8rem">
+                Model Arena
+              </div>
+              <div style="font-size: 0.68rem; color: #6b7280">
+                Side-by-side comparison
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      {% if user and user_role in ['admin', 'manager'] %}
+      <a href="/admin/view/settings" class="nav-link"
+        ><i data-lucide="settings" class="text-xs"></i>Settings</a
+      >
+      {% endif %}
+    </div>
+
+    <div class="flex items-center gap-3">
+      {% if user %}
+      <div class="flex items-center gap-2.5">
+        <div
+          style="
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+          "
+        >
+          {{ user.email[0].upper() }}
+        </div>
+        <span
+          style="
+            font-size: 0.78rem;
+            color: #6b7280;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          "
+          >{{ user.email }}</span
+        >
+      </div>
+      <button
+        onclick="logout()"
+        style="
+          padding: 5px 12px;
+          background: rgba(239, 68, 68, 0.15);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #f87171;
+          border-radius: 8px;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s;
+        "
+        onmouseover="this.style.background = 'rgba(239,68,68,0.25)'"
+        onmouseout="this.style.background = 'rgba(239,68,68,0.15)'"
+      >
+        <i data-lucide="log-out" class="mr-1"></i>Logout
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</nav>
