@@ -37,6 +37,43 @@ async def fetch_models_from_backend(client: httpx.AsyncClient, base_url: str, ba
         except Exception as e:
             logger.error(f"Failed to fetch models from standard backend at {base_url}: {e}")
             return []
+
+    elif backend_type == BackendType.LLAMACPP:
+        base = base_url.rstrip("/")
+        models_url = f"{base}/models" if base.endswith("/v1") else f"{base}/v1/models"
+        try:
+            response = await client.get(models_url, headers=headers, timeout=10.0)
+            if response.status_code == 200:
+                data = response.json()
+                models = [model["id"] for model in data.get("data", []) if "id" in model]
+                if models:
+                    return models
+        except Exception as e:
+            logger.debug(f"llama.cpp /v1/models check failed: {e}")
+
+        # Fallback to llama.cpp native /props endpoint
+        clean_base = base[:-3] if base.endswith("/v1") else base
+        props_url = f"{clean_base}/props"
+        try:
+            response = await client.get(props_url, headers=headers, timeout=5.0)
+            if response.status_code == 200:
+                p_data = response.json()
+                raw_model = (
+                    p_data.get("default_generation_settings", {}).get("model")
+                    or p_data.get("model")
+                    or ""
+                )
+                if raw_model:
+                    import os
+                    model_id = os.path.basename(raw_model)
+                    if model_id.endswith(".gguf"):
+                        model_id = model_id[:-5]
+                    return [model_id]
+                return ["default"]
+        except Exception as e:
+            logger.warning(f"Failed to fetch models from llama.cpp backend at {base_url}: {e}")
+            return []
+        return []
             
     elif backend_type == BackendType.ANTHROPIC:
         # Anthropic has a /v1/models endpoint as of recently, but if not, we can default to empty or static

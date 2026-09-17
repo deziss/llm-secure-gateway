@@ -38,7 +38,7 @@ The gateway relies on three core entities to secure and route traffic: **Backend
 
 ### Backends
 
-A Backend is an upstream LLM provider (e.g., a local Ollama instance, an AnythingLLM server, or an external provider like OpenAI/Anthropic).
+A Backend is an upstream LLM provider (e.g., a local Ollama instance, vLLM, llama.cpp server, or an external provider like OpenAI/Anthropic).
 
 - You must create a backend to tell the gateway where to route traffic.
 - Backends define **allowed endpoints** (whitelist) and supported **models**.
@@ -79,6 +79,20 @@ curl -X POST http://localhost:6130/admin/backends \
     "backend_type": "ollama",
     "models": ["llama3.2:latest", "mistral:latest"],
     "allowed_endpoints": ["/api/chat", "/api/generate", "/api/tags"]
+  }'
+```
+
+```bash
+# Register a local llama.cpp server
+curl -X POST http://localhost:6130/admin/backends \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "llamacpp-local",
+    "base_url": "http://host.docker.internal:8080/v1",
+    "backend_type": "llamacpp",
+    "models": ["llama-3.1-8b-instruct"],
+    "allowed_endpoints": ["/v1/chat/completions", "/v1/models"]
   }'
 ```
 

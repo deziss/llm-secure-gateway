@@ -157,7 +157,7 @@ List all registered LLM backends.
   {
     "name": "local-ollama",
     "base_url": "http://ollama:11434",
-    "backend_type": "ollama",
+    "backend_type": "ollama",  // "ollama" | "vllm" | "llamacpp" | "openai" | "anthropic" | "google" | "groq" | "custom"
     "models": ["llama3.2:latest", "mistral:latest"],
     "fallback_urls": [],
     "allowed_endpoints": ["api/chat", "api/generate", "v1/chat/completions"],
@@ -407,6 +407,16 @@ Federated Ollama model list (requires `ENABLE_MODEL_FEDERATION=true`).
       "details": { "family": "federated" }
     }
   ]
+}
+```
+
+### `GET /api/version`
+Ollama-compatible version endpoint for CLI, OpenWebUI, and client handshakes.
+
+**Response `200`**
+```json
+{
+  "version": "0.9.0"
 }
 ```
 
