@@ -191,3 +191,36 @@ def strip_images_if_unsupported(
             cleaned_messages.append(msg)
 
     return cleaned_messages, was_modified
+
+
+async def fetch_llamacpp_props(base_url: str, client: Optional[Any] = None) -> Dict[str, Any]:
+    """Query llama.cpp server /props endpoint to retrieve default generation settings and context length."""
+    import httpx
+    clean_base = base_url.rstrip("/")
+    if clean_base.endswith("/v1"):
+        clean_base = clean_base[:-3]
+    props_url = f"{clean_base}/props"
+
+    close_client = False
+    if client is None:
+        client = httpx.AsyncClient(timeout=5.0)
+        close_client = True
+
+    try:
+        resp = await client.get(props_url)
+        if resp.status_code == 200:
+            data = resp.json()
+            settings = data.get("default_generation_settings", {})
+            n_ctx = settings.get("n_ctx") or data.get("n_ctx")
+            model_path = settings.get("model") or data.get("model") or ""
+            return {
+                "n_ctx": int(n_ctx) if n_ctx is not None else None,
+                "model": model_path,
+                "total_slots": data.get("total_slots"),
+            }
+    except Exception as exc:
+        logger.debug("Could not fetch llama.cpp props from %s: %s", props_url, exc)
+    finally:
+        if close_client:
+            await client.aclose()
+    return {}

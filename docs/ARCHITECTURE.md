@@ -2,7 +2,7 @@
 
 ## Overview
 
-The LLM Secure Gateway is a FastAPI monolith acting as a secure reverse proxy in front of one or more LLM backends (Ollama, vLLM, OpenAI, Anthropic, Google, Groq, or custom). It enforces authentication, rate limiting, policy, and per-owner permissions before forwarding requests, and emits structured traces to Arize Phoenix.
+The LLM Secure Gateway is a FastAPI monolith acting as a secure reverse proxy in front of one or more LLM backends (Ollama, vLLM, llama.cpp, OpenAI, Anthropic, Google, Groq, or custom). It enforces authentication, rate limiting, policy, and per-owner permissions before forwarding requests, and emits structured traces to Arize Phoenix.
 
 ---
 
@@ -44,6 +44,7 @@ graph TB
     subgraph "LLM Backends"
         OL[Ollama]
         VL[vLLM]
+        LLC[llama.cpp]
         OAI[OpenAI API]
         ANT[Anthropic API]
         GRQ[Groq API]
@@ -119,6 +120,19 @@ sequenceDiagram
     PR-->>C: StreamingResponse (pass-through)
     PR->>PHX: record token usage, end span
 ```
+
+---
+
+## Resilience & Granular Quarantining
+
+The gateway implements multi-tier resilience across proxies:
+- **Per-URL Circuit Breaking**: `CircuitBreaker` trips after 5 consecutive transport failures.
+- **Granular Model Quarantining**: Rather than failing an entire multi-model cluster node, failing `(backend, model)` routes enter a temporary quarantine window:
+  - `401 / 403` (Quota/Auth failure): 1-hour cooldown (`QUARANTINE_FORBIDDEN`)
+  - `429` (Rate limiting): 5-minute cooldown (`QUARANTINE_RATE_LIMIT`)
+  - `503` (Overload / slot exhaustion): 1-minute cooldown (`QUARANTINE_OVERLOADED`)
+  - `500 / 502 / 504` (Server crash / internal error): 30-second cooldown (`QUARANTINE_SERVER_ERR`)
+- **Cross-Provider Failover Chains**: Evaluates prioritized fallback targets, automatically bypassing any targets currently in cooldown quarantine.
 
 ---
 

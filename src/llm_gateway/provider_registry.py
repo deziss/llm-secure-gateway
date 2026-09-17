@@ -151,5 +151,17 @@ def _register_defaults() -> None:
     for m in vllm.supported_models:
         register_model(ProviderModel(provider_id=vllm.id, model_name=m, max_tokens=8192))
 
+    llamacpp = BackendProvider(
+        id="llamacpp",
+        name="llama.cpp Server",
+        base_url="http://localhost:8080/v1",
+        fallback_urls=["http://localhost:8080"],
+        supported_models=["default"],
+        auth_type="none",
+    )
+    register_provider(llamacpp)
+    for m in llamacpp.supported_models:
+        register_model(ProviderModel(provider_id=llamacpp.id, model_name=m, max_tokens=8192))
+
 
 _register_defaults()

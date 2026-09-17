@@ -26,6 +26,7 @@ $(document).ready(function () {
           const types = {
             ollama: "bg-orange-500/10 text-orange-400 border-orange-500/20",
             vllm: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+            llamacpp: "bg-teal-500/10 text-teal-400 border-teal-500/20",
             openai:
               "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
             groq: "bg-pink-500/10 text-pink-400 border-pink-500/20",

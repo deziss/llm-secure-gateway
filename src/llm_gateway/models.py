@@ -10,11 +10,20 @@ def _utcnow() -> datetime:
 class BackendType(str, Enum):
     OLLAMA = "ollama"
     VLLM = "vllm"
+    LLAMACPP = "llamacpp"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
     GROQ = "groq"
     CUSTOM = "custom"
+
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str):
+            val_clean = value.lower().replace(".", "").replace("_", "").replace("-", "")
+            if val_clean in ("llamacpp", "llama"):
+                return cls.LLAMACPP
+        return super()._missing_(value)
 
 class LLMBackend(SQLModel, table=True):
     name: str = Field(primary_key=True, index=True, description="Unique name for the backend")

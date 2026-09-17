@@ -3,7 +3,7 @@ import httpx
 import asyncio
 import logging
 import time
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -474,6 +474,62 @@ async def try_backend_with_fallback(
     raise last_exc  # type: ignore[misc]
 
 
+# ---------------------------------------------------------------------------
+# Granular Model & Path Quarantining
+# ---------------------------------------------------------------------------
+
+QUARANTINE_FORBIDDEN = 3600   # 1 hour for 401/403
+QUARANTINE_RATE_LIMIT = 300   # 5 minutes for 429
+QUARANTINE_OVERLOADED = 60    # 1 minute for 503
+QUARANTINE_SERVER_ERR = 30    # 30 seconds for 500/502/504
+
+_model_quarantines: Dict[Tuple[str, str], float] = {}
+
+def quarantine_model(backend_name: str, model_name: str, duration: int, reason: str = "") -> None:
+    """Quarantine a specific (backend, model) pair for a cooldown duration."""
+    import time
+    if not backend_name or not model_name:
+        return
+    expiry = time.time() + duration
+    _model_quarantines[(backend_name, model_name)] = expiry
+    logger.warning(
+        "QUARANTINE: Model '%s' on backend '%s' quarantined for %ds. Reason: %s",
+        model_name, backend_name, duration, reason or "Error response"
+    )
+
+def is_model_quarantined(backend_name: str, model_name: str) -> bool:
+    """Check whether a (backend, model) pair is currently in quarantine cooldown."""
+    import time
+    if not backend_name or not model_name:
+        return False
+    expiry = _model_quarantines.get((backend_name, model_name), 0.0)
+    if expiry > time.time():
+        return True
+    if (backend_name, model_name) in _model_quarantines:
+        del _model_quarantines[(backend_name, model_name)]
+    return False
+
+def get_active_quarantines() -> List[Dict[str, Any]]:
+    """Return all active model quarantines with seconds remaining."""
+    import time
+    now = time.time()
+    active = []
+    for (b_name, m_name), exp in list(_model_quarantines.items()):
+        if exp > now:
+            active.append({
+                "backend_name": b_name,
+                "model_name": m_name,
+                "remaining_seconds": int(exp - now),
+            })
+        else:
+            del _model_quarantines[(b_name, m_name)]
+    return active
+
+def clear_model_quarantine(backend_name: str, model_name: str) -> None:
+    """Clear quarantine for a (backend, model) pair."""
+    _model_quarantines.pop((backend_name, model_name), None)
+
+
 async def try_with_cross_provider_fallback(
     backend: LLMBackend,
     path: str,
@@ -488,24 +544,40 @@ async def try_with_cross_provider_fallback(
     enable_retry: bool = False,
 ) -> Tuple[httpx.Response, str, LLMBackend, Optional[httpx.AsyncClient]]:
     """Try primary backend. If it returns 429/5xx or connection fails, try fallback chain targets."""
-    try:
-        r, used_url, client = await try_backend_with_fallback(
-            backend, path, method, headers, body, raw_body, timeout=timeout, enable_retry=enable_retry
-        )
-        if r.status_code < 400 or (r.status_code not in (429, 500, 502, 503, 504) or not fallback_chain_id):
-            return r, used_url, backend, client
-        logger.warning(
-            "Primary backend %s returned status %d, triggering fallback chain %s",
-            backend.name, r.status_code, fallback_chain_id
-        )
-        await r.aclose()
-    except Exception as exc:
-        if not fallback_chain_id:
-            raise
-        logger.warning(
-            "Primary backend %s failed (%s), triggering fallback chain %s",
-            backend.name, exc, fallback_chain_id
-        )
+    req_model = (body.get("model") if isinstance(body, dict) else "") or "*"
+    
+    # If primary model is actively quarantined and we have a fallback chain, skip directly to fallback
+    if fallback_chain_id and is_model_quarantined(backend.name, req_model):
+        logger.info("Primary backend '%s' model '%s' is in cooldown quarantine, bypassing to fallback chain %s",
+                    backend.name, req_model, fallback_chain_id)
+    else:
+        try:
+            r, used_url, client = await try_backend_with_fallback(
+                backend, path, method, headers, body, raw_body, timeout=timeout, enable_retry=enable_retry
+            )
+            if r.status_code < 400 or (r.status_code not in (429, 500, 502, 503, 504) or not fallback_chain_id):
+                return r, used_url, backend, client
+            
+            # Apply granular quarantine to this model
+            dur = (QUARANTINE_RATE_LIMIT if r.status_code == 429 
+                   else (QUARANTINE_OVERLOADED if r.status_code == 503 
+                   else (QUARANTINE_FORBIDDEN if r.status_code in (401, 403) else QUARANTINE_SERVER_ERR)))
+            quarantine_model(backend.name, req_model, dur, f"HTTP {r.status_code}")
+            
+            logger.warning(
+                "Primary backend %s returned status %d for model %s, triggering fallback chain %s",
+                backend.name, r.status_code, req_model, fallback_chain_id
+            )
+            await r.aclose()
+        except Exception as exc:
+            dur = QUARANTINE_SERVER_ERR
+            quarantine_model(backend.name, req_model, dur, f"Exception: {exc}")
+            if not fallback_chain_id:
+                raise
+            logger.warning(
+                "Primary backend %s failed (%s) for model %s, triggering fallback chain %s",
+                backend.name, exc, req_model, fallback_chain_id
+            )
 
     from .services.fallback_service import get_chain_targets
     targets = await get_chain_targets(session, fallback_chain_id)
@@ -520,6 +592,11 @@ async def try_with_cross_provider_fallback(
         if not fb_backend:
             continue
 
+        # Granular quarantine check on target model
+        if target_model and is_model_quarantined(target_name, target_model):
+            logger.info("Skipping quarantined fallback target backend %s (model=%s)", target_name, target_model)
+            continue
+
         logger.info("Failing over to chain target backend %s (model=%s)", target_name, target_model)
         fb_body = dict(body) if isinstance(body, dict) else None
         if fb_body and target_model:
@@ -531,8 +608,14 @@ async def try_with_cross_provider_fallback(
             )
             if r.status_code < 400 or r.status_code not in (429, 500, 502, 503, 504):
                 return r, used_url, fb_backend, client
+            
+            dur = (QUARANTINE_RATE_LIMIT if r.status_code == 429 
+                   else (QUARANTINE_OVERLOADED if r.status_code == 503 
+                   else (QUARANTINE_FORBIDDEN if r.status_code in (401, 403) else QUARANTINE_SERVER_ERR)))
+            quarantine_model(target_name, target_model or "*", dur, f"HTTP {r.status_code}")
             await r.aclose()
         except Exception as exc:
+            quarantine_model(target_name, target_model or "*", QUARANTINE_SERVER_ERR, f"Exception: {exc}")
             last_exc = exc
             continue
 
