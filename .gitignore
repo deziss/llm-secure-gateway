@@ -99,8 +99,4 @@ cookies.txt
 node_modules/
 package-lock.json
 graphify-out/
-CHANGELOG.md
-README.md
 gateway_db.sql
-TELEMETRY_GUIDE.md
-UPGRADE.md
