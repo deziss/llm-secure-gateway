@@ -1,0 +1,29 @@
+name: 💡 Feature Request
+description: Suggest an enhancement, new provider integration, or architectural feature
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We love ideas! Please describe the feature you would like to see in LLM Secure Gateway.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: Is your feature request related to a specific problem or workflow bottleneck?
+      placeholder: "A clear and concise description of what the challenge is..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Architecture
+      description: Describe the solution you would like, including any API endpoints or configuration parameters.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Considered Alternatives
+      description: Describe any alternative solutions or workarounds you have considered.
