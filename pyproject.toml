@@ -9,7 +9,7 @@ dependencies = [
     # Core framework
     "fastapi>=0.135.0",
     "uvicorn[standard]>=0.34.0",
-    "httpx>=0.28.0",
+    "httpx>=0.28.1",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
 
@@ -57,7 +57,7 @@ license = {text = "AGPL-3.0-or-later"}
 test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
-    "httpx>=0.28.0",
+    "httpx>=0.28.1",
     "aiosqlite>=0.20.0",
     "respx>=0.22.0",
 ]
