@@ -1,0 +1,44 @@
+name: CI / Test Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Unit & Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Test Container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: llm-gateway:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Pytest Suite
+        run: |
+          docker run --rm \
+            -e ENCRYPTION_KEY=dGVzdC1rZXktMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI= \
+            -e AUTH_SECRET=test-auth-secret-32-chars-long-0123456789 \
+            -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
+            -e REDIS_URL="" \
+            llm-gateway:test \
+            pytest tests/ -v --tb=short
