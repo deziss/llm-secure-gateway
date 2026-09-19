@@ -6,6 +6,8 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
 [![Tests](https://img.shields.io/badge/tests-241%20passing-brightgreen.svg)](tests/)
+[![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
+[![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
 **LLM Secure Gateway** is an enterprise-grade, multi-tenant AI reverse proxy and governance layer for local and cloud Large Language Models. It provides virtualized API key management, granular role-based access control (RBAC), intelligent cross-provider failover, PII sanitization, and full-stack observability with OpenTelemetry and Arize Phoenix.
 
@@ -84,6 +86,12 @@ Supports **Ollama**, **vLLM**, **llama.cpp**, **OpenAI**, **Anthropic Claude**, 
 ### Prerequisites
 - **Docker Engine** 24.0+ and **Docker Compose** v2+
 - *(Optional for local development)*: **Python 3.14+**
+
+### Pre-built Docker Image (GHCR)
+You can pull the official container directly:
+```bash
+docker pull ghcr.io/deziss/llm-secure-gateway:latest
+```
 
 ### 1. Clone & Configure
 ```bash
@@ -303,6 +311,9 @@ llm-secure-gateway/
 | [TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md) | Configuration guide for Arize Phoenix, OpenTelemetry, and Prometheus |
 | [UPGRADE.md](UPGRADE.md) | Migration guidelines, version upgrade procedures, and breaking changes |
 | [CHANGELOG.md](CHANGELOG.md) | Chronological release notes and changelog history |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution standards, local dev setup & PR rules |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community code of conduct guidelines |
+| [.github/SECURITY.md](.github/SECURITY.md) | Security vulnerability disclosure policy |
 
 ---
 
