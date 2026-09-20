@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-241%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-311%20passing-brightgreen.svg)](tests/)
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
@@ -265,7 +265,7 @@ All microservice dependencies gracefully degrade — if Redis or PgBouncer are t
 
 ## Testing & Quality Assurance
 
-The gateway includes a comprehensive test suite containing **241 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
+The gateway includes a comprehensive test suite containing **311 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
 
 ```bash
 # Run full test suite inside isolated Docker container
@@ -338,7 +338,7 @@ llm-secure-gateway/
 │   ├── API_REFERENCE.md            # Comprehensive REST endpoint documentation
 │   ├── DATABASE_MIGRATION.md       # Migration procedures & backup guidelines
 │   └── TESTING.md                  # Testing patterns & CI configuration
-└── tests/                          # Automated test suite (241 tests)
+└── tests/                          # Automated test suite (311 tests)
 ```
 
 ---
