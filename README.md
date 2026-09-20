@@ -1,11 +1,11 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.10.1-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-311%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-314%20passing-brightgreen.svg)](tests/)
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
@@ -199,7 +199,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.10.0"}
+# Output: {"version": "0.10.1"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -230,7 +230,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.10.0` | Gateway release version emitted in logs & telemetry |
+| `APP_VERSION` | No | `0.10.1` | Gateway release version emitted in logs & telemetry |
 
 ### Performance & Scaling Options
 
@@ -265,7 +265,7 @@ All microservice dependencies gracefully degrade — if Redis or PgBouncer are t
 
 ## Testing & Quality Assurance
 
-The gateway includes a comprehensive test suite containing **311 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
+The gateway includes a comprehensive test suite containing **314 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
 
 ```bash
 # Run full test suite inside isolated Docker container
@@ -274,7 +274,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.10.0-py314 pytest tests/ -v
+  llm-gateway:v0.10.1-py314 pytest tests/ -v
 ```
 
 ### Performance & Benchmarking Scripts
@@ -338,7 +338,7 @@ llm-secure-gateway/
 │   ├── API_REFERENCE.md            # Comprehensive REST endpoint documentation
 │   ├── DATABASE_MIGRATION.md       # Migration procedures & backup guidelines
 │   └── TESTING.md                  # Testing patterns & CI configuration
-└── tests/                          # Automated test suite (311 tests)
+└── tests/                          # Automated test suite (314 tests)
 ```
 
 ---

@@ -83,7 +83,7 @@ $(document).ready(function () {
     drawCallback: function () {
       const json = this.api().ajax.json();
       if (json && Array.isArray(json)) {
-        json.forEach((b) => checkBackendHealth(b.name));
+        queueHealthChecks(json.map((b) => b.name));
       }
       if (window.lucide && typeof window.lucide.createIcons === "function") {
         window.lucide.createIcons();
@@ -348,12 +348,46 @@ function closeManageModelsModal() {
 }
 window.closeManageModelsModal = closeManageModelsModal;
 
+// Health checks are deliberately throttled.
+//
+// Browsers allow only ~6 concurrent HTTP/1.1 connections per origin, and the
+// dashboard's SSE stream permanently holds one of them.  Firing a health check
+// for every backend at once therefore saturates the budget: an unreachable
+// backend occupies its socket for the server's full probe window, and until it
+// frees up the browser cannot issue *any* other request to the gateway --
+// navigation, table reloads and stylesheets all stall, which reads as the UI
+// hanging.  Cap the fan-out and give each request its own client-side deadline.
+const HEALTH_CHECK_CONCURRENCY = 3;
+const HEALTH_CHECK_TIMEOUT_MS = 8000; // server budget is 6s; allow some slack
+
+let _healthQueue = [];
+let _healthActive = 0;
+
+function queueHealthChecks(names) {
+  _healthQueue = names.slice();
+  pumpHealthQueue();
+}
+
+function pumpHealthQueue() {
+  while (_healthActive < HEALTH_CHECK_CONCURRENCY && _healthQueue.length > 0) {
+    const name = _healthQueue.shift();
+    _healthActive += 1;
+    checkBackendHealth(name).finally(() => {
+      _healthActive -= 1;
+      pumpHealthQueue();
+    });
+  }
+}
+
 async function checkBackendHealth(name) {
   const el = document.getElementById(`health-${name}`);
   if (!el) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
   try {
     const res = await fetch(`/admin/backends/${encodeURIComponent(name)}/health`, {
       credentials: "include",
+      signal: controller.signal,
     });
     const data = await res.json();
     if (data.status === "healthy") {
@@ -362,7 +396,10 @@ async function checkBackendHealth(name) {
       el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> <span class="text-red-400">OFFLINE</span>`;
     }
   } catch (e) {
-    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> <span class="text-rose-400">ERROR</span>`;
+    const label = e && e.name === "AbortError" ? "TIMEOUT" : "ERROR";
+    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> <span class="text-rose-400">${label}</span>`;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

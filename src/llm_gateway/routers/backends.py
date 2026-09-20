@@ -1,5 +1,7 @@
+import asyncio
 import logging
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
@@ -120,6 +122,42 @@ async def delete_backend(
     await session.commit()
     return {"status": "deleted"}
 
+# Health probing budget.
+#
+# A silently-dropping backend (firewalled host, dead VLAN) never sends a TCP
+# reset, so every probe costs the full connect timeout.  Probing four candidate
+# paths at 10s each used to cost 40s per backend, during which the request held
+# a pooled DB connection and one of the browser's six per-origin sockets.  With
+# several unreachable backends the admin UI and the connection pool both
+# stalled.  Keep the total bounded and well under any sane client timeout.
+_HEALTH_PROBE_PATHS = ["/api/tags", "/v1/models", "/health", "/"]
+_HEALTH_TIMEOUT = httpx.Timeout(connect=2.0, read=3.0, write=3.0, pool=2.0)
+_HEALTH_TOTAL_BUDGET = 6.0  # seconds, across all probed paths combined
+
+
+async def _probe_backend(url: str) -> Optional[tuple]:
+    """Try each candidate path in priority order within one overall deadline.
+
+    Returns (path, status_code) for the first path that answers below 500, or
+    None if nothing answered before the budget expired.
+    """
+    try:
+        async with asyncio.timeout(_HEALTH_TOTAL_BUDGET):
+            async with httpx.AsyncClient(timeout=_HEALTH_TIMEOUT) as client:
+                for path in _HEALTH_PROBE_PATHS:
+                    try:
+                        r = await client.get(f"{url}{path}")
+                    except Exception:
+                        continue
+                    if r.status_code < 500:
+                        return path, r.status_code
+    except (TimeoutError, asyncio.TimeoutError):
+        pass
+    except Exception:
+        pass
+    return None
+
+
 @router.get("/{name}/health")
 async def backend_health(
     name: str,
@@ -127,38 +165,39 @@ async def backend_health(
     session: AsyncSession = Depends(get_session),
     user = Depends(require_admin)
 ) -> dict:
-    import httpx
     backend = await service.get_backend(session, name)
     if not backend:
         raise HTTPException(status_code=404, detail=f"Backend '{name}' not found")
 
-    url = f"{backend.base_url.rstrip('/')}"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for path in ["/api/tags", "/v1/models", "/health", "/"]:
-                try:
-                    r = await client.get(f"{url}{path}")
-                    if r.status_code < 500:
-                        return {
-                            "backend": name,
-                            "status": "healthy",
-                            "base_url": backend.base_url,
-                            "backend_type": backend.backend_type.value,
-                            "checked_path": path,
-                            "http_status": r.status_code,
-                            "models": backend.models,
-                        }
-                except Exception:
-                    continue
-    except Exception:
-        pass
+    # Copy everything needed off the ORM object, then hand the pooled DB
+    # connection back before doing any network I/O.  Otherwise a slow or
+    # unreachable backend pins a connection for the whole probe, and enough
+    # concurrent probes exhaust the pool (pool_size=10, max_overflow=20).
+    base_url = backend.base_url
+    backend_type = backend.backend_type.value
+    models = backend.models
+    await session.close()
+
+    result = await _probe_backend(base_url.rstrip("/"))
+
+    if result is not None:
+        path, http_status = result
+        return {
+            "backend": name,
+            "status": "healthy",
+            "base_url": base_url,
+            "backend_type": backend_type,
+            "checked_path": path,
+            "http_status": http_status,
+            "models": models,
+        }
 
     return {
         "backend": name,
         "status": "unreachable",
-        "base_url": backend.base_url,
-        "backend_type": backend.backend_type.value,
-        "models": backend.models,
+        "base_url": base_url,
+        "backend_type": backend_type,
+        "models": models,
     }
 
 @router.post("/{name}/sync-models")
