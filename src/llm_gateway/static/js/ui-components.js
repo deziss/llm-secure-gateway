@@ -9,8 +9,8 @@ function showConfirm(title, message, isDangerous = true) {
     const cancelBtn = document.getElementById('globalConfirmCancel');
     const actionBtn = document.getElementById('globalConfirmAction');
 
-    titleEl.innerText = title;
-    msgEl.innerText = message;
+    if (titleEl) titleEl.innerText = title;
+    if (msgEl) msgEl.innerText = message;
 
     if (isDangerous) {
       actionBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500', 'shadow-indigo-600/20');
@@ -20,83 +20,134 @@ function showConfirm(title, message, isDangerous = true) {
       actionBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500', 'shadow-indigo-600/20');
     }
 
-    // Remember what had focus so we can restore it
     const previousFocus = document.activeElement;
 
-    modal.classList.remove('hidden');
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
     setTimeout(() => {
-      content.classList.remove('scale-95', 'opacity-0');
-      content.classList.add('scale-100', 'opacity-100');
-      cancelBtn.focus();
+      if (content) {
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+      }
+      if (cancelBtn) cancelBtn.focus();
     }, 10);
 
-    // Focus trap: Tab cycles between Cancel and Confirm only
-    const focusableEls = [cancelBtn, actionBtn];
+    const focusableEls = [cancelBtn, actionBtn].filter(Boolean);
     const trapFocus = (e) => {
       if (e.key === 'Tab') {
         const idx = focusableEls.indexOf(document.activeElement);
         if (e.shiftKey) {
-          focusableEls[idx <= 0 ? focusableEls.length - 1 : idx - 1].focus();
+          focusableEls[idx <= 0 ? focusableEls.length - 1 : idx - 1]?.focus();
         } else {
-          focusableEls[(idx + 1) % focusableEls.length].focus();
+          focusableEls[(idx + 1) % focusableEls.length]?.focus();
         }
         e.preventDefault();
       }
     };
-    content.addEventListener('keydown', trapFocus);
+    if (content) content.addEventListener('keydown', trapFocus);
 
     const cleanup = () => {
-      content.removeEventListener('keydown', trapFocus);
-      content.classList.remove('scale-100', 'opacity-100');
-      content.classList.add('scale-95', 'opacity-0');
+      if (content) {
+        content.removeEventListener('keydown', trapFocus);
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+      }
       setTimeout(() => {
-        modal.classList.add('hidden');
+        if (modal) modal.classList.add('hidden');
         if (previousFocus) previousFocus.focus();
       }, 200);
     };
 
-    // Escape key dismisses
     const escHandler = (e) => {
       if (e.key === 'Escape') { cleanup(); resolve(false); }
     };
-    modal.addEventListener('keydown', escHandler, { once: true });
+    if (modal) modal.addEventListener('keydown', escHandler, { once: true });
 
-    cancelBtn.onclick = () => {
-      cleanup();
-      resolve(false);
-    };
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        cleanup();
+        resolve(false);
+      };
+    }
 
-    actionBtn.onclick = () => {
-      cleanup();
-      resolve(true);
-    };
+    if (actionBtn) {
+      actionBtn.onclick = () => {
+        cleanup();
+        resolve(true);
+      };
+    }
   });
 }
 
-function showToast(title, message, type = 'success') {
+function showToast(titleOrMsg, msgOrType = '', type = 'success') {
     const toast = document.getElementById('globalToast');
     const icon = document.getElementById('toastIcon');
     const titleEl = document.getElementById('toastTitle');
     const msgEl = document.getElementById('toastMessage');
 
-    titleEl.innerText = title;
-    msgEl.innerText = message;
+    let title = 'Notice';
+    let message = '';
+    let actualType = type;
 
-    if (type === 'success') {
-        icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
-        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+    if (arguments.length === 1) {
+        message = titleOrMsg;
+        title = 'Notice';
+        actualType = 'success';
+    } else if (arguments.length === 2) {
+        if (msgOrType === 'success' || msgOrType === 'error' || msgOrType === 'warning') {
+            actualType = msgOrType;
+            title = actualType === 'error' ? 'Error' : (actualType === 'warning' ? 'Warning' : 'Success');
+            message = titleOrMsg;
+        } else {
+            title = titleOrMsg;
+            message = msgOrType;
+            actualType = 'success';
+        }
     } else {
-        icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-red-500/10 text-red-500 border border-red-500/20';
-        icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+        title = titleOrMsg;
+        message = msgOrType;
+        actualType = type;
     }
 
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
+    // Format error detail if passed as object
+    if (typeof message === 'object') {
+        message = window.formatErrorMessage ? window.formatErrorMessage(message) : JSON.stringify(message);
+    }
+    if (typeof title === 'object') {
+        title = window.formatErrorMessage ? window.formatErrorMessage(title) : 'Error';
+    }
 
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
-    }, 4000);
+    if (titleEl) titleEl.innerText = title;
+    if (msgEl) msgEl.innerText = message;
+
+    if (icon) {
+        if (actualType === 'success') {
+            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
+            icon.innerHTML = '<i data-lucide="check-circle-2" class="w-5 h-5"></i>';
+        } else if (actualType === 'warning') {
+            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-amber-500/10 text-amber-500 border border-amber-500/20';
+            icon.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>';
+        } else {
+            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-red-500/10 text-red-500 border border-red-500/20';
+            icon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
+        }
+    }
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+
+    if (toast) {
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 4000);
+    }
 }
 
 function getInitials(name) {

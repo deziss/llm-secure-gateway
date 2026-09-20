@@ -4,13 +4,10 @@ const messages = []; // conversation history
 const pendingImages = []; // base64 image data
 let backends = [];
 
-// Configure marked.js
+// Configure marked.js.  Code blocks are highlighted after rendering via
+// hljs.highlightElement() — marked dropped its built-in `highlight` option in
+// v5, so configuring it here would silently do nothing.
 marked.setOptions({
-  highlight: (code, lang) => {
-    if (lang && hljs.getLanguage(lang))
-      return hljs.highlight(code, { language: lang }).value;
-    return hljs.highlightAuto(code).value;
-  },
   breaks: true,
   gfm: true,
 });

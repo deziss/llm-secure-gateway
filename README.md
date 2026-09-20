@@ -1,6 +1,6 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -9,9 +9,50 @@
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
+<p align="center">
+  <img src="assets/dashboard.png" alt="The LLM Secure Gateway admin dashboard, showing active users, backend cluster health, available model count, a requests-per-minute traffic chart and live edge connectivity" width="850" />
+  <br />
+  <em>The built-in admin dashboard — active users, backend cluster health, aggregated model count, requests/min traffic and live edge connectivity.</em>
+</p>
+
 **LLM Secure Gateway** is an enterprise-grade, multi-tenant AI reverse proxy and governance layer for local and cloud Large Language Models. It provides virtualized API key management, granular role-based access control (RBAC), intelligent cross-provider failover, PII sanitization, and full-stack observability with OpenTelemetry and Arize Phoenix.
 
 Supports **Ollama**, **vLLM**, **llama.cpp**, **OpenAI**, **Anthropic Claude**, **Google Gemini**, **Groq**, and custom OpenAI-compatible backends.
+
+---
+
+## What problem does this solve?
+
+Handing raw provider keys to every application is how teams lose control of their LLM spend and their data. This gateway sits between your applications and your models so that:
+
+| Without a gateway | With LLM Secure Gateway |
+| :--- | :--- |
+| Every app holds a real OpenAI/Anthropic key | Apps hold scoped virtual keys; real credentials stay encrypted at rest |
+| No idea who spent what | Per-tenant spend, token and quota tracking with budget ceilings |
+| One provider outage takes you down | Prioritized fallback chains across providers, with per-model quarantining |
+| Prompts leave with PII intact | Regex and rule-based PII scrubbing before the request reaches the model |
+| No audit trail | OpenTelemetry traces, Prometheus metrics and an audit log per request |
+
+It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need only a changed base URL — no SDK rewrite.
+
+> **Runs fully offline.** Since v0.10.0 every front-end asset is vendored in the image and the Content-Security-Policy is `'self'`-only. The admin UI works unchanged on air-gapped hosts and behind egress proxies, with zero outbound requests from the browser.
+
+---
+
+## Table of Contents
+
+- [What problem does this solve?](#what-problem-does-this-solve)
+- [Highlights & Capabilities](#highlights--capabilities)
+- [Architecture Overview](#architecture-overview)
+- [Quick Start](#quick-start)
+- [Client Usage Examples](#client-usage-examples)
+- [Configuration Reference](#configuration-reference)
+- [Production Deployment & High Availability](#production-deployment--high-availability)
+- [Testing & Quality Assurance](#testing--quality-assurance)
+- [Repository Structure](#repository-structure)
+- [Documentation Directory](#documentation-directory)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -28,6 +69,7 @@ Supports **Ollama**, **vLLM**, **llama.cpp**, **OpenAI**, **Anthropic Claude**, 
 - **Zero-Trust Identity**: SPIFFE / mTLS identity extraction and validation support for service-to-service deployments.
 - **Credential Vault**: Sensitive upstream provider credentials stored encrypted at rest using AES-128 Fernet cryptography.
 - **Hardened Administrative UI**: Dark-mode management portal built with Tailwind CSS, Lucide icons, double-submit cookie CSRF tokens, and semantic accessibility (WCAG).
+- **Zero External Requests**: Every JS and CSS dependency is vendored into the image and the CSP is `'self'`-only, so the UI is fully functional air-gapped and leaks no browsing signal to third-party CDNs.
 - **Content Moderation & PII Shield**: Real-time regex and rule-based scrubbing for credit cards, SSNs, phone numbers, and harmful prompts before reaching upstream models.
 
 ### ⚡ Resilience & Fault Tolerance
@@ -157,7 +199,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.9.0"}
+# Output: {"version": "0.10.0"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -188,7 +230,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.9.0` | Gateway release version emitted in logs & telemetry |
+| `APP_VERSION` | No | `0.10.0` | Gateway release version emitted in logs & telemetry |
 
 ### Performance & Scaling Options
 
@@ -232,7 +274,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.9.0-py314 pytest tests/ -v
+  llm-gateway:v0.10.0-py314 pytest tests/ -v
 ```
 
 ### Performance & Benchmarking Scripts
@@ -314,6 +356,16 @@ llm-secure-gateway/
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution standards, local dev setup & PR rules |
 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community code of conduct guidelines |
 | [.github/SECURITY.md](.github/SECURITY.md) | Security vulnerability disclosure policy |
+
+---
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for local development setup, coding standards and the pull request process, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before opening an issue or PR.
+
+- **Found a bug?** [Open a bug report](https://github.com/deziss/llm-secure-gateway/issues/new?template=bug_report.yml)
+- **Want a feature?** [Open a feature request](https://github.com/deziss/llm-secure-gateway/issues/new?template=feature_request.yml)
+- **Found a vulnerability?** Please follow the disclosure process in [SECURITY.md](.github/SECURITY.md) rather than opening a public issue.
 
 ---
 

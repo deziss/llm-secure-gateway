@@ -1,12 +1,16 @@
 // owners.js — Owners page logic
 
+let ownersTable = null;
+
 $(document).ready(function () {
-  const table = $("#ownersTable").DataTable({
+  ownersTable = $("#ownersTable").DataTable({
     ajax: {
-      url: BASE_URL + "/admin/owners",
+      url: "/admin/owners",
       dataSrc: function (json) {
-        json.forEach((item) => (ownersData[item.id] = item));
-        return json;
+        if (Array.isArray(json)) {
+          json.forEach((item) => (ownersData[item.id] = item));
+        }
+        return json || [];
       },
       xhrFields: { withCredentials: true },
     },
@@ -38,8 +42,8 @@ $(document).ready(function () {
               ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
               : "bg-blue-500/10 text-blue-400 border-blue-500/20";
           const icon =
-            data === "project" ? "fas fa-project-diagram" : "fas fa-user-tie";
-          return `<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i class="${icon}"></i> ${data}</span>`;
+            data === "project" ? "layers" : "user";
+          return `<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${escapeHtml(data)}</span>`;
         },
       },
       {
@@ -78,13 +82,14 @@ $(document).ready(function () {
         data: "id",
         className: "text-right",
         render: function (data) {
+          const safeId = data.replace(/'/g, "\'");
           let btns = `
-            <button onclick="openKeysModal('${data}')" class="p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20" title="Manage API Keys"><i class="fas fa-key"></i></button>
-            <button onclick="openPermissionsModal('${data}')" class="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20" title="Access Grants"><i class="fas fa-lock"></i></button>
-            <button onclick="openEditModal('${data}')" class="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all border border-slate-700" title="Edit Profile"><i class="fas fa-user-edit"></i></button>
+            <button type="button" onclick="openKeysModal('${safeId}')" class="p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Manage API Keys"><i data-lucide="key" class="w-4 h-4"></i></button>
+            <button type="button" onclick="openPermissionsModal('${safeId}')" class="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20 cursor-pointer" title="Access Grants"><i data-lucide="shield-check" class="w-4 h-4"></i></button>
+            <button type="button" onclick="openEditModal('${safeId}')" class="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all border border-slate-700 cursor-pointer" title="Edit Profile"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
           `;
           if (["admin", "manager"].includes(USER_ROLE)) {
-            btns += `<button onclick="deleteOwner('${data}')" class="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20" title="Revoke Owner"><i class="fas fa-trash-alt"></i></button>`;
+            btns += `<button type="button" onclick="deleteOwner('${safeId}')" class="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Revoke Owner"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
           }
           return `<div class="flex justify-end gap-2">${btns}</div>`;
         },
@@ -93,6 +98,11 @@ $(document).ready(function () {
     dom: "t",
     pageLength: 50,
     retrieve: true,
+    drawCallback: function () {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }
   });
 
   $("#addForm").on("submit", async function (e) {
@@ -101,28 +111,39 @@ $(document).ready(function () {
     const originalText = btn.html();
     btn
       .prop("disabled", true)
-      .html('<i class="fas fa-spinner fa-spin mr-2"></i>Registering...');
+      .html('<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline-block mr-2"></i>Registering...');
+    if (window.lucide) window.lucide.createIcons();
 
     const fd = new FormData(this);
     const data = Object.fromEntries(fd.entries());
-    data.block_endpoints =
-      document.getElementById("blockEndpointsAdd").checked;
-    if (data.max_keys) data.max_keys = parseInt(data.max_keys);
+    data.id = (data.id || "").trim();
+    data.name = (data.name || "").trim();
+    data.block_endpoints = !!document.getElementById("blockEndpointsAdd")?.checked;
+    if (data.max_keys) data.max_keys = parseInt(data.max_keys, 10);
 
-    const res = await fetchWithCsrf(BASE_URL + "/admin/owners", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-      credentials: "include",
-    });
+    try {
+      const res = await fetchWithCsrf("/admin/owners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
 
-    if (res.ok) {
-      location.reload();
-    } else {
-      const err = await res.json();
-      showToast("Registration Failed", err.detail || "ID already exists or invalid data.", "error");
+      if (res.ok) {
+        showToast("Success", `Owner '${data.name || data.id}' registered successfully`);
+        closeAddModal();
+        ownersTable.ajax.reload(null, false);
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Invalid request" }));
+        const msg = window.formatErrorMessage ? window.formatErrorMessage(err) : (err.detail || "ID already exists or invalid data.");
+        showToast("Registration Failed", msg, "error");
+      }
+    } catch (e) {
+      showToast("Network Error", "Could not reach the administration service", "error");
+    } finally {
+      btn.prop("disabled", false).html(originalText);
+      if (window.lucide) window.lucide.createIcons();
     }
-    btn.prop("disabled", false).html(originalText);
   });
 
   $("#editForm").on("submit", async function (e) {
@@ -131,69 +152,128 @@ $(document).ready(function () {
     const originalText = btn.html();
     btn
       .prop("disabled", true)
-      .html('<i class="fas fa-spinner fa-spin mr-2"></i>Syncing...');
+      .html('<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline-block mr-2"></i>Syncing...');
+    if (window.lucide) window.lucide.createIcons();
 
     const fd = new FormData(this);
     const data = Object.fromEntries(fd.entries());
     const id = data.id;
     delete data.id;
-    data.block_endpoints =
-      document.getElementById("blockEndpointsEdit").checked;
-    data.is_active =
-      document.getElementById("isActiveEdit").checked;
-    if (data.max_keys) data.max_keys = parseInt(data.max_keys);
+    data.name = (data.name || "").trim();
+    data.block_endpoints = !!document.getElementById("blockEndpointsEdit")?.checked;
+    data.is_active = !!document.getElementById("isActiveEdit")?.checked;
+    if (data.max_keys) data.max_keys = parseInt(data.max_keys, 10);
 
-    const res = await fetchWithCsrf(BASE_URL + "/admin/owners/" + id, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-      credentials: "include",
-    });
+    try {
+      const res = await fetchWithCsrf("/admin/owners/" + encodeURIComponent(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
 
-    if (res.ok) {
-      location.reload();
-    } else {
-      const err = await res.json();
-      showToast("Update Failed", err.detail || "Unknown error", "error");
+      if (res.ok) {
+        showToast("Success", `Owner '${id}' updated successfully`);
+        closeEditModal();
+        ownersTable.ajax.reload(null, false);
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Update failed" }));
+        const msg = window.formatErrorMessage ? window.formatErrorMessage(err) : (err.detail || "Update failed.");
+        showToast("Update Failed", msg, "error");
+      }
+    } catch (e) {
+      showToast("Network Error", "Could not reach the administration service", "error");
+    } finally {
+      btn.prop("disabled", false).html(originalText);
+      if (window.lucide) window.lucide.createIcons();
     }
-    btn.prop("disabled", false).html(originalText);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeAddModal();
+      closeEditModal();
+      closePermissionsModal();
+      closeKeysModal();
+    }
   });
 });
 
-async function openEditModal(ownerId) {
-  const data = ownersData[ownerId];
+function openAddModal() {
+  const form = document.getElementById("addForm");
+  if (form) form.reset();
+  const modal = document.getElementById("addModal");
+  if (modal) modal.classList.remove("hidden");
+  const input = document.getElementById("addOwnerId");
+  if (input) setTimeout(() => input.focus(), 50);
+  if (window.lucide) window.lucide.createIcons();
+}
+window.openAddModal = openAddModal;
+
+function closeAddModal() {
+  const modal = document.getElementById("addModal");
+  if (modal) modal.classList.add("hidden");
+}
+window.closeAddModal = closeAddModal;
+
+function openEditModal(id) {
+  const data = ownersData[id];
   if (!data) return;
   document.getElementById("editId").value = data.id;
-  document.getElementById("editName").value = data.name;
+  document.getElementById("editName").value = data.name || "";
   document.getElementById("editEmail").value = data.email || "";
-  document.getElementById("editType").value = data.type;
-  document.getElementById("blockEndpointsEdit").checked = data.block_endpoints;
-  document.getElementById("isActiveEdit").checked = data.is_active !== false;
+  document.getElementById("editType").value = data.type || "individual";
   document.getElementById("editDescription").value = data.description || "";
   document.getElementById("editMaxKeys").value = data.max_keys || 5;
-  document.getElementById("editModal").classList.remove("hidden");
-}
+  document.getElementById("blockEndpointsEdit").checked = !!data.block_endpoints;
+  document.getElementById("isActiveEdit").checked = data.is_active !== false;
 
-async function deleteOwner(ownerId) {
+  const modal = document.getElementById("editModal");
+  if (modal) modal.classList.remove("hidden");
+  if (window.lucide) window.lucide.createIcons();
+}
+window.openEditModal = openEditModal;
+
+function closeEditModal() {
+  const modal = document.getElementById("editModal");
+  if (modal) modal.classList.add("hidden");
+}
+window.closeEditModal = closeEditModal;
+
+function closePermissionsModal() {
+  const modal = document.getElementById("permissionsModal");
+  if (modal) modal.classList.add("hidden");
+}
+window.closePermissionsModal = closePermissionsModal;
+
+function closeKeysModal() {
+  const modal = document.getElementById("keysModal");
+  if (modal) modal.classList.add("hidden");
+}
+window.closeKeysModal = closeKeysModal;
+
+async function deleteOwner(id) {
   const confirmed = await showConfirm(
     "Revoke Owner",
-    `Are you sure you want to permanently delete API Owner '${ownerId}'? This action is IRREVERSIBLE and will revoke all associated API keys.`
+    `Are you sure you want to permanently revoke owner '${id}'? This will delete all associated API keys immediately.`
   );
   if (!confirmed) return;
 
   try {
-    const res = await fetchWithCsrf(BASE_URL + "/admin/owners/" + ownerId, {
+    const res = await fetchWithCsrf("/admin/owners/" + encodeURIComponent(id), {
       method: "DELETE",
       credentials: "include",
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Deletion failed");
+    if (res.ok) {
+      showToast("Success", "Owner revoked successfully");
+      delete ownersData[id];
+      if (ownersTable) ownersTable.ajax.reload(null, false);
+    } else {
+      const err = await res.json().catch(() => ({ detail: "Deletion failed" }));
+      showToast("Revocation Failed", window.formatErrorMessage ? window.formatErrorMessage(err) : err.detail, "error");
     }
-    showToast("Success", "Owner deleted successfully");
-    setTimeout(() => location.reload(), 1000);
   } catch (e) {
-    showToast("Error", e.message, "error");
+    showToast("Network Error", "Failed to communicate with server", "error");
   }
 }
 
@@ -201,60 +281,55 @@ let currentOwnerIdForKeys = null;
 
 async function openKeysModal(ownerId) {
   currentOwnerIdForKeys = ownerId;
-  document.getElementById("keysOwnerIdDisplay").innerText = ownerId.toUpperCase();
+  const ownerEl = document.getElementById("keysModalOwnerId");
+  if (ownerEl) ownerEl.innerText = ownerId.toUpperCase();
   await loadKeys(ownerId);
-  document.getElementById("keysModal").classList.remove("hidden");
+  const modal = document.getElementById("keysModal");
+  if (modal) modal.classList.remove("hidden");
+  if (window.lucide) window.lucide.createIcons();
 }
+window.openKeysModal = openKeysModal;
 
 async function loadKeys(ownerId) {
-  const res = await fetch(BASE_URL + `/admin/owners/${ownerId}/keys`, { credentials: "include" });
-  const keys = await res.json();
   const tbody = document.getElementById("keysList");
-  if (keys.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 italic">No active API keys found.</td></tr>`;
-    return;
-  }
-  const scopeColors = {
-    "llm:chat": "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    "llm:embed": "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-    "llm:read": "bg-slate-500/10 text-slate-400 border-slate-500/20",
-    "llm:*": "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-    "admin:*": "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    "*": "bg-rose-500/10 text-rose-400 border-rose-500/20",
-    "chat": "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    "embeddings": "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-    "admin": "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    "read_only": "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  };
-  const expiryBadge = (k) => {
-    if (!k.expires_at) return '<span class="text-slate-600 text-[10px] italic">No expiry</span>';
-    const ms = new Date(k.expires_at) - new Date();
-    const days = Math.ceil(ms / 86400000);
-    if (days <= 0) return '<span class="text-rose-400 text-[10px] font-bold">EXPIRED</span>';
-    if (days <= 7) return `<span class="text-amber-400 text-[10px] font-bold">${days}d left</span>`;
-    return `<span class="text-slate-400 text-[10px]">${days}d left</span>`;
-  };
-  tbody.innerHTML = keys.filter(k => k.is_active).map(k => {
-    const created = new Date(k.created_at).toLocaleDateString();
-    const scopes = (k.scopes || []).map(s => {
-      const cls = scopeColors[s] || "bg-slate-500/10 text-slate-400 border-slate-500/20";
-      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${cls}">${escapeHtml(s)}</span>`;
-    }).join(" ");
-    return `
-    <tr class="hover:bg-slate-800/20 transition-colors">
-      <td class="p-4 font-mono text-amber-400 font-bold">${escapeHtml(k.prefix)}</td>
-      <td class="p-4"><div class="flex flex-wrap gap-1">${scopes || '<span class="text-slate-600 text-[10px] italic">none</span>'}</div></td>
-      <td class="p-4 text-slate-400 text-xs">${created}</td>
-      <td class="p-4">${expiryBadge(k)}</td>
-      <td class="p-4 text-right">
-        <button onclick="revokeKey('${escapeHtml(k.prefix)}')" class="text-slate-500 hover:text-red-500 transition-colors p-1" title="Revoke Key">
-          <i class="fas fa-trash"></i>
-        </button>
-      </td>
-    </tr>`;
-  }).join("");
-  if (tbody.innerHTML === "") {
-      tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 italic">No active API keys found.</td></tr>`;
+  if (!tbody) return;
+  try {
+    const res = await fetchWithCsrf(`/admin/owners/${encodeURIComponent(ownerId)}/keys`);
+    if (!res.ok) throw new Error("Failed to load keys");
+    const keys = await res.json();
+
+    if (keys.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-500 italic text-sm">No active keys. Click 'Issue New Key' below.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = keys
+      .map(
+        (k) => `
+      <tr class="hover:bg-slate-800/20 transition-colors">
+        <td class="p-4 font-mono font-bold text-white tracking-wider flex items-center gap-2">
+          <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500"></i> ${escapeHtml(k.prefix)}••••••••
+        </td>
+        <td class="p-4">
+          <div class="flex flex-wrap gap-1">
+            ${(k.scopes || []).map(s => `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${escapeHtml(s)}</span>`).join('')}
+          </div>
+        </td>
+        <td class="p-4 text-xs text-slate-400">
+          ${k.expires_at ? new Date(k.expires_at).toLocaleDateString() : '<span class="text-slate-500 font-mono">Never</span>'}
+        </td>
+        <td class="p-4 text-right">
+          <button type="button" onclick="revokeKey('${escapeHtml(k.prefix)}')" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer" title="Revoke Key">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </td>
+      </tr>
+    `
+      )
+      .join("");
+    if (window.lucide) window.lucide.createIcons();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-400">Failed to load keys: ${e.message}</td></tr>`;
   }
 }
 
@@ -265,7 +340,7 @@ async function revokeKey(prefix) {
   );
   if (!confirmed) return;
   try {
-    const res = await fetchWithCsrf(BASE_URL + `/admin/keys/${prefix}`, { method: "DELETE", credentials: "include" });
+    const res = await fetchWithCsrf(`/admin/keys/${encodeURIComponent(prefix)}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Revocation failed");
     showToast("Success", "API Key revoked");
     await loadKeys(currentOwnerIdForKeys);
@@ -276,7 +351,6 @@ async function revokeKey(prefix) {
 
 async function createKeyFromModal() {
   const ownerId = currentOwnerIdForKeys;
-  // Read selected scopes from checkboxes
   const selectedScopes = Array.from(
     document.querySelectorAll('input[name="newKeyScope"]:checked')
   ).map(cb => cb.value);
@@ -284,10 +358,10 @@ async function createKeyFromModal() {
     showToast("Validation Error", "Select at least one scope for the new key.", "error");
     return;
   }
-  // Check if auto-rotation is enabled
+
   let expiryNote = "";
   try {
-    const sRes = await fetch(BASE_URL + "/admin/settings", { credentials: "include" });
+    const sRes = await fetchWithCsrf("/admin/settings");
     const sList = await sRes.json();
     const days = parseInt(sList.find(s => s.key === "KEY_EXPIRY_DAYS")?.value || "0", 10);
     if (days > 0) expiryNote = `\n\nAuto-rotation active: this key will expire in ${days} days.`;
@@ -299,14 +373,17 @@ async function createKeyFromModal() {
     false
   );
   if (!confirmed) return;
+
   try {
-    const res = await fetchWithCsrf(BASE_URL + "/admin/keys", {
+    const res = await fetchWithCsrf("/admin/keys", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ owner: ownerId, scopes: selectedScopes }),
-      credentials: "include",
     });
-    if (!res.ok) throw new Error(`Status ${res.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to issue key" }));
+      throw new Error(window.formatErrorMessage ? window.formatErrorMessage(err) : "Failed to issue key");
+    }
     const data = await res.json();
     await loadKeys(ownerId);
 
@@ -316,44 +393,45 @@ async function createKeyFromModal() {
     modal.innerHTML = `
       <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl text-center">
         <div class="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl shadow-lg shadow-emerald-500/20">
-          <i class="fas fa-key"></i>
+          <i data-lucide="key" class="w-8 h-8"></i>
         </div>
         <h3 class="text-2xl font-bold text-white mb-2">New API Key Issued</h3>
         <p class="text-slate-400 text-sm mb-6">Store this key securely. It will never be shown again.</p>
         <div class="relative group mb-8">
           <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-20 transition"></div>
           <div class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-emerald-400 break-all select-all">
-            ${data.api_key}
+            ${escapeHtml(data.api_key)}
           </div>
         </div>
-        <button onclick="this.closest('.fixed').remove(); loadKeys('${ownerId}');" class="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-slate-200 transition">
+        <button onclick="this.closest('.fixed').remove(); loadKeys('${ownerId.replace(/'/g, "\\'")}');" class="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-slate-200 transition cursor-pointer">
           Acknowledged & Saved
         </button>
       </div>
     `;
     document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
   } catch (e) {
-    showToast("Encryption Error", "Failed to issue key. Check system logs.", "error");
+    showToast("Encryption Error", e.message || "Failed to issue key.", "error");
   }
 }
 
 let currentOwnerIdForPerms = null;
 
 async function loadPermissions(ownerId) {
-  const res = await fetch(BASE_URL + `/admin/owners/${ownerId}/permissions`, {
-    credentials: "include",
-  });
-  const perms = await res.json();
+  const res = await fetchWithCsrf(`/admin/owners/${encodeURIComponent(ownerId)}/permissions`);
+  const perms = await res.json().catch(() => []);
   const tbody = document.getElementById("permissionsList");
+  if (!tbody) return;
 
   if (perms.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="3" class="p-12 text-center text-slate-500 italic">
-          <i class="fas fa-ghost text-4xl mb-4 block opacity-10"></i>
+          <i data-lucide="shield-alert" class="w-8 h-8 mb-4 block mx-auto opacity-20"></i>
           No permissions active. Access will be rejected.
         </td>
       </tr>`;
+    if (window.lucide) window.lucide.createIcons();
     return;
   }
 
@@ -364,20 +442,20 @@ async function loadPermissions(ownerId) {
       <td class="p-4">
         <div class="flex items-center gap-2">
           <div class="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></div>
-          <span class="font-bold text-white tracking-wide">${p.backend_name}</span>
+          <span class="font-bold text-white tracking-wide">${escapeHtml(p.backend_name)}</span>
         </div>
       </td>
       <td class="p-4">
         <div class="flex flex-wrap gap-1">
-          ${p.allowed_models.map((m) => `<span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-slate-400 font-mono">${escapeHtml(m)}</span>`).join("")}
+          ${(p.allowed_models || []).map((m) => `<span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-slate-400 font-mono">${escapeHtml(m)}</span>`).join("")}
         </div>
       </td>
       <td class="p-4 text-right">
         ${
-          USER_ROLE === "admin"
+          USER_ROLE === "admin" || USER_ROLE === "manager"
             ? `
-          <button onclick="deletePermission(${p.id})" class="text-slate-500 hover:text-red-500 transition-colors p-1">
-            <i class="fas fa-times-circle"></i>
+          <button type="button" onclick="deletePermission(${p.id})" class="text-slate-500 hover:text-red-500 transition-colors p-1 cursor-pointer" title="Remove Grant">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>`
             : ""
         }
@@ -386,15 +464,18 @@ async function loadPermissions(ownerId) {
   `,
     )
     .join("");
+  if (window.lucide) window.lucide.createIcons();
 }
 
 async function fetchBackendsForSelect() {
   try {
-    const res = await fetch(BASE_URL + "/admin/backends", { credentials: "include" });
+    const res = await fetchWithCsrf("/admin/backends");
     if (!res.ok) return;
     const backends = await res.json();
     const select = document.getElementById("permBackend");
-    select.innerHTML = backends.map(b => `<option value="${b.name}">${b.name} (${b.backend_type})</option>`).join("");
+    if (select) {
+      select.innerHTML = backends.map(b => `<option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (${escapeHtml(b.backend_type)})</option>`).join("");
+    }
   } catch(e) {
     console.error("Failed to fetch backends for permissions select");
   }
@@ -402,25 +483,32 @@ async function fetchBackendsForSelect() {
 
 async function openPermissionsModal(ownerId) {
   currentOwnerIdForPerms = ownerId;
-  document.getElementById("permOwnerIdDisplay").innerText =
-    ownerId.toUpperCase();
-  document.getElementById("permFormOwnerId").value = ownerId;
+  const disp = document.getElementById("permOwnerIdDisplay");
+  if (disp) disp.innerText = ownerId.toUpperCase();
+  const formOwner = document.getElementById("permFormOwnerId");
+  if (formOwner) formOwner.value = ownerId;
 
-  if (USER_ROLE !== "admin") {
-    document.getElementById("addPermissionContainer").classList.add("hidden");
+  if (USER_ROLE !== "admin" && USER_ROLE !== "manager") {
+    const permContainer = document.getElementById("addPermissionContainer");
+    if (permContainer) permContainer.classList.add("hidden");
   }
 
   await fetchBackendsForSelect();
   await loadPermissions(ownerId);
-  document.getElementById("permissionsModal").classList.remove("hidden");
+  const modal = document.getElementById("permissionsModal");
+  if (modal) modal.classList.remove("hidden");
+  if (window.lucide) window.lucide.createIcons();
 }
+window.openPermissionsModal = openPermissionsModal;
 
 $("#addPermissionForm").on("submit", async function (e) {
   e.preventDefault();
   const btn = $(this).find('button[type="submit"]');
+  const originalText = btn.html();
   btn
     .prop("disabled", true)
-    .html('<i class="fas fa-spinner fa-spin mr-2"></i>Adding...');
+    .html('<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline-block mr-2"></i>Adding...');
+  if (window.lucide) window.lucide.createIcons();
 
   const data = {
     backend_name: document.getElementById("permBackend").value,
@@ -429,28 +517,33 @@ $("#addPermissionForm").on("submit", async function (e) {
       .value.split(",")
       .map((s) => s.trim())
       .filter(Boolean),
-    allowed_endpoints: ["*"],  // Endpoint auth handled by API key scopes
+    allowed_endpoints: ["*"],
   };
 
-  const res = await fetchWithCsrf(
-    BASE_URL + `/admin/owners/${currentOwnerIdForPerms}/permissions`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-      credentials: "include",
-    },
-  );
+  try {
+    const res = await fetchWithCsrf(
+      `/admin/owners/${encodeURIComponent(currentOwnerIdForPerms)}/permissions`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
 
-  if (res.ok) {
-    document.getElementById("permModels").value = "*";
-    document.getElementById("permEndpoints").value = "*";
-    await loadPermissions(currentOwnerIdForPerms);
-  } else {
-    const err = await res.json();
-    showToast("Authorization Error", err.detail || "Check backend availability.", "error");
+    if (res.ok) {
+      document.getElementById("permModels").value = "*";
+      showToast("Success", "Permission grant registered");
+      await loadPermissions(currentOwnerIdForPerms);
+    } else {
+      const err = await res.json().catch(() => ({ detail: "Authorization Error" }));
+      showToast("Authorization Error", window.formatErrorMessage ? window.formatErrorMessage(err) : err.detail, "error");
+    }
+  } catch (err) {
+    showToast("Network Error", "Could not reach the server", "error");
+  } finally {
+    btn.prop("disabled", false).html(originalText);
+    if (window.lucide) window.lucide.createIcons();
   }
-  btn.prop("disabled", false).html("Add Permission Grant");
 });
 
 async function deletePermission(permId) {
@@ -461,11 +554,9 @@ async function deletePermission(permId) {
   if (!confirmed) return;
   try {
     const res = await fetchWithCsrf(
-      BASE_URL +
-        `/admin/owners/${currentOwnerIdForPerms}/permissions/${permId}`,
+      `/admin/owners/${encodeURIComponent(currentOwnerIdForPerms)}/permissions/${permId}`,
       {
         method: "DELETE",
-        credentials: "include",
       },
     );
     if (!res.ok) throw new Error("Failed to delete permission");
