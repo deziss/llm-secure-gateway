@@ -108,7 +108,11 @@ async def poll_all_backends() -> None:
         if not backends:
             return
 
-        async with httpx.AsyncClient() as client:
+        # Explicit timeout: unreachable backends must not stretch a polling
+        # cycle (and the DB session it holds) out to httpx's defaults.
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=2.0, read=5.0, write=5.0, pool=2.0)
+        ) as client:
             tasks = []
             for backend in backends:
                 # Resolve the API key if encrypted

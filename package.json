@@ -1,6 +1,6 @@
 {
   "name": "llm-secure-gateway",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "A secure, multi-tenant AI gateway providing API key management, RBAC authentication, policy enforcement, and LLM observability for Ollama, vLLM, OpenAI, Anthropic, Google, Groq, and custom backends.",
   "scripts": {
     "build:css": "./build-css.sh"

@@ -45,7 +45,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret-32-chars-long-0123456789 \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.10.0-py314 pytest tests/ -v
+  llm-gateway:v0.10.1-py314 pytest tests/ -v
 ```
 
 ---
