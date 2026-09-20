@@ -7,7 +7,7 @@ block content %}
     <h1
       class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
     >
-      <i class="fas fa-users-cog text-indigo-500" aria-hidden="true"></i> User Management
+      <i data-lucide="shield" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> User Management
     </h1>
     <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
       Manage system access, roles, and security permissions.
@@ -15,17 +15,19 @@ block content %}
   </div>
   <div class="flex gap-3">
     <button
-      onclick="document.getElementById('addUserModal').classList.remove('hidden')"
-      class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+      type="button"
+      id="addUserBtn"
+      onclick="openAddUserModal()"
+      class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
     >
-      <i class="fas fa-user-plus" aria-hidden="true"></i>
-      Add User
+      <i data-lucide="user-plus" class="w-4 h-4" aria-hidden="true"></i>
+      <span>Add User</span>
     </button>
     <button
       onclick="window.location.href = '/admin/view/settings#invites'"
       class="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg"
     >
-      <i class="fas fa-ticket-alt text-indigo-400" aria-hidden="true"></i>
+      <i data-lucide="ticket" class="w-4 h-4 text-indigo-400" aria-hidden="true"></i>
       Manage Invites
     </button>
   </div>
@@ -63,25 +65,27 @@ block content %}
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeEditModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
         <i class="fas fa-user-edit text-blue-500" aria-hidden="true"></i> Edit User
       </h2>
       <button
-        onclick="document.getElementById('editModal').classList.add('hidden')"
+        onclick="closeEditModal()"
         class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
-    <form id="editForm" class="space-y-6">
+    <form id="editForm" action="javascript:void(0);" class="space-y-6">
       <input type="hidden" name="id" id="editId" />
 
       <div>
@@ -143,7 +147,7 @@ block content %}
       <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
-          onclick="document.getElementById('editModal').classList.add('hidden')"
+          onclick="closeEditModal()"
           class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
@@ -160,24 +164,24 @@ block content %}
 </div>
 
 <!-- Add User Modal -->
-<div id="addUserModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all">
+<div id="addUserModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeAddUserModal()">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all" onclick="event.stopPropagation()">
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i class="fas fa-user-plus text-indigo-500" aria-hidden="true"></i> Register User</h2>
-      <button onclick="document.getElementById('addUserModal').classList.add('hidden')" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i class="fas fa-times text-xl" aria-hidden="true"></i></button>
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="user-plus" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> Register User</h2>
+      <button onclick="closeAddUserModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
-    <form id="addUserForm" class="space-y-6">
+    <form id="addUserForm" action="javascript:void(0);" class="space-y-6">
       <div>
         <label for="addUserEmail" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">User Email</label>
         <div class="relative">
-          <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true"></i>
+          <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input type="email" id="addUserEmail" name="email" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="admin@example.com" />
         </div>
       </div>
       <div>
         <label for="addUserPassword" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Password</label>
         <div class="relative">
-          <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true"></i>
+          <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input type="password" id="addUserPassword" name="password" minlength="8" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="Min 8 characters" />
         </div>
       </div>
@@ -199,7 +203,7 @@ block content %}
         </div>
       </div>
       <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-        <button type="button" onclick="document.getElementById('addUserModal').classList.add('hidden')" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition">Cancel</button>
+        <button type="button" onclick="closeAddUserModal()" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition">Cancel</button>
         <button type="submit" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20">Register</button>
       </div>
     </form>
@@ -212,13 +216,15 @@ block content %}
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeResetPasswordModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i class="fas fa-shield-alt text-rose-500" aria-hidden="true"></i> Reset Password
+        <i data-lucide="key" class="text-rose-500 w-6 h-6" aria-hidden="true"></i> Reset Password
       </h2>
       <button
         onclick="
@@ -228,7 +234,7 @@ block content %}
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
@@ -243,7 +249,7 @@ block content %}
       </p>
     </div>
 
-    <form id="resetPasswordForm" class="space-y-6">
+    <form id="resetPasswordForm" action="javascript:void(0);" class="space-y-6">
       <input type="hidden" name="id" id="resetId" />
       <div>
         <label
@@ -252,10 +258,7 @@ block content %}
           >New Security Password</label
         >
         <div class="relative">
-          <i
-            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-            aria-hidden="true"
-          ></i>
+          <i data-lucide="key" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input
             type="password"
             id="resetNewPassword"

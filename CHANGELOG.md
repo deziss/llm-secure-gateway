@@ -1,3 +1,30 @@
+## [0.10.0] - 2026-09-20
+
+### 🔌 Fully Offline Admin UI — No CDN Dependency
+
+The dashboard previously fetched Tailwind, jQuery, DataTables, marked and highlight.js from public CDNs. On an air-gapped host, behind an egress proxy, or during a CDN outage the UI loaded unstyled and — because DataTables never initialised — was unusable. Every front-end dependency is now vendored under `src/llm_gateway/static/`.
+
+- **Vendored all remaining libraries**: `marked@12.0.2` and `highlight.js@11.9.0` (plus its `github-dark` theme) are served from `/static`. The Tailwind Play CDN script has been removed entirely in favour of the local compiled bundle.
+- **Removed `document.write()` CDN fallbacks** for jQuery and DataTables from `base.html`. They defeated the purpose of vendoring and blocked rendering on a slow network.
+- **Removed a dead `umap-js` script tag** from the embedding playground. Its CDN URL had been returning **404** and no code referenced the library.
+- **Tailwind now compiles locally with `darkMode: 'class'`**. The setting previously lived only in an inline `tailwind.config` consumed by the CDN script, so a local-only build would have silently fallen back to `prefers-color-scheme` and ignored the in-app theme switcher. Vendored `*.min.js` files are excluded from content scanning.
+- **Content-Security-Policy tightened to `'self'`**, with `base-uri` and `form-action` added. All five CDN origins were dropped from the whitelist. This makes the fix self-enforcing: a re-added `<script src="https://…">` is now blocked by the browser during development rather than shipping unnoticed.
+- **Regression tests** (`tests/test_offline_assets.py`) fail the build if any template references an external origin, uses a `document.write()` fallback, points at a missing `/static` asset, or if the CSP regains an external host.
+
+### 🔐 Session Expiry Handling
+
+Symptom: an admin page left open past the one-hour cookie lifetime raised a bare browser alert reading `DataTables warning: table id=backendsTable - Ajax error`.
+
+- **Authenticated HTML is now sent with `Cache-Control: no-store`.** Without it the browser re-displayed a fully rendered admin page from cache after the session cookie had expired (or after logout); the stale page then fired XHRs the server correctly rejected with 401. This also stops authenticated pages from lingering in the browser cache after sign-out.
+- **DataTables `errMode` is set to `none`** with a global `error.dt` handler. A 401/403 now redirects to the login page; any other failure renders an inline, escaped error row stating the actual HTTP status instead of an opaque alert dialog.
+- **`fetchWithCsrf()` detects 401** and routes through the same single-shot redirect, so every page shares one session-expiry path.
+
+### 🧹 Fixes
+
+- **Chat playground syntax highlighting**: removed the `highlight` callback passed to `marked.setOptions()`. marked dropped that option in v5, so it had been silently doing nothing; highlighting is applied after rendering via `hljs.highlightElement()`.
+
+---
+
 ## [0.9.0] - 2026-09-17
 
 ### 🦙 llama.cpp & Granular Model Resilience

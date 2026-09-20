@@ -7,30 +7,35 @@
     <h1
       class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
     >
-      <i class="fas fa-server text-blue-500" aria-hidden="true"></i> LLM Backends
+      <i data-lucide="server" class="text-blue-500 w-8 h-8" aria-hidden="true"></i> LLM Backends
     </h1>
     <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
       Manage and monitor your model providers in real-time.
     </p>
   </div>
-  {% if user and user_role == 'admin' %}
+  {% if user and (user_role in ['admin', 'manager'] or user.is_superuser) %}
   <div class="flex gap-3">
     <button
+      type="button"
+      id="syncAllBtn"
       onclick="syncAllBackends()"
-      class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg"
+      class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg cursor-pointer"
     >
       <i
-        class="fas fa-sync-alt text-blue-400 group-hover:rotate-180 transition-transform duration-500"
+        data-lucide="refresh-cw"
+        class="w-4 h-4 text-blue-400 group-hover:rotate-180 transition-transform duration-500"
         aria-hidden="true"
       ></i>
-      Sync All Models
+      <span>Sync All Models</span>
     </button>
     <button
-      onclick="document.getElementById('addModal').classList.remove('hidden')"
-      class="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-50 to-indigo-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20"
+      type="button"
+      id="addBackendBtn"
+      onclick="openAddModal()"
+      class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer"
     >
-      <i class="fas fa-plus" aria-hidden="true"></i>
-      Add Backend
+      <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
+      <span>Add Backend</span>
     </button>
   </div>
   {% endif %}
@@ -68,25 +73,28 @@
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeAddModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-xl shadow-2xl transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i class="fas fa-plus-circle text-blue-500" aria-hidden="true"></i> Register Backend
+        <i data-lucide="plus-circle" class="text-blue-500 w-6 h-6" aria-hidden="true"></i> Register Backend
       </h2>
       <button
-        onclick="document.getElementById('addModal').classList.add('hidden')"
-        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        type="button"
+        onclick="closeAddModal()"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer p-1"
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
-    <form id="addForm" class="space-y-5">
+    <form id="addForm" action="javascript:void(0);" class="space-y-5">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label
@@ -99,7 +107,7 @@
             id="addBackendName"
             name="name"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
-            placeholder="Ollama Local"
+            placeholder="e.g. Local Ollama, vLLM Node"
             required
           />
         </div>
@@ -133,18 +141,20 @@
         >
         <div class="relative">
           <i
-            class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            data-lucide="link"
+            class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
             aria-hidden="true"
           ></i>
           <input
-            type="url"
+            type="text"
             id="addBackendUrl"
             name="base_url"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
-            placeholder="http://localhost:11434"
+            placeholder="http://localhost:11434 or http://host.docker.internal:11434"
             required
           />
         </div>
+        <p class="text-[10px] text-slate-500 mt-1">For local Ollama on host machine from Docker, use <code class="text-indigo-400">http://host.docker.internal:11434</code></p>
       </div>
 
       <div>
@@ -155,7 +165,8 @@
         >
         <div class="relative">
           <i
-            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            data-lucide="key"
+            class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
             aria-hidden="true"
           ></i>
           <input
@@ -163,7 +174,7 @@
             id="addBackendApiKey"
             name="api_key"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
-            placeholder="sk-..."
+            placeholder="Leave empty for local Ollama / vLLM without auth"
           />
         </div>
       </div>
@@ -207,16 +218,17 @@
       <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
-          onclick="document.getElementById('addModal').classList.add('hidden')"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          onclick="closeAddModal()"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer flex items-center gap-2"
         >
-          Save Backend
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Save Backend</span>
         </button>
       </div>
     </form>
@@ -229,26 +241,30 @@
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeEditModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-xl shadow-2xl transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i class="fas fa-edit text-blue-500" aria-hidden="true"></i> Edit Backend
+        <i data-lucide="edit-3" class="text-blue-500 w-6 h-6" aria-hidden="true"></i> Edit Backend
       </h2>
       <button
-        onclick="document.getElementById('editModal').classList.add('hidden')"
-        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        type="button"
+        onclick="closeEditModal()"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer p-1"
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
-    <form id="editForm" class="space-y-5">
-      <input type="hidden" name="name" id="editName" />
+    <form id="editForm" action="javascript:void(0);" class="space-y-5">
+      <input type="hidden" id="editName" name="name" />
+
       <div>
         <label
           for="editBaseUrl"
@@ -257,13 +273,14 @@
         >
         <div class="relative">
           <i
-            class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            data-lucide="link"
+            class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
             aria-hidden="true"
           ></i>
           <input
-            type="url"
-            name="base_url"
+            type="text"
             id="editBaseUrl"
+            name="base_url"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
             required
           />
@@ -274,11 +291,12 @@
         <label
           for="editBackendApiKey"
           class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
-          >API Key (Leave empty to keep current)</label
+          >Update API Key (Leave blank to keep existing)</label
         >
         <div class="relative">
           <i
-            class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+            data-lucide="key"
+            class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
             aria-hidden="true"
           ></i>
           <input
@@ -350,16 +368,17 @@
       <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
-          onclick="document.getElementById('editModal').classList.add('hidden')"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          onclick="closeEditModal()"
+          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20 cursor-pointer flex items-center gap-2"
         >
-          Update Backend
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Update Backend</span>
         </button>
       </div>
     </form>
@@ -372,16 +391,18 @@
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeManageModelsModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div
       class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
     >
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <i class="fas fa-cubes text-indigo-500" aria-hidden="true"></i> Manage Models
+          <i data-lucide="boxes" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> Manage Models
         </h2>
         <p
           class="text-indigo-400 text-sm font-bold mt-1"
@@ -389,14 +410,13 @@
         ></p>
       </div>
       <button
-        onclick="
-          document.getElementById('manageModelsModal').classList.add('hidden')
-        "
-        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        type="button"
+        onclick="closeManageModelsModal()"
+        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer p-1"
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
@@ -410,7 +430,7 @@
           class="relative bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-6 rounded-2xl"
         >
           <h3 class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2">
-            <i class="fas fa-cloud-download-alt text-blue-400" aria-hidden="true"></i> Pull New
+            <i data-lucide="download-cloud" class="text-blue-400 w-5 h-5" aria-hidden="true"></i> Pull New
             Model
           </h3>
           <div class="flex gap-2">
@@ -422,11 +442,12 @@
               class="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition"
             />
             <button
+              type="button"
               onclick="pullModel()"
               id="pullBtn"
-              class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition flex items-center gap-2 whitespace-nowrap"
+              class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
             >
-              <i class="fas fa-download" aria-hidden="true"></i> Start Pull
+              <i data-lucide="download" class="w-4 h-4" aria-hidden="true"></i> Start Pull
             </button>
           </div>
           <pre
@@ -441,7 +462,7 @@
         <h3
           class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
         >
-          <i class="fas fa-database" aria-hidden="true"></i> Registered Models
+          <i data-lucide="database" class="w-4 h-4" aria-hidden="true"></i> Registered Models
         </h3>
         <div
           class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden"

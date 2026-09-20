@@ -4,17 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}LLM Gateway Admin{% endblock %}</title>
-    <!-- Local Tailwind build — always available, no network required -->
+    <!-- Tailwind — compiled locally at build time, zero external requests -->
     <link rel="stylesheet" href="/static/css/tailwind.min.css" />
-    <!-- Tailwind CDN (JIT) — enhances with dynamic class support when online -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/jquery.dataTables.min.css" integrity="sha384-1QCPE0Isvkd7i/DO1KTZ5GqTLhlGv8kAWBNQDo2jFBkImeSuFxZcEPU0SANETyv5" crossorigin="anonymous" />
+    <!-- Core UI & DataTables Stylesheet -->
+    <link rel="stylesheet" href="/static/css/jquery.dataTables.min.css" />
     <!-- Favicon & Brand Logo -->
     <link rel="icon" type="image/png" href="/static/img/logo.png" />
-    <!-- Lucide Vector Icons (Replaces FontAwesome) -->
+    <!-- Lucide Vector Icons -->
     <script src="/static/js/lucide.min.js"></script>
     <script src="/static/js/icons.js"></script>
+    <!-- Core Vendor Libraries (Served locally for maximum reliability & zero CSP/SRI issues) -->
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/jquery.dataTables.min.js"></script>
+    <script src="/static/js/purify.min.js"></script>
+    <script src="/static/js/chart.umd.min.js"></script>
     <style>
       /* Lucide SVG icon sizing & alignment */
       i[data-lucide], svg.lucide {
@@ -34,19 +37,11 @@
         to { transform: rotate(360deg); }
       }
     </style>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
-    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js" integrity="sha384-xbKh5PcHqYD2znaTJ+mPanTq8ERw8yRfp72Nt8CGRG51FffJAXidmePtdknCjEh9 sha384-qKeEdstPx/+fff0gqMDuJG0Qppe3/i+y7TJYYlEmFO78H9uYf3ZTDJl3iHbwuD8p" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
     <script>
         const BASE_URL = "{{ base_url }}";
         const USER_ROLE = "{{ user_role }}";
     </script>
     <script src="/static/js/globals.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class'
-        }
-    </script>
     <script>
         // Apply theme immediately to prevent FOUC
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -67,7 +62,7 @@
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="globalConfirmContent">
         <div class="text-center">
           <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-            <i class="fas fa-exclamation-triangle text-2xl" aria-hidden="true"></i>
+            <i data-lucide="alert-triangle" class="w-8 h-8" aria-hidden="true"></i>
           </div>
           <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2" id="globalConfirmTitle">Confirm Action</h3>
           <p class="text-slate-500 dark:text-slate-400 text-sm mb-8" id="globalConfirmMessage">Are you sure you want to proceed with this action?</p>

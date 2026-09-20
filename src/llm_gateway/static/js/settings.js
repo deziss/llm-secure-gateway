@@ -2,7 +2,7 @@
 
 async function patchSetting(key, value, toggleElem) {
   try {
-    const res = await fetchWithCsrf(`${BASE_URL}/admin/settings/${key}`, {
+    const res = await fetchWithCsrf(`/admin/settings/${key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value: String(value) }),
@@ -18,7 +18,7 @@ async function patchSetting(key, value, toggleElem) {
 async function loadSettings() {
   if (USER_ROLE !== "admin") return;
   try {
-    const res = await fetch(BASE_URL + "/admin/settings", {
+    const res = await fetchWithCsrf("/admin/settings", {
       credentials: "include",
     });
     const settings = await res.json();
@@ -75,7 +75,7 @@ async function loadSettings() {
 
 async function loadInvites() {
   try {
-    const res = await fetch(BASE_URL + "/admin/invites", {
+    const res = await fetchWithCsrf("/admin/invites", {
       credentials: "include",
     });
     const invites = await res.json();
@@ -122,7 +122,7 @@ async function loadInvites() {
 }
 
 async function generateInvite() {
-  const res = await fetchWithCsrf(BASE_URL + "/admin/invites", {
+  const res = await fetchWithCsrf("/admin/invites", {
     method: "POST",
     credentials: "include",
   });
@@ -132,7 +132,7 @@ async function generateInvite() {
 async function deleteInvite(code) {
   const confirmed = await showConfirm("Revoke Token", `Are you sure you want to revoke token ${code}?`);
   if (!confirmed) return;
-  const res = await fetchWithCsrf(`${BASE_URL}/admin/invites/${code}`, {
+  const res = await fetchWithCsrf(`/admin/invites/${code}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -140,8 +140,11 @@ async function deleteInvite(code) {
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text);
-  // Silent success
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("Success", "Copied to clipboard");
+  }).catch(() => {
+    showToast("Notice", "Failed to copy", "warning");
+  });
 }
 
 // Setup Listeners — boolean toggles
@@ -174,7 +177,7 @@ if (expiryInput) {
     const days = Math.max(0, Math.min(365, parseInt(expiryInput.value, 10) || 0));
     expiryInput.value = days;
     try {
-      const res = await fetchWithCsrf(`${BASE_URL}/admin/settings/KEY_EXPIRY_DAYS`, {
+      const res = await fetchWithCsrf(`/admin/settings/KEY_EXPIRY_DAYS`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: String(days) }),
@@ -194,7 +197,7 @@ if (webhookInput) {
   webhookInput.addEventListener("change", async () => {
     const url = webhookInput.value.trim();
     try {
-      const res = await fetchWithCsrf(`${BASE_URL}/admin/settings/WEBHOOK_URL`, {
+      const res = await fetchWithCsrf(`/admin/settings/WEBHOOK_URL`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: url }),
@@ -231,7 +234,7 @@ async function loadScopeRules() {
 
   // Load current SCOPE_RULES from settings
   try {
-    const res = await fetch(BASE_URL + "/admin/settings", { credentials: "include" });
+    const res = await fetchWithCsrf("/admin/settings", { credentials: "include" });
     const settings = await res.json();
     const scopeSetting = settings.find(s => s.key === "SCOPE_RULES");
     _customScopeRules = [];
