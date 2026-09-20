@@ -10,7 +10,7 @@ from ..models import LLMBackend
 from ..services import ConfigService, get_config_service
 from ..database import get_session
 from ..pagination import pagination_params
-from .admin import require_admin, current_active_user
+from .admin import require_admin, require_manager, current_active_user
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +28,38 @@ async def register_backend(
     backend: LLMBackend,
     service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin)
+    user = Depends(require_manager)
 ) -> LLMBackend:
     try:
+        # Sanitize inputs
+        backend.name = backend.name.strip()
+        backend.base_url = backend.base_url.strip().rstrip("/")
+        if not backend.base_url.startswith("http://") and not backend.base_url.startswith("https://"):
+            backend.base_url = f"http://{backend.base_url}"
+        if backend.api_key is not None and not str(backend.api_key).strip():
+            backend.api_key = None
+        if not backend.allowed_endpoints:
+            backend.allowed_endpoints = ["*"]
+        if backend.models is None:
+            backend.models = []
+
         new_backend = await service.register_backend(session, backend)
         await session.commit()
         await session.refresh(new_backend)
+
+        # Attempt background auto-discovery of models if none provided
+        if not new_backend.models:
+            try:
+                from ..services.federation_service import fetch_models_from_backend
+                models_found = await fetch_models_from_backend(new_backend)
+                if models_found:
+                    new_backend.models = models_found
+                    session.add(new_backend)
+                    await session.commit()
+                    await session.refresh(new_backend)
+            except Exception as fe:
+                logger.debug("Auto-discovery on backend register skipped: %s", fe)
+
         # Email Alert
         from ..services.email_service import get_email_service
         try:
@@ -45,10 +71,15 @@ async def register_backend(
             logger.warning("Failed to send backend alert: %s", e)
         return new_backend
     except IntegrityError:
-        raise HTTPException(status_code=409, detail=f"Backend with name {backend.name} already exists")
+        await session.rollback()
+        raise HTTPException(status_code=409, detail=f"Backend with name '{backend.name}' already exists")
+    except HTTPException:
+        await session.rollback()
+        raise
     except Exception as e:
+        await session.rollback()
         logger.error("Error registering backend %s: %s", backend.name, e)
-        raise HTTPException(status_code=500, detail="Error registering backend")
+        raise HTTPException(status_code=500, detail=f"Error registering backend: {str(e)}")
 
 @router.get("", response_model=List[LLMBackend])
 async def list_backends(
@@ -152,7 +183,7 @@ async def sync_backend_models(
                 if r.status_code == 200:
                     data = r.json()
                     models_found = [m["name"] for m in data.get("models", [])]
-            elif btype in ("openai", "vllm", "groq", "anthropic", "google", "custom"):
+            elif btype in ("openai", "vllm", "llamacpp", "groq", "anthropic", "google", "custom"):
                 headers = {}
                 if backend.api_key:
                     headers["Authorization"] = f"Bearer {backend.api_key}"

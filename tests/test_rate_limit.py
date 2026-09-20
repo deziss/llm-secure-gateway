@@ -99,11 +99,11 @@ class TestRateLimiterFactory:
     """Test the factory picks the right implementation."""
 
     def test_no_redis_url_returns_local(self):
-        from llm_gateway.rate_limit import LocalRateLimiter, get_rate_limiter
+        from llm_gateway.rate_limit import LocalRateLimiter, _create_limiter
 
-        limiter = get_rate_limiter()
-        # Without REDIS_URL set, should be LocalRateLimiter
-        assert isinstance(limiter, LocalRateLimiter)
+        with patch.dict("os.environ", {"REDIS_URL": ""}):
+            limiter = _create_limiter()
+            assert isinstance(limiter, LocalRateLimiter)
 
     def test_factory_with_invalid_redis_url_returns_local(self):
         from llm_gateway.rate_limit import _create_limiter, LocalRateLimiter

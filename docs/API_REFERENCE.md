@@ -416,7 +416,7 @@ Ollama-compatible version endpoint for CLI, OpenWebUI, and client handshakes.
 **Response `200`**
 ```json
 {
-  "version": "0.9.0"
+  "version": "0.10.0"
 }
 ```
 

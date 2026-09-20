@@ -7,7 +7,7 @@ block content %}
     <h1
       class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
     >
-      <i class="fas fa-id-card text-indigo-500" aria-hidden="true"></i> API Owners
+      <i data-lucide="users" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> API Owners
     </h1>
     <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
       Manage API consumers and their granular access permissions.
@@ -15,11 +15,13 @@ block content %}
   </div>
   {% if user and user_role in ['admin', 'manager'] %}
   <button
-    onclick="document.getElementById('addModal').classList.remove('hidden')"
-    class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+    type="button"
+    id="addOwnerBtn"
+    onclick="openAddModal()"
+    class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
   >
-    <i class="fas fa-plus" aria-hidden="true"></i>
-    Register Owner
+    <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
+    <span>Register Owner</span>
   </button>
   {% endif %}
 </div>
@@ -59,25 +61,27 @@ block content %}
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeAddModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i class="fas fa-user-plus text-indigo-500" aria-hidden="true"></i> New API Owner
+        <i data-lucide="user-plus" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> New API Owner
       </h2>
       <button
-        onclick="document.getElementById('addModal').classList.add('hidden')"
+        onclick="closeAddModal()"
         class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
-    <form id="addForm" class="space-y-5">
+    <form id="addForm" action="javascript:void(0);" class="space-y-5">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label
@@ -118,10 +122,7 @@ block content %}
           >Contact Email</label
         >
         <div class="relative">
-          <i
-            class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-            aria-hidden="true"
-          ></i>
+          <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input
             type="email"
             id="addOwnerEmail"
@@ -214,7 +215,7 @@ block content %}
       <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
-          onclick="document.getElementById('addModal').classList.add('hidden')"
+          onclick="closeAddModal()"
           class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
@@ -236,25 +237,27 @@ block content %}
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closeEditModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i class="fas fa-edit text-blue-500" aria-hidden="true"></i> Edit API Owner
+        <i data-lucide="edit-3" class="text-blue-500 w-6 h-6" aria-hidden="true"></i> Edit API Owner
       </h2>
       <button
-        onclick="document.getElementById('editModal').classList.add('hidden')"
+        onclick="closeEditModal()"
         class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
-    <form id="editForm" class="space-y-5">
+    <form id="editForm" action="javascript:void(0);" class="space-y-5">
       <input type="hidden" name="id" id="editId" />
       <div>
         <label
@@ -392,7 +395,7 @@ block content %}
       <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
-          onclick="document.getElementById('editModal').classList.add('hidden')"
+          onclick="closeEditModal()"
           class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
@@ -414,16 +417,18 @@ block content %}
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
   role="dialog"
   aria-modal="true"
+  onclick="if(event.target === this) closePermissionsModal()"
 >
   <div
     class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+    onclick="event.stopPropagation()"
   >
     <div
       class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
     >
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <i class="fas fa-lock text-emerald-500" aria-hidden="true"></i> Manage Permissions
+          <i data-lucide="shield-check" class="text-emerald-500 w-6 h-6" aria-hidden="true"></i> Manage Permissions
         </h2>
         <p
           class="text-emerald-400 text-sm font-mono font-bold mt-1"
@@ -438,7 +443,7 @@ block content %}
         aria-label="Close modal"
         title="Close"
       >
-        <i class="fas fa-times text-xl" aria-hidden="true"></i>
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
@@ -448,7 +453,7 @@ block content %}
         <h3
           class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
         >
-          <i class="fas fa-stream" aria-hidden="true"></i> Active Grant Access
+          <i data-lucide="layers" class="w-4 h-4" aria-hidden="true"></i> Active Grant Access
         </h3>
         <div
           class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden"
@@ -478,10 +483,10 @@ block content %}
           class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2"
           id="addPermissionHeader"
         >
-          <i class="fas fa-plus-circle text-blue-400" aria-hidden="true"></i> Grant New Permission
+          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-400" aria-hidden="true"></i> Grant New Permission
         </h3>
         <form
-          id="addPermissionForm"
+          id="addPermissionForm" action="javascript:void(0);"
           class="space-y-4 bg-slate-100/50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50"
         >
           <input type="hidden" id="permFormOwnerId" />
@@ -538,18 +543,18 @@ block content %}
 </div>
 
 <!-- Manage Keys Modal -->
-<div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all">
+<div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeKeysModal()">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all" onclick="event.stopPropagation()">
     <div class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
       <div>
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i class="fas fa-key text-amber-500" aria-hidden="true"></i> Manage API Keys</h2>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-6 h-6" aria-hidden="true"></i> Manage API Keys</h2>
         <p class="text-amber-400 text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
       </div>
-      <button onclick="document.getElementById('keysModal').classList.add('hidden')" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i class="fas fa-times text-xl" aria-hidden="true"></i></button>
+      <button onclick="closeKeysModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
     <div class="p-8 flex-1 overflow-y-auto space-y-8">
       <div>
-        <h3 class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i class="fas fa-list" aria-hidden="true"></i> Active Keys</h3>
+        <h3 class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4" aria-hidden="true"></i> Active Keys</h3>
         <div class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-[9px] font-bold">
@@ -601,7 +606,7 @@ block content %}
         </div>
         <div class="flex justify-end pt-2">
           <button onclick="createKeyFromModal()" class="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 to-orange-500 text-white font-bold rounded-xl transition shadow-lg shadow-amber-500/20">
-            <i class="fas fa-plus mr-2" aria-hidden="true"></i> Issue New Key
+            <i data-lucide="plus" class="w-4 h-4 mr-2" aria-hidden="true"></i> Issue New Key
           </button>
         </div>
       </div>

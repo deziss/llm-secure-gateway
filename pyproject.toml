@@ -1,6 +1,6 @@
 [project]
 name = "llm-gateway"
-version = "0.9.0"
+version = "0.10.0"
 description = "A Secure LLM Gateway wrapper for Ollama/vLLM with API Keys and SPIFFE identity support."
 authors = [
     {name = "Anshu Kushawaha", email = "anshu.kushwaha@nuvo.ai"},
