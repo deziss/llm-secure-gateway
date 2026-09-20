@@ -94,15 +94,26 @@ async def get_system_metrics(
 @router.get("/metrics/stream")
 async def stream_metrics(
     request: Request,
+    session: AsyncSession = Depends(get_session),
     user = Depends(require_admin),
 ) -> StreamingResponse:
     """Server-Sent Events stream for dashboard metrics.
 
     Pushes JSON metrics every 3 seconds. The client uses EventSource
     instead of polling, saving ~90% of HTTP overhead.
+
+    The session above is the one FastAPI already created for the
+    authentication dependency chain (require_admin -> current_active_user ->
+    get_user_db -> get_session); declaring it here just gives us a handle on
+    it.  Dependencies declared with `yield` are not torn down until the
+    response completes, and an SSE response only completes when the client
+    disconnects -- so without the explicit close below, every open dashboard
+    tab pins one pooled DB connection for as long as it stays open.
     """
     import asyncio
     import json
+
+    await session.close()
     from ..tracking import get_active_ips, get_traffic_history
     from ..proxy_helpers import get_circuit_breaker
 

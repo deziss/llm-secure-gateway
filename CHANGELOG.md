@@ -1,3 +1,23 @@
+## [0.10.1] - 2026-09-21
+
+### 🐌 Fixed: admin UI and connection pool stalling on unreachable backends
+
+Symptom: the Backends page froze, and with it the rest of the admin UI, whenever backends were configured on a network that silently drops packets (firewalled host, dead VLAN).
+
+Root cause: `GET /admin/backends/{name}/health` probed four candidate paths (`/api/tags`, `/v1/models`, `/health`, `/`) **sequentially at a 10s timeout each**. An unreachable host never sends a TCP reset, so every path burned its full timeout — a measured **40.1 seconds per backend**. Meanwhile the request held a pooled DB connection for that entire duration, and the browser held one of its ~6 per-origin sockets. The page fired one health check per backend with no concurrency limit, and the dashboard's SSE stream permanently occupied another socket, so the browser ran out of connections and could not issue *any* further request to the gateway.
+
+- **Bounded the probe budget**: 2s connect timeout with a 6s deadline across all candidate paths combined. Measured worst case for an unreachable backend drops from **40.1s to 6.00s**; eight backends probed concurrently now settle in **6.06s**.
+- **The DB session is released before network I/O.** Backend fields are copied off the ORM object and the pooled connection is returned before any probing, so a slow backend can no longer pin a connection from a pool sized `pool_size=10, max_overflow=20, pool_timeout=5`.
+- **Client-side health checks are throttled** to 3 concurrent, each with an 8s `AbortController` deadline, so the browser's connection budget is never saturated. A timed-out probe now renders `TIMEOUT` rather than hanging.
+- **The SSE metrics stream no longer pins a DB connection.** `GET /admin/metrics/stream` resolves its auth through `get_session`, and FastAPI does not tear down `yield` dependencies until the response completes — which for an SSE stream means never. The session is now closed explicitly before streaming begins, so each open dashboard tab no longer holds a connection for its lifetime.
+- **The model federation poller** (every 30s) now uses an explicit 2s connect / 5s read timeout instead of httpx defaults.
+
+### ✅ Tests
+
+- Added `tests/test_backend_health_budget.py`, which fails the build if the probe budget regresses, if the connect timeout grows, or if the deadline stops bounding the candidate-path loop.
+
+---
+
 ## [0.10.0] - 2026-09-20
 
 ### 🔌 Fully Offline Admin UI — No CDN Dependency
