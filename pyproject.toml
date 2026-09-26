@@ -11,7 +11,7 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "httpx>=0.28.0",
     "pydantic>=2.10.0",
-    "pydantic-settings>=2.7.0",
+    "pydantic-settings>=2.15.0",
 
     # System metrics
     "psutil>=5.9.0",
