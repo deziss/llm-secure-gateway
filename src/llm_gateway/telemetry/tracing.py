@@ -6,6 +6,8 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from phoenix.otel import register
 
+from .config import telemetry_enabled
+
 # Global tracer (default, non-tenant specific)
 tracer = trace.get_tracer(__name__)
 
@@ -19,10 +21,8 @@ class PhoenixTraceManager:
     _tracers: Dict[str, TracerProvider] = {}
     _phoenix_endpoint: str = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006")
     _phoenix_api_key: Optional[str] = os.getenv("PHOENIX_API_KEY")
-    if _phoenix_api_key:
-        logging.info(f"PhoenixTraceManager loaded API Key: {_phoenix_api_key[:10]}...")
-    else:
-        logging.warning("PhoenixTraceManager: No API Key found in env!")
+    if telemetry_enabled() and not _phoenix_api_key:
+        logging.info("PhoenixTraceManager: no PHOENIX_API_KEY set; exporting unauthenticated.")
 
     @classmethod
     def _get_headers(cls) -> Optional[Dict[str, str]]:
@@ -47,6 +47,10 @@ class PhoenixTraceManager:
         Create & Cache tracer for the given owner/backend combination.
         OpenTelemetry Tracer instance for the project
         """
+        if not telemetry_enabled():
+            # No exporter, no connection attempt — just a working tracer.
+            return trace.get_tracer(__name__)
+
         project_name = cls.get_project_name(owner_id, backend_name)
 
         if project_name not in cls._tracers:

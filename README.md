@@ -1,11 +1,11 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.10.1-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.10.2-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-314%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-329%20passing-brightgreen.svg)](tests/)
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
@@ -199,7 +199,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.10.1"}
+# Output: {"version": "0.10.2"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -230,7 +230,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.10.1` | Gateway release version emitted in logs & telemetry |
+| `APP_VERSION` | No | `0.10.2` | Gateway release version emitted in logs & telemetry |
 
 ### Performance & Scaling Options
 
@@ -240,7 +240,36 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `PGBOUNCER_URL` | — | PgBouncer URL for high-concurrency database connection pooling |
 | `ENABLE_MODEL_FEDERATION`| `true` | Periodically discovers and registers models across all active backends |
 | `FEDERATION_POLL_INTERVAL`| `300` | Model discovery polling interval in seconds |
-| `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Target endpoint for Arize Phoenix OTLP traces |
+| `ENABLE_TELEMETRY` | `false` | Master on/off switch for all OpenTelemetry / Phoenix **export**. Off by default — no exporter is created, so an unreachable collector cannot produce retry spam |
+| `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Target endpoint for Arize Phoenix OTLP traces (only used when `ENABLE_TELEMETRY=true`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTLP collector endpoint. Inside Docker this must **not** be `localhost` — that resolves to the container itself. Use `host.docker.internal` or the collector's service name |
+
+---
+
+## Telemetry (off by default)
+
+Tracing and metrics export is **opt-in**. Left off, the gateway builds no OTLP exporters at all, so a collector that is not running cannot fill the logs with `Connection refused` retries.
+
+```bash
+# Off (default) — in-process metrics still work, nothing is exported
+ENABLE_TELEMETRY=false
+
+# On — export traces to Phoenix and metrics to an OTLP collector
+ENABLE_TELEMETRY=true
+PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+```
+
+Confirm the setting at startup:
+
+```bash
+docker compose logs gateway | grep -i telemetry
+# Telemetry disabled (set ENABLE_TELEMETRY=true to enable OpenTelemetry/Phoenix export).
+```
+
+> Changing this in `.env` requires `docker compose up -d` to take effect — `docker restart` reuses the container's existing environment.
+
+See **[TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md)** for Phoenix projects, per-tenant trace isolation and OpenInference conventions.
 
 ---
 
@@ -265,7 +294,7 @@ All microservice dependencies gracefully degrade — if Redis or PgBouncer are t
 
 ## Testing & Quality Assurance
 
-The gateway includes a comprehensive test suite containing **314 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
+The gateway includes a comprehensive test suite containing **329 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
 
 ```bash
 # Run full test suite inside isolated Docker container
@@ -274,7 +303,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.10.1-py314 pytest tests/ -v
+  llm-gateway:v0.10.2-py314 pytest tests/ -v
 ```
 
 ### Performance & Benchmarking Scripts
@@ -338,7 +367,7 @@ llm-secure-gateway/
 │   ├── API_REFERENCE.md            # Comprehensive REST endpoint documentation
 │   ├── DATABASE_MIGRATION.md       # Migration procedures & backup guidelines
 │   └── TESTING.md                  # Testing patterns & CI configuration
-└── tests/                          # Automated test suite (314 tests)
+└── tests/                          # Automated test suite (329 tests)
 ```
 
 ---
