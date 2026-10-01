@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
-from ..models import SystemSetting
+from ..models import SystemSetting, _utcnow
 from ..database import get_session
 from .admin import require_admin
 
@@ -60,7 +59,7 @@ async def update_setting(
         session.add(setting)
     else:
         setting.value = update.value
-        setting.updated_at = datetime.utcnow()
+        setting.updated_at = _utcnow()
         session.add(setting)
     await session.commit()
     await session.refresh(setting)

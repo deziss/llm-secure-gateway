@@ -30,8 +30,14 @@ services:
     ports:
     - "6130:8000"
     environment:
+    # Telemetry is opt-in. Left off, the gateway creates no OTLP exporters, so
+    # there is nothing to retry against a collector that is not running.
+    - ENABLE_TELEMETRY=${ENABLE_TELEMETRY:-false}
     - PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT:-http://host.docker.internal:6006}
-    - OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318   # Points to host
+    # NOTE: must NOT be localhost -- inside the container that resolves to the
+    # container itself, not the host, which is why this used to spin forever on
+    # "Connection refused".
+    - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
     - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
     - LOG_LEVEL=debug
     - UVICORN_LOOP=asyncio

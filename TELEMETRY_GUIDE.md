@@ -8,6 +8,39 @@ This document covers the complete telemetry implementation for the LLM Gateway, 
 
 ---
 
+## 0. Turning telemetry on and off
+
+Telemetry export is **opt-in**. `ENABLE_TELEMETRY` is the master switch:
+
+| Value | Behaviour |
+| :--- | :--- |
+| `false` *(default)* | No OTLP exporter is created. In-process metric instruments still work; nothing leaves the process. |
+| `true` | Traces go to Phoenix, metrics to the OTLP collector. |
+
+```bash
+ENABLE_TELEMETRY=true
+PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+```
+
+Two things to know:
+
+1. **`docker restart` will not pick up a changed value** — it reuses the container's existing environment. Use `docker compose up -d`.
+2. **Inside Docker the endpoint must not be `localhost`.** `localhost` resolves to the container itself, so the exporter connects to nothing and retries forever:
+   ```
+   Transient error HTTPConnectionPool(host='localhost', port=4318): ...
+   [Errno 111] Connection refused ... retrying in 3.71s.
+   ```
+   Use `host.docker.internal` (host) or the collector's compose service name.
+
+Verify at startup:
+
+```bash
+docker compose logs gateway | grep -i telemetry
+```
+
+---
+
 ## 1. Phoenix Authentication & Configuration
 
 ### Environment Configuration
