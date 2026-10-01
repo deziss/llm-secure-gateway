@@ -46,7 +46,7 @@ async function loadMetrics() {
 
         const tdStatus = document.createElement("td");
         tdStatus.className = "p-4 text-right";
-        tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
+        tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
 
         tr.append(tdIp, tdTime, tdStatus);
         fragment.appendChild(tr);
@@ -83,7 +83,7 @@ function updateFromSSE(data) {
       tdTime.textContent = entry.last_seen_seconds_ago + "s ago";
       const tdStatus = document.createElement("td");
       tdStatus.className = "p-4 text-right";
-      tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
+      tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
       tr.append(tdIp, tdTime, tdStatus);
       fragment.appendChild(tr);
     });

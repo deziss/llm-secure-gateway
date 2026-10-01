@@ -1,3 +1,37 @@
+## [0.11.0] - 2026-10-01
+
+### 🎨 Admin panel redesign: responsive, themeable, accessible
+
+The admin panel had one breakpoint (`md`), a top nav that overflowed and clipped "Logout" at 1238px, no design tokens, and tables that were clipped on phones.
+
+- **New shell.** A sidebar replaces the top nav: full labels at ≥1024px, an icon rail at 768–1023px, and a slide-over drawer below 768px with a hamburger, backdrop, focus trap and Escape-to-close. Role gating is unchanged (admin/manager 12 links, developer 6, viewer 5). The Playground dropdown, which fought itself between CSS `:hover` and a JS toggle and was unusable on touch, is now a plain group of links. Adds a skip link and a `<main>` landmark.
+- **Theme control in the top bar** for every role. It used to live only on Settings, which is admin/manager-only. `localStorage` access is now guarded (it threw in private windows).
+- **Design tokens.** Colours are CSS variables surfaced through `tailwind.config.js` (`bg-surface-raised`, `text-ink`, `border-hairline`, `bg-accent`, `text-ok`/`warn`/`down`), so one class is correct in both themes. Also: two radii (`rounded-control`, `rounded-panel`), two elevations, named type steps replacing `text-[10px]`, and a 44px touch-target utility. The chat and embedding playgrounds, previously effectively dark-only, now render correctly in light mode.
+- **Tables become cards below 768px.** Done once in CSS plus `admin-table.js`, so all seven tables and the tables inside modals are covered without touching any column renderer. DataTables writes an inline `width` and a `content-box` rule that both beat equal-specificity selectors; the card CSS overrides them with `!important` and a higher-specificity rule.
+- **Every modal is now accessible.** `admin-modal.js` observes the `hidden` class on all ten dialogs and adds focus trap, scroll lock, Escape, focus restore, `role="dialog"` and an `aria-labelledby` taken from the heading, with no changes to the pages' own open/close code.
+- **Responsive fixes per page:** KPI grids no longer jump from 1 to 3/4 columns at `md`; the chat and embedding sidebars collapse behind a toggle on phones and use `dvh` instead of `100vh`; compare-model panes no longer force 1120px of height; the toast fits a 320px screen; the Bots table no longer forces a 900px minimum width.
+
+### 🔐 Security
+
+- **Removed inline event handlers built from data.** Row actions used `onclick="fn('${id}')"` with a `replace(/'/g, "\'")` that was a no-op, and `escapeHtml` is not sufficient inside an inline handler because the browser HTML-decodes the attribute before JavaScript parses it. Buttons now carry `data-action`/`data-id` and are handled by delegated listeners. Covers Owners, Backends, Users, Bots, Aliases, Settings and both playgrounds.
+- `escapeHtml` now also escapes `"` and `'`; it is used inside quoted attributes and previously did not.
+- Settings: invite `code`/`used_by`/`created_by` were interpolated unescaped into HTML and an inline handler.
+- The embedding playground inserted raw user text into `innerHTML`.
+
+### ♿ Accessibility and polish
+
+- 14 labels in `bots.html` and 6 in `aliases.html` had no `for`; all label/input pairs are now associated, and icon-only buttons have `aria-label`.
+- Visible `:focus-visible` outline everywhere (previously used zero times); `prefers-reduced-motion` honoured globally (previously zero).
+- Favicon reduced from 644 KB to 6 KB.
+- Removed the hard-coded, incorrect "v2.4.0" from the login footer.
+- Combobox ARIA on the Compare page (`role=combobox`/`listbox`/`option`, `aria-activedescendant`).
+
+### ✅ Tests
+
+- `tests/test_admin_ui.py` (new): sidebar role gating, one shell for every page, **no inline handlers interpolating data** in any JS or inline script, every dialog is named, `<label for>` targets exist, and the mobile table width override keeps its `!important`. **399 tests passing.**
+
+---
+
 ## [0.10.2] - 2026-10-01
 
 ### 🔑 Fixed: login returned HTTP 500

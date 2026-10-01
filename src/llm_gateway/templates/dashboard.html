@@ -1,20 +1,17 @@
 {% extends "base.html" %} {% block title %}Dashboard - LLM Gateway{% endblock %}
 {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-  <!-- Active Users Card -->
-  <div class="relative group">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+  <!-- Active users Card -->
+  <div class="relative">
     <div
-      class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"
-    ></div>
-    <div
-      class="relative bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-2xl flex flex-col justify-between h-full"
+      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full"
     >
       <div>
         <div class="flex items-center justify-between mb-2">
           <h3
-            class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest"
+            class="text-caption font-medium text-ink-muted"
           >
-            Active Users
+            Active users
           </h3>
           <span class="flex h-2 w-2 relative" aria-hidden="true">
             <span
@@ -27,7 +24,7 @@
           <span class="sr-only">Active</span>
         </div>
         <p
-          class="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+          class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight"
           id="stat-ips"
           role="status"
         >
@@ -35,7 +32,7 @@
         </p>
       </div>
       <div
-        class="mt-4 flex items-center text-xs text-emerald-400/80 font-medium"
+        class="mt-4 flex items-center text-caption text-ok font-medium"
       >
         <i class="fas fa-arrow-up mr-1" aria-hidden="true"></i> <span>Live traffic detected</span>
       </div>
@@ -43,17 +40,14 @@
   </div>
 
   <!-- Active Backends Card -->
-  <div class="relative group">
+  <div class="relative">
     <div
-      class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"
-    ></div>
-    <div
-      class="relative bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-2xl flex flex-col justify-between h-full"
+      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full"
     >
       <div>
         <div class="flex items-center justify-between mb-2">
           <h3
-            class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest"
+            class="text-caption font-medium text-ink-muted"
           >
             Backends
           </h3>
@@ -61,18 +55,18 @@
         </div>
         <div class="flex items-baseline gap-1">
           <p
-            class="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+            class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight"
             id="stat-active-backends"
             role="status"
           >
             0
           </p>
-          <p class="text-lg text-slate-500 font-medium">
+          <p class="text-lg text-ink-muted font-medium">
             / <span id="stat-total-backends">0</span>
           </p>
         </div>
       </div>
-      <div class="mt-4 flex items-center text-xs text-blue-400/80 font-medium">
+      <div class="mt-4 flex items-center text-caption text-accent font-medium">
         <i class="fas fa-check-circle mr-1" aria-hidden="true"></i>
         <span>Cluster health: Active</span>
       </div>
@@ -80,24 +74,21 @@
   </div>
 
   <!-- Total Models Card -->
-  <div class="relative group">
+  <div class="relative sm:col-span-2 lg:col-span-1">
     <div
-      class="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"
-    ></div>
-    <div
-      class="relative bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-2xl flex flex-col justify-between h-full"
+      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full"
     >
       <div>
         <div class="flex items-center justify-between mb-2">
           <h3
-            class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest"
+            class="text-caption font-medium text-ink-muted"
           >
-            Available Models
+            Available models
           </h3>
           <i class="fas fa-cubes text-violet-400/50" aria-hidden="true"></i>
         </div>
         <p
-          class="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+          class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight"
           id="stat-total-models"
           role="status"
         >
@@ -105,7 +96,7 @@
         </p>
       </div>
       <div
-        class="mt-4 flex items-center text-xs text-violet-400/80 font-medium"
+        class="mt-4 flex items-center text-caption text-ink-muted font-medium"
       >
         <i class="fas fa-sync mr-1" aria-hidden="true"></i> <span>Auto-synced across cluster</span>
       </div>
@@ -114,43 +105,43 @@
 
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
   <!-- Charts Section -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6 min-w-0"
   >
-    <div class="flex items-center justify-between mb-6">
-      <h3 class="font-bold text-xl text-slate-900 dark:text-white flex items-center gap-2">
-        <i class="fas fa-chart-line text-blue-400" aria-hidden="true"></i> Traffic Activity
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+      <h3 class="font-semibold text-lg sm:text-xl text-ink flex items-center gap-2">
+        <i class="fas fa-chart-line text-accent" aria-hidden="true"></i> Traffic Activity
       </h3>
       <div class="flex gap-2">
         <span
-          class="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold uppercase"
-          >Requests / min</span
+          class="px-2 py-0.5 rounded-control text-micro bg-accent/10 text-accent font-medium"
+          >Requests per minute</span
         >
       </div>
     </div>
-    <div class="h-[300px] relative">
+    <div class="h-[300px] max-w-full relative">
       <canvas id="trafficChart"></canvas>
     </div>
   </div>
 
   <!-- Live IPs Table -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6 min-w-0"
   >
-    <div class="flex items-center justify-between mb-6">
-      <h3 class="font-bold text-xl text-slate-900 dark:text-white flex items-center gap-2">
-        <i class="fas fa-satellite-dish text-emerald-400" aria-hidden="true"></i> Edge Connectivity
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+      <h3 class="font-semibold text-lg sm:text-xl text-ink flex items-center gap-2">
+        <i class="fas fa-satellite-dish text-ok" aria-hidden="true"></i> Edge Connectivity
       </h3>
-      <span class="text-xs text-slate-500 font-medium uppercase tracking-widest"
+      <span class="text-caption text-ink-muted font-medium"
         >Real-time status</span
       >
     </div>
-    <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800/50">
+    <div class="overflow-hidden rounded-panel border border-hairline">
       <table class="w-full text-left text-sm">
         <thead
-          class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+          class="bg-surface-inset text-ink-muted text-caption font-medium"
         >
           <tr>
             <th class="p-4">Origin IP</th>
@@ -158,9 +149,9 @@
             <th class="p-4 text-right">Status</th>
           </tr>
         </thead>
-        <tbody id="ipTableBody" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+        <tbody id="ipTableBody" class="divide-y divide-hairline">
           <tr>
-            <td colspan="3" class="p-8 text-center text-slate-500 italic">
+            <td colspan="3" class="p-8 text-center text-ink-muted italic">
               Syncing edge data...
             </td>
           </tr>

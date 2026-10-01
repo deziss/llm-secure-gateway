@@ -14,12 +14,12 @@
     </p>
   </div>
   {% if user and (user_role in ['admin', 'manager'] or user.is_superuser) %}
-  <div class="flex gap-3">
+  <div class="flex flex-wrap gap-3">
     <button
       type="button"
       id="syncAllBtn"
       onclick="syncAllBackends()"
-      class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg cursor-pointer"
+      class="min-h-touch px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center justify-center gap-2 group shadow-lg cursor-pointer"
     >
       <i
         data-lucide="refresh-cw"
@@ -32,7 +32,7 @@
       type="button"
       id="addBackendBtn"
       onclick="openAddModal()"
-      class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer"
+      class="min-h-touch px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer"
     >
       <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
       <span>Add Backend</span>
@@ -43,7 +43,7 @@
 
 <!-- Backends Table Section -->
 <div
-  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+  class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden"
 >
   <div class="p-1">
     <table
@@ -51,7 +51,7 @@
       class="w-full text-left text-sm border-separate border-spacing-0"
     >
       <thead
-        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest"
       >
         <tr>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Backend Info</th>
@@ -76,7 +76,7 @@
   onclick="if(event.target === this) closeAddModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-xl shadow-2xl transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-xl shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
@@ -99,7 +99,7 @@
         <div>
           <label
             for="addBackendName"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Display Name</label
           >
           <input
@@ -114,7 +114,7 @@
         <div>
           <label
             for="addBackendType"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Backend Type</label
           >
           <select
@@ -136,7 +136,7 @@
       <div>
         <label
           for="addBackendUrl"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Base API URL</label
         >
         <div class="relative">
@@ -154,13 +154,13 @@
             required
           />
         </div>
-        <p class="text-[10px] text-slate-500 mt-1">For local Ollama on host machine from Docker, use <code class="text-indigo-400">http://host.docker.internal:11434</code></p>
+        <p class="text-micro text-slate-500 mt-1">For local Ollama on host machine from Docker, use <code class="text-indigo-400">http://host.docker.internal:11434</code></p>
       </div>
 
       <div>
         <label
           for="addBackendApiKey"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >API Key (Optional)</label
         >
         <div class="relative">
@@ -183,7 +183,7 @@
         <div>
           <label
             for="addTranslationMode"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Translation Bridge Mode</label
           >
           <select
@@ -199,7 +199,7 @@
         <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-800/55 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700/50 mt-5">
           <div>
             <h4 class="font-bold text-slate-850 dark:text-slate-100 text-xs">Normalize Thinking</h4>
-            <p class="text-[9px] text-slate-500 mt-0.5">Strip thinking blocks from response streams.</p>
+            <p class="text-micro text-slate-500 mt-0.5">Strip thinking blocks from response streams.</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input
@@ -215,17 +215,17 @@
         </div>
       </div>
 
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeAddModal()"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition cursor-pointer"
+          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer flex items-center gap-2"
+          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Save Backend</span>
@@ -244,7 +244,7 @@
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-xl shadow-2xl transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-xl shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
@@ -268,7 +268,7 @@
       <div>
         <label
           for="editBaseUrl"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Base API URL</label
         >
         <div class="relative">
@@ -290,7 +290,7 @@
       <div>
         <label
           for="editBackendApiKey"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Update API Key (Leave blank to keep existing)</label
         >
         <div class="relative">
@@ -313,7 +313,7 @@
         <div>
           <label
             for="editTranslationMode"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Translation Bridge Mode</label
           >
           <select
@@ -329,7 +329,7 @@
         <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-800/55 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700/50 mt-5">
           <div>
             <h4 class="font-bold text-slate-850 dark:text-slate-100 text-xs">Normalize Thinking</h4>
-            <p class="text-[9px] text-slate-500 mt-0.5">Strip thinking blocks from response streams.</p>
+            <p class="text-micro text-slate-500 mt-0.5">Strip thinking blocks from response streams.</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input
@@ -348,7 +348,7 @@
       <div>
         <label
           for="editAllowedEndpoints"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Allowed Endpoints
           <span class="normal-case tracking-normal font-normal text-slate-600 ml-1">(one per line, or * for all)</span>
         </label>
@@ -360,22 +360,22 @@
           placeholder="/api/chat&#10;/api/embeddings&#10;/v1/chat/completions"
           aria-describedby="editAllowedEndpointsHint"
         ></textarea>
-        <p id="editAllowedEndpointsHint" class="text-[10px] text-slate-600 mt-1">
+        <p id="editAllowedEndpointsHint" class="text-micro text-slate-600 mt-1">
           Controls which proxy paths this backend accepts. Use <code class="text-slate-500">*</code> to allow everything.
         </p>
       </div>
 
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeEditModal()"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition cursor-pointer"
+          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20 cursor-pointer flex items-center gap-2"
+          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20 cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Update Backend</span>
@@ -394,11 +394,11 @@
   onclick="if(event.target === this) closeManageModelsModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div
-      class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+      class="p-5 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
     >
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
@@ -420,7 +420,7 @@
       </button>
     </div>
 
-    <div class="p-8 flex-1 overflow-y-auto space-y-8">
+    <div class="p-5 sm:p-8 flex-1 overflow-y-auto space-y-8">
       <!-- Pull Section -->
       <div class="relative group">
         <div
@@ -445,14 +445,14 @@
               type="button"
               onclick="pullModel()"
               id="pullBtn"
-              class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+              class="min-h-touch px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
             >
               <i data-lucide="download" class="w-4 h-4" aria-hidden="true"></i> Start Pull
             </button>
           </div>
           <pre
             id="pullOutput"
-            class="mt-4 text-[11px] font-mono text-emerald-400 bg-slate-200 dark:bg-black/60 p-4 rounded-xl hidden h-40 overflow-y-auto border border-slate-200 dark:border-slate-800 shadow-inner custom-scrollbar"
+            class="mt-4 text-caption font-mono text-emerald-400 bg-slate-200 dark:bg-black/60 p-4 rounded-xl hidden h-40 overflow-y-auto border border-slate-200 dark:border-slate-800 shadow-inner custom-scrollbar"
           ></pre>
         </div>
       </div>
@@ -460,7 +460,7 @@
       <!-- Models List -->
       <div>
         <h3
-          class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
+          class="text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
         >
           <i data-lucide="database" class="w-4 h-4" aria-hidden="true"></i> Registered Models
         </h3>

@@ -2,35 +2,90 @@
 endblock %} {% block content %}
 
 <style>
-  #embed-layout {
-    display: flex;
-    height: calc(100vh - 120px);
-    gap: 0;
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    box-shadow: 0 0 60px rgba(16, 185, 129, 0.06);
-  }
-  #embed-sidebar {
-    width: 300px;
-    min-width: 300px;
-    background: rgba(10, 20, 16, 0.97);
-    border-right: 1px solid rgba(16, 185, 129, 0.15);
+  #embed-page {
+    --page-pad: 2rem; /* p-4 top+bottom */
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    gap: 16px;
-    overflow-y: auto;
+    gap: 0.75rem;
+    height: calc(100vh - 3.5rem - var(--page-pad));
+    height: calc(100dvh - 3.5rem - var(--page-pad));
+    min-height: 28rem;
   }
+  @media (min-width: 640px) { #embed-page { --page-pad: 3rem; } }
+  @media (min-width: 1024px) { #embed-page { --page-pad: 4rem; } }
+
+  .pg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+  .pg-head .pg-tools { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+  .pg-link, .pg-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    min-height: 44px; padding: 0 0.25rem;
+    color: rgb(var(--ink-muted)); font-size: 0.875rem; background: none; border: 0; cursor: pointer;
+    transition: color 0.15s;
+  }
+  .pg-link:hover, .pg-btn:hover { color: rgb(var(--ink)); }
+  .pg-btn.danger:hover { color: rgb(var(--down)); }
+  @media (min-width: 768px) { .pg-link, .pg-btn { min-height: 32px; } }
+  .hide-xs { display: none; }
+  @media (min-width: 640px) { .hide-xs { display: inline; } }
+
+  #embed-layout {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgb(var(--hairline));
+    background: rgb(var(--surface-raised));
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  }
+  @media (min-width: 768px) { #embed-layout { flex-direction: row; } }
+
+  #settings-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    min-height: 44px; padding: 0 16px; width: 100%;
+    background: rgb(var(--surface-inset));
+    border: 0; border-bottom: 1px solid rgb(var(--hairline));
+    color: rgb(var(--ink)); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  }
+  #settings-toggle i.chev { transition: transform 0.2s; color: rgb(var(--ink-muted)); }
+  #settings-toggle[aria-expanded="true"] i.chev { transform: rotate(180deg); }
+  @media (min-width: 768px) { #settings-toggle { display: none; } }
+
+  #embed-sidebar {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    max-height: 55%;
+    overflow-y: auto;
+    background: rgb(var(--surface-inset));
+    border-bottom: 1px solid rgb(var(--hairline));
+  }
+  #embed-sidebar.is-open { display: flex; }
+  @media (min-width: 768px) {
+    #embed-sidebar {
+      display: flex;
+      width: clamp(14.5rem, 28vw, 18.75rem);
+      flex-shrink: 0;
+      max-height: none;
+      border-bottom: 0;
+      border-right: 1px solid rgb(var(--hairline));
+    }
+  }
+
   #embed-main {
     flex: 1;
+    min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    background: rgba(8, 14, 12, 0.98);
+    background: rgb(var(--surface-raised));
     position: relative;
   }
   #canvas-container {
     flex: 1;
+    min-height: 8rem;
     position: relative;
     overflow: hidden;
   }
@@ -39,69 +94,72 @@ endblock %} {% block content %}
     height: 100%;
     cursor: crosshair;
     display: block;
+    touch-action: none;
   }
 
   .sidebar-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #4b5563;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(var(--ink-muted));
     margin-bottom: 4px;
   }
-  .sidebar-input {
+  .sidebar-input, .sidebar-select {
     width: 100%;
-    background: rgba(16, 40, 28, 0.9);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: rgb(var(--surface-raised));
+    border: 1px solid rgb(var(--hairline));
     border-radius: 8px;
     padding: 8px 10px;
-    color: #e2e8f0;
-    font-size: 0.82rem;
-    outline: none;
+    min-height: 44px;
+    color: rgb(var(--ink));
+    font-size: 1rem;
   }
-  .sidebar-input:focus {
-    border-color: rgba(16, 185, 129, 0.5);
+  @media (min-width: 768px) {
+    .sidebar-input, .sidebar-select { font-size: 0.82rem; min-height: 36px; }
   }
-  .sidebar-select {
-    width: 100%;
-    background: rgba(16, 40, 28, 0.9);
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    border-radius: 8px;
-    padding: 8px 10px;
-    color: #e2e8f0;
-    font-size: 0.82rem;
-    outline: none;
+  .sidebar-input:focus, .sidebar-select:focus { border-color: rgb(16 185 129); }
+  .sidebar-input::placeholder { color: rgb(var(--ink-muted)); }
+  .sidebar-divider { border: none; border-top: 1px solid rgb(var(--hairline)); margin: 4px 0; }
+  #fetchBtn {
+    min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
+    color: rgb(5 150 105); background: none; border: 0; cursor: pointer;
   }
-  .sidebar-divider {
-    border: none;
-    border-top: 1px solid rgba(16, 185, 129, 0.12);
-    margin: 4px 0;
+  :root.dark #fetchBtn { color: rgb(52 211 153); }
+
+  .method-btn {
+    flex: 1; min-height: 44px; font-size: 0.8rem; font-weight: 600;
+    border-radius: 8px; transition: background 0.15s; cursor: pointer;
+    background: rgb(var(--surface-raised)); color: rgb(var(--ink-muted));
+    border: 1px solid rgb(var(--hairline));
   }
+  .method-btn.is-active { background: #059669; color: #fff; border-color: #059669; }
+  @media (min-width: 768px) { .method-btn { min-height: 32px; } }
 
   #textInputArea {
-    background: rgba(10, 24, 18, 0.7);
-    border-top: 1px solid rgba(16, 185, 129, 0.12);
-    padding: 16px 20px;
+    background: rgb(var(--surface-inset) / 0.6);
+    border-top: 1px solid rgb(var(--hairline));
+    padding: 12px 16px;
   }
+  @media (min-width: 768px) { #textInputArea { padding: 16px 20px; } }
 
   #embed-textarea {
     width: 100%;
-    background: rgba(16, 40, 28, 0.8);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    min-width: 0;
+    background: rgb(var(--surface-raised));
+    border: 1px solid rgb(var(--hairline));
     border-radius: 12px;
     padding: 12px;
-    color: #e2e8f0;
+    color: rgb(var(--ink));
     resize: none;
-    font-size: 0.88rem;
-    outline: none;
+    font-size: 1rem;
     line-height: 1.5;
     transition: border-color 0.2s;
   }
-  #embed-textarea:focus {
-    border-color: rgba(16, 185, 129, 0.5);
-  }
+  @media (min-width: 768px) { #embed-textarea { font-size: 0.88rem; } }
+  #embed-textarea::placeholder { color: rgb(var(--ink-muted)); }
+  #embed-textarea:focus { border-color: rgb(16 185 129); }
 
   #add-btn {
+    min-height: 44px;
     padding: 8px 20px;
     border-radius: 10px;
     background: linear-gradient(135deg, #059669, #10b981);
@@ -111,22 +169,18 @@ endblock %} {% block content %}
     border: none;
     cursor: pointer;
     transition: opacity 0.2s;
+    flex-shrink: 0;
   }
-  #add-btn:hover {
-    opacity: 0.85;
-  }
-  #add-btn:disabled {
-    opacity: 0.4;
-  }
+  #add-btn:hover { opacity: 0.85; }
+  #add-btn:disabled { opacity: 0.4; }
 
-  /* Chip colors */
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 2px 10px 2px 6px;
+    padding: 4px 10px 4px 6px;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 600;
     max-width: 200px;
     overflow: hidden;
@@ -135,25 +189,18 @@ endblock %} {% block content %}
     cursor: pointer;
     transition: opacity 0.15s;
   }
-  .chip:hover {
-    opacity: 0.75;
-  }
-  .chip-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
+  .chip:hover { opacity: 0.75; }
+  .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
   #tooltip {
     position: fixed;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgb(var(--surface-raised));
+    border: 1px solid rgb(var(--hairline));
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
     border-radius: 8px;
     padding: 6px 12px;
     font-size: 0.78rem;
-    color: #e2e8f0;
+    color: rgb(var(--ink));
     pointer-events: none;
     z-index: 100;
     display: none;
@@ -161,119 +208,74 @@ endblock %} {% block content %}
   }
 
   #info-bar {
-    padding: 8px 20px;
-    background: rgba(10, 20, 16, 0.6);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+    padding: 8px 16px;
+    background: rgb(var(--surface-inset) / 0.6);
+    border-bottom: 1px solid rgb(var(--hairline));
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
+    gap: 4px 16px;
     font-size: 0.75rem;
-    color: #6b7280;
+    color: rgb(var(--ink-muted));
   }
 
-  /* Loading overlay */
   #canvas-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(8, 14, 12, 0.85);
+    background: rgb(var(--surface-raised) / 0.92);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    padding: 16px;
     z-index: 10;
     transition: opacity 0.3s;
   }
   .pulse-ring {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+    width: 60px; height: 60px; border-radius: 50%;
     border: 3px solid rgba(16, 185, 129, 0.6);
     border-top-color: transparent;
     animation: spin 0.8s linear infinite;
   }
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Light mode overrides */
-  html:not(.dark) #embed-sidebar {
-    background: rgba(248, 250, 252, 0.98);
-    border-right-color: rgba(16, 185, 129, 0.12);
-  }
-  html:not(.dark) #embed-main {
-    background: rgba(255, 255, 255, 0.98);
-  }
-  html:not(.dark) #embed-layout {
-    border-color: rgba(16, 185, 129, 0.15);
-  }
-  html:not(.dark) #info-bar {
-    background: rgba(248, 250, 252, 0.8);
-    border-bottom-color: rgba(16, 185, 129, 0.08);
-    color: #64748b;
-  }
-  html:not(.dark) #textInputArea {
-    background: rgba(248, 250, 252, 0.9);
-    border-top-color: rgba(16, 185, 129, 0.08);
-  }
-  html:not(.dark) #embed-textarea {
-    background: rgba(241, 245, 249, 0.9);
-    border-color: rgba(16, 185, 129, 0.15);
-    color: #1e293b;
-  }
-  html:not(.dark) .sidebar-input,
-  html:not(.dark) .sidebar-select {
-    background: rgba(241, 245, 249, 0.95);
-    border-color: rgba(16, 185, 129, 0.15);
-    color: #1e293b;
-  }
-  html:not(.dark) .sidebar-label {
-    color: #64748b;
-  }
-  html:not(.dark) .sidebar-divider {
-    border-top-color: rgba(16, 185, 129, 0.08);
-  }
-  html:not(.dark) #canvas-overlay {
-    background: rgba(248, 250, 252, 0.9);
-  }
-  html:not(.dark) #tooltip {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(16, 185, 129, 0.2);
-    color: #1e293b;
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
-<div class="mb-4 flex items-center gap-3">
-  <a
-    href="/admin/view/playground"
-    class="text-slate-500 dark:text-slate-400 hover:text-slate-200 transition text-sm flex items-center gap-1"
-  >
-    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to API Tester
+<div id="embed-page">
+<div class="pg-head">
+  <a href="/admin/view/playground" class="pg-link">
+    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+    <span><span class="hide-xs">Back to </span>API Tester</span>
   </a>
-  <span class="text-slate-600 text-xs">•</span>
+  <span class="text-slate-600 text-xs hide-xs" aria-hidden="true">•</span>
   <h1
     class="text-lg font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2"
   >
     <i class="fas fa-project-diagram text-emerald-400 text-base" aria-hidden="true"></i>
     Embedding Playground
   </h1>
-  <div class="ml-auto flex items-center gap-3 text-xs text-slate-500">
+  <div class="pg-tools text-xs text-ink-muted">
     <span id="statusDisplay" class="flex items-center gap-1.5">
       <span class="w-2 h-2 rounded-full bg-green-500 inline-block" aria-hidden="true"></span>
       <span class="sr-only">Status:</span> Ready
     </span>
-    <button
-      onclick="clearAll()"
-      class="text-slate-500 hover:text-red-400 transition"
-    >
-      <i class="fas fa-trash-alt mr-1" aria-hidden="true"></i>Clear
+    <button onclick="clearAll()" class="pg-btn danger">
+      <i class="fas fa-trash-alt" aria-hidden="true"></i>Clear
     </button>
   </div>
 </div>
 
 <div id="embed-layout">
+  <button
+    type="button"
+    id="settings-toggle"
+    aria-expanded="false"
+    aria-controls="embed-sidebar"
+    onclick="toggleSettings(this)"
+  >
+    <span><i class="fas fa-sliders-h mr-2" aria-hidden="true"></i>Settings</span>
+    <i class="fas fa-chevron-down chev" aria-hidden="true"></i>
+  </button>
   <!-- SIDEBAR -->
   <div id="embed-sidebar">
     <div>
@@ -289,7 +291,7 @@ endblock %} {% block content %}
         <label for="modelSelect">Embedding Model</label>
         <button
           id="fetchBtn"
-          class="text-emerald-400 hover:text-emerald-200 text-xs normal-case font-normal"
+          class="text-xs"
           aria-label="Refresh models"
           title="Refresh models"
         >
@@ -325,14 +327,14 @@ endblock %} {% block content %}
       <button
         id="methodPCA"
         onclick="setMethod('pca')"
-        class="flex-1 text-xs py-1.5 rounded-lg bg-emerald-600 text-white font-semibold transition"
+        class="method-btn is-active"
       >
         PCA
       </button>
       <button
         id="methodTSNE"
         onclick="setMethod('tsne')"
-        class="flex-1 text-xs py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition"
+        class="method-btn"
       >
         t-SNE
       </button>
@@ -361,7 +363,7 @@ endblock %} {% block content %}
     </div>
 
     <hr class="sidebar-divider" />
-    <div class="text-xs text-slate-600">
+    <div class="text-xs text-ink-muted">
       <p>
         💡 Add multiple texts and visualize their semantic distances in 2D
         space.
@@ -386,10 +388,10 @@ endblock %} {% block content %}
       <!-- Loading overlay -->
       <div id="canvas-overlay">
         <div class="text-5xl mb-6 opacity-20">🧩</div>
-        <p class="text-slate-500 dark:text-slate-400 text-sm mb-2">
+        <p class="text-ink-muted text-sm mb-2">
           Add texts to begin visualizing
         </p>
-        <p class="text-slate-600 text-xs">
+        <p class="text-ink-muted text-xs">
           Embeddings are mapped to 2D using PCA
         </p>
       </div>
@@ -397,11 +399,11 @@ endblock %} {% block content %}
 
     <!-- Input area -->
     <div id="textInputArea">
-      <div class="flex gap-3 items-end">
+      <div class="flex gap-2 sm:gap-3 items-end">
         <textarea
           id="embed-textarea"
           rows="2"
-          placeholder="Enter text to embed... (one per line or add individually)"
+          placeholder="Enter text to embed..." title="One per line, or add individually"
           aria-label="Text to embed"
         ></textarea>
         <button id="add-btn" onclick="addTexts()">
@@ -411,8 +413,16 @@ endblock %} {% block content %}
     </div>
   </div>
 </div>
+</div>
 
 <div id="tooltip"></div>
 
+<script>
+  function toggleSettings(btn) {
+    var open = btn.getAttribute("aria-expanded") !== "true";
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    document.getElementById("embed-sidebar").classList.toggle("is-open", open);
+  }
+</script>
 <script src="/static/js/embedding-playground.js"></script>
 {% endblock %}

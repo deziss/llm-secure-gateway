@@ -1,3 +1,208 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Design tokens.
+ *
+ * Declared as CSS variables rather than as two sets of Tailwind classes so a
+ * single utility (`bg-surface-raised`) resolves correctly in both themes. The
+ * alternative -- writing `bg-white dark:bg-slate-900` at every call site -- is
+ * what produced the 1,573 ad-hoc slate-* uses this redesign is replacing.
+ *
+ * Values are space-separated RGB channels so Tailwind's <alpha-value> works:
+ * `bg-surface-raised/60` compiles to rgb(var(--surface-raised) / 0.6).
+ *
+ * Theme is switched by toggling `.dark` on <html> (see base.html). Do NOT use
+ * a prefers-color-scheme media query here -- tests/test_offline_assets.py
+ * asserts the built CSS contains none, because that would bypass the in-app
+ * theme switcher.
+ */
+@layer base {
+  :root {
+    /* Surfaces, back to front */
+    --surface-base: 248 250 252;     /* slate-50   page canvas      */
+    --surface-raised: 255 255 255;   /* white      panels, sidebar  */
+    --surface-inset: 241 245 249;    /* slate-100  rows, inputs     */
+    --hairline: 226 232 240;         /* slate-200  borders          */
+
+    /* Text */
+    --ink: 15 23 42;                 /* slate-900  primary          */
+    --ink-muted: 100 116 139;        /* slate-500  secondary        */
+
+    /* Brand */
+    --accent: 79 70 229;             /* indigo-600 */
+    --accent-ink: 255 255 255;
+
+    /* Status — the one place this UI is allowed to be loud */
+    --ok: 5 150 105;                 /* emerald-600 */
+    --warn: 217 119 6;               /* amber-600   */
+    --down: 225 29 72;               /* rose-600    */
+  }
+
+  .dark {
+    --surface-base: 2 6 23;          /* slate-950 */
+    --surface-raised: 15 23 42;      /* slate-900 */
+    --surface-inset: 30 41 59;       /* slate-800 */
+    --hairline: 30 41 59;            /* slate-800 */
+
+    --ink: 241 245 249;              /* slate-100 */
+    --ink-muted: 148 163 184;        /* slate-400 */
+
+    --accent: 99 102 241;            /* indigo-500 */
+    --accent-ink: 255 255 255;
+
+    --ok: 16 185 129;                /* emerald-500 */
+    --warn: 245 158 11;              /* amber-500   */
+    --down: 244 63 94;               /* rose-500    */
+  }
+
+  /* Honour the OS setting only as the initial guess, before any explicit
+     choice is stored. The inline script in base.html does this; these rules
+     exist so the page is not unstyled if that script is blocked. */
+  html {
+    background-color: rgb(var(--surface-base));
+    color: rgb(var(--ink));
+  }
+
+  /* A visible, consistent focus ring. The audit found focus-visible used zero
+     times across every template. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  /* Horizontal scroll container that signals it is scrollable. Used by tables
+     that stay tabular at >=md. (`custom-scrollbar` was referenced at
+     backends.html:455 but never defined.) */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--ink-muted) / 0.35) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--ink-muted) / 0.35);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--ink-muted) / 0.55);
+  }
+
+  /*
+   * Responsive tables: rows become labelled cards below md.
+   *
+   * Applied to every `<main> table` by admin-table.js, which also copies each
+   * header's text onto its cells as `data-label`. Done in CSS rather than by
+   * giving every DataTables column a second "card" renderer, so all seven
+   * tables (and the mini-tables inside modals) get it without touching any
+   * column definition. The thead is visually hidden, not removed, so screen
+   * readers still get column context.
+   *
+   * Opt out with data-no-cards on the <table>.
+   */
+  @media (max-width: 767.98px) {
+    /* DataTables writes an inline `style="width: 643px"` (its measured desktop
+       width) onto the table element. Inline styles beat any selector, so without
+       !important the cards stay 643px wide on a phone and clip off-screen. */
+    table.responsive-table {
+      width: 100% !important;
+    }
+    table.responsive-table,
+    table.responsive-table tbody,
+    table.responsive-table tr,
+    table.responsive-table td {
+      display: block;
+      width: 100%;
+      /* jquery.dataTables.min.css sets `td { box-sizing: content-box }`, which
+         makes width:100% + padding overflow the card by the padding. */
+      box-sizing: border-box;
+    }
+    table.responsive-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    table.responsive-table tbody tr {
+      margin: 0.75rem 0;
+      padding: 0.375rem 0;
+      border: 1px solid rgb(var(--hairline));
+      border-radius: 0.75rem;
+      background-color: rgb(var(--surface-raised));
+    }
+    table.responsive-table tbody td {
+      /* Must live here, not in the shared rule above: that one ties on
+         specificity with DataTables' own td rule, which loads later and wins. */
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.5rem 1rem !important;
+      border: 0 !important;
+      text-align: right;
+      min-width: 0;
+    }
+    table.responsive-table tbody td::before {
+      content: attr(data-label);
+      flex-shrink: 0;
+      max-width: 40%;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: rgb(var(--ink-muted));
+      text-align: left;
+    }
+    /* The identity cell (avatar + name) leads the card and needs no label. */
+    table.responsive-table tbody td:first-child {
+      display: block;
+      text-align: left;
+      padding-bottom: 0.25rem !important;
+    }
+    table.responsive-table tbody td[data-label=""]::before,
+    table.responsive-table tbody td:first-child::before {
+      display: none;
+    }
+    /* Action buttons: keep them together, right-aligned, at the card's foot. */
+    table.responsive-table tbody td:last-child {
+      justify-content: flex-end;
+      border-top: 1px solid rgb(var(--hairline)) !important;
+      margin-top: 0.25rem;
+      padding-top: 0.75rem !important;
+    }
+    /* "Loading…" / empty / error rows span the whole table. */
+    table.responsive-table tbody td[colspan] {
+      display: block;
+      text-align: center;
+    }
+    table.responsive-table tbody td[colspan]::before {
+      display: none;
+    }
+  }
+}
+
+@layer utilities {
+  /* Respect the OS reduced-motion setting everywhere at once. The audit found
+     no motion-safe/motion-reduce usage anywhere, while the shell introduces a
+     sliding drawer and modal transitions. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

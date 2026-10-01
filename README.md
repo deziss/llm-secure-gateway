@@ -1,18 +1,20 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.10.2-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.11.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-329%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-399%20passing-brightgreen.svg)](tests/)
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
 <p align="center">
-  <img src="assets/dashboard.png" alt="The LLM Secure Gateway admin dashboard, showing active users, backend cluster health, available model count, a requests-per-minute traffic chart and live edge connectivity" width="850" />
+  <img src="assets/dashboard.png" alt="The LLM Secure Gateway admin dashboard on desktop: sidebar navigation, active users, backend health, model count, a requests-per-minute chart and live connections" width="640" />
+  &nbsp;
+  <img src="assets/dashboard-mobile.png" alt="The same admin panel on a phone: a hamburger menu and user records shown as labelled cards" width="190" />
   <br />
-  <em>The built-in admin dashboard — active users, backend cluster health, aggregated model count, requests/min traffic and live edge connectivity.</em>
+  <em>The admin panel on desktop and on a phone. Tables become cards on small screens. Screenshots use demo data.</em>
 </p>
 
 **LLM Secure Gateway** is an enterprise-grade, multi-tenant AI reverse proxy and governance layer for local and cloud Large Language Models. It provides virtualized API key management, granular role-based access control (RBAC), intelligent cross-provider failover, PII sanitization, and full-stack observability with OpenTelemetry and Arize Phoenix.
@@ -69,6 +71,7 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Zero-Trust Identity**: SPIFFE / mTLS identity extraction and validation support for service-to-service deployments.
 - **Credential Vault**: Sensitive upstream provider credentials stored encrypted at rest using AES-128 Fernet cryptography.
 - **Hardened Administrative UI**: Dark-mode management portal built with Tailwind CSS, Lucide icons, double-submit cookie CSRF tokens, and semantic accessibility (WCAG).
+- **Responsive Admin Panel**: Sidebar navigation on desktop, an icon rail on tablets and a slide-over drawer on phones. Data tables collapse into labelled cards below 768px, light and dark themes are first-class, and every dialog traps focus and closes on Escape.
 - **Zero External Requests**: Every JS and CSS dependency is vendored into the image and the CSP is `'self'`-only, so the UI is fully functional air-gapped and leaks no browsing signal to third-party CDNs.
 - **Content Moderation & PII Shield**: Real-time regex and rule-based scrubbing for credit cards, SSNs, phone numbers, and harmful prompts before reaching upstream models.
 
@@ -199,7 +202,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.10.2"}
+# Output: {"version": "0.11.0"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -230,7 +233,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.10.2` | Gateway release version emitted in logs & telemetry |
+| `APP_VERSION` | No | `0.11.0` | Gateway release version emitted in logs & telemetry |
 
 ### Performance & Scaling Options
 
@@ -294,7 +297,7 @@ All microservice dependencies gracefully degrade — if Redis or PgBouncer are t
 
 ## Testing & Quality Assurance
 
-The gateway includes a comprehensive test suite containing **329 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
+The gateway includes a comprehensive test suite containing **399 automated tests** covering unit logic, proxy translation, model resilience, and telemetry.
 
 ```bash
 # Run full test suite inside isolated Docker container
@@ -303,7 +306,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.10.2-py314 pytest tests/ -v
+  llm-gateway:v0.11.0-py314 pytest tests/ -v
 ```
 
 ### Performance & Benchmarking Scripts
@@ -367,7 +370,7 @@ llm-secure-gateway/
 │   ├── API_REFERENCE.md            # Comprehensive REST endpoint documentation
 │   ├── DATABASE_MIGRATION.md       # Migration procedures & backup guidelines
 │   └── TESTING.md                  # Testing patterns & CI configuration
-└── tests/                          # Automated test suite (329 tests)
+└── tests/                          # Automated test suite (399 tests)
 ```
 
 ---

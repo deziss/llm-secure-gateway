@@ -56,11 +56,23 @@ document
       const thumb = document.createElement("div");
       thumb.className = "img-thumb";
       thumb.id = "thumb-" + id;
-      thumb.innerHTML = `<img src="${b64}" /><span class="img-thumb-remove" onclick="removeImage(${id})"><i class="fas fa-times text-white"></i></span>`;
+      thumb.innerHTML = `<img src="${b64}" /><span class="img-thumb-remove" role="button" tabindex="0" aria-label="Remove image" data-remove-image="${id}"><i class="fas fa-times text-white" aria-hidden="true"></i></span>`;
       bar.appendChild(thumb);
     }
     this.value = "";
   });
+
+// Delegated: ids are rendered as data attributes rather than inline handlers.
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-remove-image]");
+  if (btn) removeImage(Number(btn.dataset.removeImage));
+});
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-remove-image]")) {
+    e.preventDefault();
+    removeImage(Number(e.target.dataset.removeImage));
+  }
+});
 
 function removeImage(id) {
   const idx = pendingImages.findIndex((i) => i.id === id);
