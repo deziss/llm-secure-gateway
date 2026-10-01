@@ -12,7 +12,7 @@ from .telemetry import setup_telemetry
 
 logging.basicConfig(level=logging.INFO)
 
-_VERSION = "0.10.2"
+_VERSION = "0.11.0"
 
 
 

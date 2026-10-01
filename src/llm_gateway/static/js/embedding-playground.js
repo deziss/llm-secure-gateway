@@ -51,15 +51,9 @@ function setStatus(text, color = "green") {
 function setMethod(m) {
   method = m;
   document.getElementById("methodPCA").className =
-    "flex-1 text-xs py-1.5 rounded-lg transition font-semibold " +
-    (m === "pca"
-      ? "bg-emerald-600 text-white"
-      : "bg-slate-700 text-slate-300");
+    "method-btn" + (m === "pca" ? " is-active" : "");
   document.getElementById("methodTSNE").className =
-    "flex-1 text-xs py-1.5 rounded-lg transition font-semibold " +
-    (m === "tsne"
-      ? "bg-emerald-600 text-white"
-      : "bg-slate-700 text-slate-300");
+    "method-btn" + (m === "tsne" ? " is-active" : "");
   if (embeddings.length >= 2) reproject();
 }
 
@@ -163,10 +157,22 @@ function addPoint(text, vector) {
   chip.style.background = color + "22";
   chip.style.color = color;
   chip.style.border = `1px solid ${color}44`;
-  chip.innerHTML = `<span class="chip-dot" style="background:${color}"></span>${text.slice(0, 28)}${text.length > 28 ? "\u2026" : ""}
-    <span onclick="removePoint(${id})" style="margin-left:2px;opacity:0.5;hover:opacity:1">\u00d7</span>`;
+  chip.innerHTML = `<span class="chip-dot" style="background:${color}"></span>${escapeHtml(text.slice(0, 28))}${text.length > 28 ? "\u2026" : ""}
+    <span role="button" tabindex="0" aria-label="Remove point" data-remove-point="${id}" style="margin-left:2px;opacity:0.5">\u00d7</span>`;
   document.getElementById("chips").prepend(chip);
 }
+
+// Delegated: ids are rendered as data attributes rather than inline handlers.
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-remove-point]");
+  if (btn) removePoint(Number(btn.dataset.removePoint));
+});
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-remove-point]")) {
+    e.preventDefault();
+    removePoint(Number(e.target.dataset.removePoint));
+  }
+});
 
 function removePoint(id) {
   const idx = embeddings.findIndex((e) => e.id === id);

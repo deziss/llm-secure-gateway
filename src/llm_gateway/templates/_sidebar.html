@@ -1,0 +1,78 @@
+{#
+  Primary navigation.
+
+  >= lg      fixed 15rem sidebar with labels
+  md .. lg   4rem icon rail (labels hidden, titles act as tooltips)
+  < md       off-canvas drawer, opened from the topbar hamburger
+
+  Role gating mirrors the old header.html exactly:
+    Dashboard                                   everyone
+    Backends, Users, Bots, Spend, Aliases,
+      Settings                                  admin, manager
+    Owners                                      admin, manager, developer
+
+  The Playground group is rendered as a flat section rather than a dropdown.
+  The old dropdown was driven by CSS :hover plus a conflicting JS .hidden
+  toggle, so it was indeterminate on touch and unreachable by arrow keys.
+
+  The active link is marked with aria-current="page" by shell.js, which keeps
+  this partial free of per-route logic.
+#}
+{% macro nav_link(href, icon, label) %}
+<a href="{{ href }}" title="{{ label }}"
+   class="group flex items-center gap-3 rounded-control px-3 min-h-touch text-sm font-medium text-ink-muted transition-colors hover:bg-surface-inset hover:text-ink aria-[current=page]:bg-accent/10 aria-[current=page]:text-accent md:max-lg:justify-center md:max-lg:px-0">
+  <i data-lucide="{{ icon }}" class="h-5 w-5 shrink-0" aria-hidden="true"></i>
+  <span class="truncate md:max-lg:sr-only">{{ label }}</span>
+</a>
+{% endmacro %}
+
+{# Backdrop for the mobile drawer. Hidden at md+ where the sidebar is static. #}
+<div id="sidebarBackdrop" class="fixed inset-0 z-40 hidden bg-black/60 backdrop-blur-sm md:hidden" aria-hidden="true"></div>
+
+<aside id="sidebar"
+       class="fixed inset-y-0 left-0 z-50 flex w-sidebar -translate-x-full flex-col border-r border-hairline bg-surface-raised transition-transform duration-200 md:w-rail md:translate-x-0 lg:w-sidebar"
+       aria-label="Primary">
+  <div class="flex h-14 shrink-0 items-center gap-3 border-b border-hairline px-4 md:max-lg:justify-center md:max-lg:px-0">
+    <a href="/admin/dashboard" class="flex items-center gap-3" title="LLM Gateway">
+      <img src="/static/img/logo.png" alt="" width="32" height="32"
+           class="h-8 w-8 shrink-0 rounded-control border border-hairline object-cover" />
+      <span class="truncate text-sm font-semibold text-ink md:max-lg:sr-only">LLM Gateway</span>
+    </a>
+    <button type="button" id="sidebarClose"
+            class="ml-auto inline-flex min-h-touch min-w-touch items-center justify-center rounded-control text-ink-muted hover:bg-surface-inset hover:text-ink md:hidden"
+            aria-label="Close navigation">
+      <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <nav class="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3 md:max-lg:px-2">
+    {{ nav_link('/admin/dashboard', 'line-chart', 'Dashboard') }}
+
+    {% if user and user_role in ['admin', 'manager'] %}
+    {{ nav_link('/admin/view/backends', 'server', 'Backends') }}
+    {% endif %}
+    {% if user and user_role in ['admin', 'manager', 'developer'] %}
+    {{ nav_link('/admin/view/owners', 'users', 'Owners') }}
+    {% endif %}
+    {% if user and user_role in ['admin', 'manager'] %}
+    {{ nav_link('/admin/view/users', 'user-check', 'Users') }}
+    {{ nav_link('/admin/view/bots', 'bot', 'Bots') }}
+    {{ nav_link('/admin/view/spend', 'dollar-sign', 'Spend') }}
+    {{ nav_link('/admin/view/aliases', 'git-branch', 'Aliases') }}
+    {% endif %}
+
+    <div class="my-3 border-t border-hairline" role="presentation"></div>
+    <p class="px-3 pb-1 text-caption font-medium text-ink-muted md:max-lg:hidden" id="navPlaygrounds">Playgrounds</p>
+    <div role="group" aria-labelledby="navPlaygrounds" class="space-y-1">
+      {{ nav_link('/admin/view/playground', 'flask-conical', 'API tester') }}
+      {{ nav_link('/admin/view/playground/chat', 'message-square', 'Chat') }}
+      {{ nav_link('/admin/view/playground/embed', 'network', 'Embeddings') }}
+      {{ nav_link('/admin/view/playground/compare', 'columns', 'Compare models') }}
+    </div>
+
+    {% if user and user_role in ['admin', 'manager'] %}
+    <div class="my-3 border-t border-hairline" role="presentation"></div>
+    {{ nav_link('/admin/view/settings', 'settings', 'Settings') }}
+    {% endif %}
+  </nav>
+</aside>

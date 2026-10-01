@@ -83,7 +83,7 @@ async function loadInvites() {
 
     if (invites.length === 0) {
       tbody.innerHTML =
-        '<tr><td colspan="4" class="p-12 text-center text-slate-500 italic"><i data-lucide="inbox" class="w-10 h-10 mb-3 block opacity-20 mx-auto"></i>No pending tokens found.</td></tr>';
+        '<tr><td colspan="4" class="p-12 text-center text-ink-muted italic"><i data-lucide="inbox" class="w-10 h-10 mb-3 block opacity-20 mx-auto"></i>No pending tokens found.</td></tr>';
       return;
     }
 
@@ -95,18 +95,18 @@ async function loadInvites() {
         const statusText = i.is_used ? "EXHAUSTED" : "AVAILABLE";
         return `
         <tr class="hover:bg-slate-800/30 transition-all group">
-          <td class="p-4 font-mono text-blue-400 select-all font-bold tracking-tighter">${i.code}</td>
-          <td class="p-4 text-slate-500 text-xs font-medium">${new Date(i.created_at).toLocaleString()}</td>
+          <td class="p-4 font-mono text-blue-400 select-all font-bold tracking-tighter">${escapeHtml(i.code)}</td>
+          <td class="p-4 text-slate-500 text-xs font-medium">${escapeHtml(new Date(i.created_at).toLocaleString())}</td>
           <td class="p-4">
             <div class="flex items-center gap-3">
               <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${statusCls}">${statusText}</span>
-              <span class="text-[10px] text-slate-500 font-bold uppercase truncate max-w-[120px]">${i.used_by || i.created_by}</span>
+              <span class="text-[10px] text-slate-500 font-bold uppercase truncate max-w-[120px]">${escapeHtml(i.used_by || i.created_by || "")}</span>
             </div>
           </td>
           <td class="p-4 text-right">
-            <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onclick="copyToClipboard('${i.code}')" class="p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-700" title="Copy Token"><i data-lucide="copy" class="w-4 h-4"></i></button>
-              <button onclick="deleteInvite('${i.code}')" class="p-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg border border-rose-500/20" title="Invalidate"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            <div class="flex justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+              <button type="button" data-action="copy" data-code="${escapeHtml(i.code)}" aria-label="Copy token" class="p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-700" title="Copy Token"><i data-lucide="copy" class="w-4 h-4"></i></button>
+              <button type="button" data-action="delete" data-code="${escapeHtml(i.code)}" aria-label="Invalidate token" class="p-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg border border-rose-500/20" title="Invalidate"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
           </td>
         </tr>
@@ -121,6 +121,19 @@ async function loadInvites() {
   }
 }
 
+// Delegated handler: no data is ever interpolated into JS source.
+(function () {
+  const tbody = document.getElementById("invitesTableBody");
+  if (!tbody) return;
+  tbody.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn || !tbody.contains(btn)) return;
+    const code = btn.dataset.code || "";
+    if (btn.dataset.action === "copy") copyToClipboard(code);
+    else if (btn.dataset.action === "delete") deleteInvite(code);
+  });
+})();
+
 async function generateInvite() {
   const res = await fetchWithCsrf("/admin/invites", {
     method: "POST",
@@ -132,7 +145,7 @@ async function generateInvite() {
 async function deleteInvite(code) {
   const confirmed = await showConfirm("Revoke Token", `Are you sure you want to revoke token ${code}?`);
   if (!confirmed) return;
-  const res = await fetchWithCsrf(`/admin/invites/${code}`, {
+  const res = await fetchWithCsrf(`/admin/invites/${encodeURIComponent(code)}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -243,37 +256,48 @@ async function loadScopeRules() {
     }
   } catch(e) {}
 
-  tbody.innerHTML = "";
-
-  // Render custom rules first (editable)
-  _customScopeRules.forEach((rule, idx) => {
-    tbody.innerHTML += `
+  // Build the markup once, then assign once.
+  const customHtml = _customScopeRules
+    .map(
+      (rule, idx) => `
       <tr class="hover:bg-slate-800/20 transition-colors">
         <td class="p-4 font-mono text-violet-400 font-bold">${escapeHtml(rule[0])}</td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded text-[10px] font-bold">${escapeHtml(rule[1])}</span></td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-[9px] font-bold uppercase">Custom</span></td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-micro font-bold">Custom</span></td>
         <td class="p-4 text-right">
-          <button onclick="removeScopeRule(${idx})" class="text-slate-500 hover:text-red-500 transition-colors p-1" title="Remove rule">
+          <button type="button" data-action="remove-rule" data-idx="${idx}" aria-label="Remove rule ${escapeHtml(rule[0])}" class="text-slate-500 hover:text-red-500 transition-colors p-2 min-h-touch min-w-touch inline-flex items-center justify-center" title="Remove rule">
             <i data-lucide="x-circle" class="w-4 h-4"></i>
           </button>
         </td>
-      </tr>`;
-  });
+      </tr>`,
+    )
+    .join("");
 
-  // Render built-in rules (read-only)
-  BUILTIN_RULES.forEach(rule => {
-    tbody.innerHTML += `
+  const builtinHtml = BUILTIN_RULES.map(
+    (rule) => `
       <tr class="hover:bg-slate-800/20 transition-colors opacity-60">
         <td class="p-4 font-mono text-slate-400">${escapeHtml(rule[0])}</td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded text-[10px] font-bold">${escapeHtml(rule[1])}</span></td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded text-[9px] font-bold uppercase">Built-in</span></td>
-        <td class="p-4 text-right text-slate-600 text-[10px]">read-only</td>
-      </tr>`;
-  });
+        <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded text-micro font-bold">Built-in</span></td>
+        <td class="p-4 text-right text-slate-600 text-micro">read-only</td>
+      </tr>`,
+  ).join("");
+
+  tbody.innerHTML = customHtml + builtinHtml;
   if (window.lucide && typeof window.lucide.createIcons === "function") {
     window.lucide.createIcons();
   }
 }
+
+(function () {
+  const tbody = document.getElementById("scopeRulesBody");
+  if (!tbody) return;
+  tbody.addEventListener("click", (e) => {
+    const btn = e.target.closest('button[data-action="remove-rule"]');
+    if (!btn || !tbody.contains(btn)) return;
+    removeScopeRule(parseInt(btn.dataset.idx, 10));
+  });
+})();
 
 async function _saveScopeRules() {
   const value = _customScopeRules.length > 0 ? JSON.stringify(_customScopeRules) : "";
@@ -301,12 +325,30 @@ async function addScopeRule() {
 
 async function removeScopeRule(idx) {
   const rule = _customScopeRules[idx];
+  if (!rule) return;
   const confirmed = await showConfirm("Remove Rule", `Remove custom rule: ${rule[0]} → ${rule[1]}?`);
   if (!confirmed) return;
   _customScopeRules.splice(idx, 1);
   await _saveScopeRules();
   showToast("Policy Updated", "Rule removed. Built-in defaults will apply.");
   await loadScopeRules();
+}
+
+function readStoredTheme() {
+  try {
+    return localStorage.getItem("theme") || "system";
+  } catch (e) {
+    return "system";
+  }
+}
+
+function storeTheme(theme) {
+  try {
+    if (theme === "system") localStorage.removeItem("theme");
+    else localStorage.setItem("theme", theme);
+  } catch (e) {
+    /* storage unavailable (private window): theme applies for this page only */
+  }
 }
 
 // ─── Theme Toggle ──────────────────────────────────────────────────────
@@ -337,7 +379,7 @@ function initThemeToggle() {
   if (!toggle) return;
 
   // Read saved preference (or default to "system")
-  const saved = localStorage.getItem("theme") || "system";
+  const saved = readStoredTheme();
   applyTheme(saved);
   updateThemeButtons(saved);
 
@@ -346,18 +388,14 @@ function initThemeToggle() {
     const btn = e.target.closest(".theme-btn");
     if (!btn) return;
     const theme = btn.dataset.theme;
-    if (theme === "system") {
-      localStorage.removeItem("theme");
-    } else {
-      localStorage.setItem("theme", theme);
-    }
+    storeTheme(theme);
     applyTheme(theme);
     updateThemeButtons(theme);
   });
 
   // Listen for OS theme changes when set to "system"
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    const current = localStorage.getItem("theme") || "system";
+    const current = readStoredTheme();
     if (current === "system") {
       applyTheme("system");
     }

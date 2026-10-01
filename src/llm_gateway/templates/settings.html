@@ -5,11 +5,11 @@
 >
   <div>
     <h1
-      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
+      class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight flex items-center gap-3"
     >
       <i data-lucide="cpu" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> Core Orchestration
     </h1>
-    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+    <p class="text-ink-muted text-sm mt-1">
       Configure global gateway behavior, experimental features, and access
       controls.
     </p>
@@ -17,27 +17,27 @@
 </div>
 
 <!-- User Preferences (available to all users) -->
-<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl mb-8">
+<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
     <div class="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-500 border border-sky-500/20">
       <i data-lucide="palette" class="w-5 h-5" aria-hidden="true"></i>
     </div>
-    <h2 class="text-xl font-bold text-slate-900 dark:text-white">User Preferences</h2>
+    <h2 class="text-xl font-bold text-ink">User Preferences</h2>
   </div>
 
-  <div class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30">
+  <div class="flex flex-col sm:flex-row items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
     <div>
-      <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Theme</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Choose your preferred color scheme for the interface.</p>
+      <h3 class="font-bold text-ink text-sm">Theme</h3>
+      <p class="text-xs text-ink-muted mt-1">Choose your preferred color scheme for the interface.</p>
     </div>
-    <div id="themeToggle" class="flex bg-slate-200 dark:bg-slate-700 rounded-xl p-1 gap-1">
-      <button type="button" data-theme="light" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Light mode">
+    <div id="themeToggle" role="group" aria-label="Theme" class="flex bg-slate-200 dark:bg-slate-700 rounded-xl p-1 gap-1 flex-shrink-0 max-w-full">
+      <button type="button" data-theme="light" class="theme-btn min-h-touch px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Light mode">
         <i data-lucide="sun" class="w-3.5 h-3.5" aria-hidden="true"></i> Light
       </button>
-      <button type="button" data-theme="dark" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Dark mode">
+      <button type="button" data-theme="dark" class="theme-btn min-h-touch px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Dark mode">
         <i data-lucide="moon" class="w-3.5 h-3.5" aria-hidden="true"></i> Dark
       </button>
-      <button type="button" data-theme="system" class="theme-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Follow system">
+      <button type="button" data-theme="system" class="theme-btn min-h-touch px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Follow system">
         <i data-lucide="monitor" class="w-3.5 h-3.5" aria-hidden="true"></i> System
       </button>
     </div>
@@ -48,7 +48,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
   <!-- Access Control Card -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
       <div
@@ -56,29 +56,29 @@
       >
         <i data-lucide="fingerprint" class="w-5 h-5" aria-hidden="true"></i>
       </div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Identity Gates</h2>
+      <h2 class="text-xl font-bold text-ink">Identity Gates</h2>
     </div>
 
     <div
-      class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+      class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
     >
       <div>
-        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+        <h3 class="font-bold text-ink text-sm">
           Mandatory Invite Protocol
         </h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[240px]">
+        <p class="text-xs text-ink-muted mt-1">
           Restrict registration to users with valid cryptographic invite tokens.
         </p>
       </div>
-      <label class="relative inline-flex items-center cursor-pointer">
+      <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
         <input
           type="checkbox"
-          id="requireInviteToggle"
+          id="requireInviteToggle" aria-label="Mandatory invite protocol"
           data-key="REQUIRE_INVITE"
           class="sr-only peer"
         />
         <div
-          class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"
+          class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"
         ></div>
       </label>
     </div>
@@ -86,7 +86,7 @@
 
   <!-- Gateway Intelligence Card -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
       <div
@@ -94,124 +94,124 @@
       >
         <i data-lucide="brain" class="w-5 h-5" aria-hidden="true"></i>
       </div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Discovery & Routing</h2>
+      <h2 class="text-xl font-bold text-ink">Discovery & Routing</h2>
     </div>
 
     <div class="space-y-4">
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Model Federation</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <h3 class="font-bold text-ink text-sm">Model Federation</h3>
+          <p class="text-xs text-ink-muted mt-1">
             Unify distributed backends into a single API namespace.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableFederationToggle"
+            id="enableFederationToggle" aria-label="Model federation"
             data-key="ENABLE_MODEL_FEDERATION"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Predictive Load Balancing
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             Round-Robin & Health-Aware traffic distribution.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableRoutingToggle"
+            id="enableRoutingToggle" aria-label="Predictive load balancing"
             data-key="ENABLE_EXPERIMENTAL_ROUTING"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Fast-Path Request Engine
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             Resolve boilerplate queries locally to save upstream API cost.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableFastPathToggle"
+            id="enableFastPathToggle" aria-label="Fast-path request engine"
             data-key="ENABLE_FAST_PATH_OPTIMIZATIONS"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Format Translation Bridge
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             Bridge Anthropic Messages ↔ OpenAI chat completion protocols transparently.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableTranslationToggle"
+            id="enableTranslationToggle" aria-label="Format translation bridge"
             data-key="ENABLE_PROTOCOL_TRANSLATION"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Reasoning Block Normalizer
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             Strip and clean &lt;think&gt; tags from streaming responses dynamically.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableThinkingToggle"
+            id="enableThinkingToggle" aria-label="Reasoning block normalizer"
             data-key="ENABLE_THINKING_NORMALIZATION"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
@@ -220,7 +220,7 @@
 
   <!-- Performance & Response Caching Card -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
       <div
@@ -228,54 +228,54 @@
       >
         <i data-lucide="database" class="w-5 h-5" aria-hidden="true"></i>
       </div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Performance & Response Caching</h2>
+      <h2 class="text-xl font-bold text-ink">Performance & Response Caching</h2>
     </div>
 
     <div class="space-y-4">
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Deterministic Exact Caching
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             Exact SHA-256 match caching across Redis and In-Memory tiers for low-temperature requests.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableExactCacheToggle"
+            id="enableExactCacheToggle" aria-label="Deterministic exact caching"
             data-key="ENABLE_EXACT_CACHE"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Semantic Vector Caching
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p class="text-xs text-ink-muted mt-1">
             PG18 + Cosine similarity threshold semantic matching for conceptually identical prompts.
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableSemanticCacheToggle"
+            id="enableSemanticCacheToggle" aria-label="Semantic vector caching"
             data-key="ENABLE_SEMANTIC_CACHE"
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
           ></div>
         </label>
       </div>
@@ -284,7 +284,7 @@
 
   <!-- Resilience Card -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
       <div
@@ -292,29 +292,29 @@
       >
         <i data-lucide="shield-alert" class="w-5 h-5" aria-hidden="true"></i>
       </div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">System Resilience</h2>
+      <h2 class="text-xl font-bold text-ink">System Resilience</h2>
     </div>
 
     <div
-      class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+      class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
     >
       <div>
-        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+        <h3 class="font-bold text-ink text-sm">
           Exponential Backoff Retries
         </h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+        <p class="text-xs text-ink-muted mt-1">
           Automatic recovery from transient provider failures.
         </p>
       </div>
-      <label class="relative inline-flex items-center cursor-pointer">
+      <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
         <input
           type="checkbox"
-          id="enableRetryToggle"
+          id="enableRetryToggle" aria-label="Exponential backoff retries"
           data-key="ENABLE_RETRY_BACKOFF"
           class="sr-only peer"
         />
         <div
-          class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
+          class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
         ></div>
       </label>
     </div>
@@ -322,7 +322,7 @@
 
   <!-- Observation & Testing Card -->
   <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl"
+    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
       <div
@@ -330,82 +330,82 @@
       >
         <i data-lucide="flask-conical" class="w-5 h-5" aria-hidden="true"></i>
       </div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Feature Laboratory</h2>
+      <h2 class="text-xl font-bold text-ink">Feature Laboratory</h2>
     </div>
 
     <div class="space-y-4">
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Mission Control</h3>
+          <h3 class="font-bold text-ink text-sm">Mission Control</h3>
           <p
-            class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-tighter"
+            class="text-micro text-ink-muted mt-0.5"
           >
             Real-time Telemetry Dashboard
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableMissionControlToggle"
+            id="enableMissionControlToggle" aria-label="Mission control"
             data-key="ENABLE_MISSION_CONTROL"
             class="sr-only peer"
           />
           <div
-            class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Multi-Modal Chat Playground
           </h3>
           <p
-            class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-tighter"
+            class="text-micro text-ink-muted mt-0.5"
           >
             Native Vision Support Enabled
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableChatPlaygroundToggle"
+            id="enableChatPlaygroundToggle" aria-label="Multi-modal chat playground"
             data-key="ENABLE_CHAT_PLAYGROUND"
             class="sr-only peer"
           />
           <div
-            class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-slate-50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/30"
+        class="flex items-start justify-between bg-surface-inset p-4 rounded-2xl border border-hairline gap-4"
       >
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 class="font-bold text-ink text-sm">
             Vector Projection Lab
           </h3>
           <p
-            class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-tighter"
+            class="text-micro text-ink-muted mt-0.5"
           >
             2D Embedding Visualization
           </p>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
-            id="enableEmbedPlaygroundToggle"
+            id="enableEmbedPlaygroundToggle" aria-label="Vector projection lab"
             data-key="ENABLE_EMBED_PLAYGROUND"
             class="sr-only peer"
           />
           <div
-            class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"
+            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
           ></div>
         </label>
       </div>
@@ -413,108 +413,108 @@
   </div>
 </div>
 <!-- Compliance & Audit -->
-<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl mb-8">
+<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
     <div class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-400 border border-cyan-500/20">
       <i data-lucide="clipboard-check" class="w-5 h-5" aria-hidden="true"></i>
     </div>
-    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Compliance & Audit</h2>
+    <h2 class="text-xl font-bold text-ink">Compliance & Audit</h2>
   </div>
 
   <div class="space-y-4">
     <!-- Audit DB Toggle -->
-    <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30">
+    <div class="flex items-center justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
       <div>
-        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Persistent Audit Trail</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+        <h3 class="font-bold text-ink text-sm">Persistent Audit Trail</h3>
+        <p class="text-xs text-ink-muted mt-1">
           Write audit events to the database in addition to stdout.
         </p>
       </div>
-      <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
-        <input type="checkbox" id="enableAuditDbToggle" data-key="ENABLE_AUDIT_DB" class="sr-only peer" />
-        <div class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+      <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+        <input type="checkbox" id="enableAuditDbToggle" aria-label="Persistent audit trail" data-key="ENABLE_AUDIT_DB" class="sr-only peer" />
+        <div class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
       </label>
     </div>
 
     <!-- Key Rotation Policy -->
-    <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30">
+    <div class="flex items-center justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
       <div>
-        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">API Key Auto-Rotation</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+        <h3 class="font-bold text-ink text-sm">API Key Auto-Rotation</h3>
+        <p class="text-xs text-ink-muted mt-1">
           New keys expire after this many days. 0 = disabled.
         </p>
       </div>
-      <div class="flex items-center gap-2 flex-shrink-0 ml-4">
+      <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 flex-shrink-0">
         <input type="number" id="keyExpiryDaysInput" min="0" max="365" value="0"
-          class="w-20 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-center text-sm font-bold focus:ring-2 focus:ring-cyan-500/50 outline-none transition"
+          aria-label="API key expiry in days" class="w-20 bg-surface-base border border-hairline rounded-xl min-h-touch px-3 py-2 text-ink text-center text-sm font-bold focus:ring-2 focus:ring-cyan-500/50 outline-none transition"
         />
-        <span class="text-xs text-slate-500 font-bold">days</span>
+        <span class="text-xs text-ink-muted font-medium">days</span>
       </div>
     </div>
 
     <!-- Webhook URL -->
-    <div class="bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/30">
+    <div class="bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
       <div class="flex items-center justify-between mb-3">
         <div>
-          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Webhook Notifications</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <h3 class="font-bold text-ink text-sm">Webhook Notifications</h3>
+          <p class="text-xs text-ink-muted mt-1">
             POST alerts on key expiry and backend failures. HMAC-SHA256 signed.
           </p>
         </div>
       </div>
-      <input type="text" id="webhookUrlInput" placeholder="https://hooks.example.com/alerts"
-        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white text-sm font-mono focus:ring-2 focus:ring-cyan-500/50 outline-none transition placeholder:text-slate-600"
+      <input type="text" id="webhookUrlInput" aria-label="Webhook URL" inputmode="url" autocomplete="off" placeholder="https://hooks.example.com/alerts"
+        class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 min-h-touch text-ink text-sm font-mono focus:ring-2 focus:ring-cyan-500/50 outline-none transition placeholder:text-ink-muted"
       />
     </div>
   </div>
 </div>
 
 <!-- Scope Policy Rules -->
-<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl mb-8">
+<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
     <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400 border border-violet-500/20">
       <i data-lucide="network" class="w-5 h-5" aria-hidden="true"></i>
     </div>
     <div>
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Scope Policy Rules</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Map endpoint prefixes to required scopes. DB rules override built-in defaults. Changes apply within 30 seconds.</p>
+      <h2 class="text-xl font-bold text-ink">Scope Policy Rules</h2>
+      <p class="text-xs text-ink-muted mt-0.5">Map endpoint prefixes to required scopes. DB rules override built-in defaults. Changes apply within 30 seconds.</p>
     </div>
   </div>
 
   <!-- Active rules table -->
-  <div class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden mb-6">
+  <div class="bg-surface-inset rounded-2xl border border-hairline overflow-hidden mb-6">
     <table class="w-full text-left text-xs">
-      <thead class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-[9px] font-bold">
+      <thead class="bg-surface-inset text-ink-muted text-micro font-medium">
         <tr>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Endpoint Prefix</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Required Scope</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Source</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-800/50 text-right">Action</th>
+          <th class="p-4 border-b border-hairline">Endpoint Prefix</th>
+          <th class="p-4 border-b border-hairline">Required Scope</th>
+          <th class="p-4 border-b border-hairline">Source</th>
+          <th class="p-4 border-b border-hairline text-right">Action</th>
         </tr>
       </thead>
-      <tbody id="scopeRulesBody" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+      <tbody id="scopeRulesBody" class="divide-y divide-hairline">
         <!-- populated by JS -->
       </tbody>
     </table>
   </div>
 
   <!-- Add custom rule form -->
-  <div class="bg-slate-100/50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50">
-    <h3 class="text-slate-900 dark:text-white font-bold text-sm flex items-center gap-2 mb-4">
+  <div class="bg-surface-inset p-4 sm:p-6 rounded-2xl border border-hairline">
+    <h3 class="text-ink font-bold text-sm flex items-center gap-2 mb-4">
       <i data-lucide="plus-circle" class="text-violet-400 w-4 h-4" aria-hidden="true"></i> Add Custom Rule
     </h3>
-    <div class="flex gap-3 items-end">
-      <div class="flex-1">
-        <label for="newRulePrefix" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Endpoint Prefix</label>
+    <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+      <div class="flex-1 min-w-0">
+        <label for="newRulePrefix" class="block text-caption font-medium text-ink-muted mb-2">Endpoint Prefix</label>
         <input type="text" id="newRulePrefix" placeholder="/v2/custom/endpoint"
-          class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
+          class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
       </div>
-      <div class="flex-1">
-        <label for="newRuleScope" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Required Scope</label>
+      <div class="flex-1 min-w-0">
+        <label for="newRuleScope" class="block text-caption font-medium text-ink-muted mb-2">Required Scope</label>
         <input type="text" id="newRuleScope" placeholder="llm:chat"
-          class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
+          class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
       </div>
-      <button onclick="addScopeRule()" class="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition shadow-lg shadow-violet-500/20 whitespace-nowrap">
+      <button onclick="addScopeRule()" class="min-h-touch px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition shadow-lg shadow-violet-500/20 whitespace-nowrap">
         <i data-lucide="plus" class="w-4 h-4 mr-1" aria-hidden="true"></i> Add
       </button>
     </div>
@@ -524,17 +524,17 @@
 
 <!-- Tokens Management Section -->
 <div
-  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+  class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden"
 >
   <div
-    class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+    class="p-5 sm:p-8 border-b border-hairline flex flex-wrap gap-3 justify-between items-center bg-surface-inset"
   >
-    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+    <h2 class="text-xl font-bold text-ink flex items-center gap-3">
       <i data-lucide="ticket" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Generation Tokens
     </h2>
     <button
       onclick="generateInvite()"
-      class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl transition-all font-bold text-white text-xs flex items-center gap-2 shadow-lg shadow-blue-500/20"
+      class="min-h-touch px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl transition-all font-bold text-white text-xs flex items-center gap-2 shadow-lg shadow-blue-500/20"
     >
       <i data-lucide="sparkles" class="w-4 h-4" aria-hidden="true"></i>
       Generate Single Token
@@ -544,18 +544,18 @@
   <div class="p-1">
     <table class="w-full text-left text-sm border-separate border-spacing-0">
       <thead
-        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+        class="bg-surface-inset text-ink-muted text-caption font-medium"
       >
         <tr>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Cryptic Code</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Issued At</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Status & Ownership</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">Ops</th>
+          <th class="p-4 border-b border-hairline">Cryptic Code</th>
+          <th class="p-4 border-b border-hairline">Issued At</th>
+          <th class="p-4 border-b border-hairline">Status & Ownership</th>
+          <th class="p-4 border-b border-hairline text-right">Ops</th>
         </tr>
       </thead>
       <tbody
         id="invitesTableBody"
-        class="divide-y divide-slate-200 dark:divide-slate-800/50 text-slate-700 dark:text-slate-300"
+        class="divide-y divide-hairline text-ink"
       >
         <!-- populated via js -->
       </tbody>

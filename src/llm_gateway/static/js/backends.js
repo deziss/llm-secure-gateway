@@ -15,8 +15,8 @@ $(document).ready(function () {
         data: "name",
         render: (data, type, row) => `
           <div class="flex flex-col">
-            <span class="text-white font-bold text-base tracking-tight">${escapeHtml(data)}</span>
-            <span class="text-[11px] font-mono text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap max-w-[220px]">${escapeHtml(row.base_url)}</span>
+            <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(data)}</span>
+            <span class="text-caption font-mono text-ink-muted overflow-hidden text-ellipsis whitespace-nowrap max-w-[220px]">${escapeHtml(row.base_url)}</span>
           </div>
         `,
       },
@@ -34,11 +34,11 @@ $(document).ready(function () {
           };
           const cls =
             types[data] ||
-            "bg-slate-500/10 text-slate-400 border-slate-500/20";
+            "bg-slate-500/10 text-ink-muted border-slate-500/20";
           return `
             <div class="flex items-center gap-3">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls} uppercase">${escapeHtml(data)}</span>
-              <div id="health-${escapeHtml(row.name)}" class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+              <span class="px-2 py-0.5 rounded text-micro font-bold border ${cls} uppercase">${escapeHtml(data)}</span>
+              <div id="health-${escapeHtml(row.name)}" class="flex items-center gap-1.5 text-micro font-bold text-ink-muted">
                 <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span> CHECKING...
               </div>
             </div>
@@ -49,8 +49,8 @@ $(document).ready(function () {
         data: "models",
         render: (data) => `
           <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 bg-slate-800 rounded-lg text-white font-bold text-xs border border-slate-700">${data ? data.length : 0}</span>
-            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Models</span>
+            <span class="px-2 py-0.5 bg-surface-inset rounded-lg text-ink font-bold text-xs border border-hairline">${data ? data.length : 0}</span>
+            <span class="text-ink-muted text-micro font-bold uppercase tracking-widest">Models</span>
           </div>
         `,
       },
@@ -60,21 +60,21 @@ $(document).ready(function () {
         render: function (data, type, row) {
           if (USER_ROLE === "admin" || USER_ROLE === "manager") {
             const escaped = escapeHtml(data);
-            const safeName = data.replace(/'/g, "\'");
+            const safeName = escapeHtml(String(data));
             const manageBtn =
               row.backend_type === "ollama"
-                ? `<button type="button" onclick="openManageModelsModal('${safeName}')" class="p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg transition-all border border-indigo-500/20 cursor-pointer" title="Manage Models"><i data-lucide="boxes" class="w-4 h-4"></i></button>`
-                : `<button type="button" onclick="syncBackendModels('${safeName}')" class="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-500/20 cursor-pointer" title="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
+                ? `<button type="button" data-action="manage" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg transition-all border border-indigo-500/20 cursor-pointer" title="Manage Models" aria-label="Manage Models"><i data-lucide="boxes" class="w-4 h-4"></i></button>`
+                : `<button type="button" data-action="sync" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-500/20 cursor-pointer" title="Sync Models" aria-label="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
 
             return `
               <div class="flex justify-end gap-2">
                 ${manageBtn}
-                <button type="button" onclick="openEditModal('${safeName}')" class="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all border border-slate-700 cursor-pointer" title="Edit"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                <button type="button" onclick="deleteBackend('${safeName}')" class="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                <button type="button" data-action="edit" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-surface-inset text-ink hover:bg-hairline rounded-lg transition-all border border-hairline cursor-pointer" title="Edit" aria-label="Edit"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                <button type="button" data-action="delete" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Delete" aria-label="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
               </div>
             `;
           }
-          return `<span class="text-slate-600 text-[10px] font-bold uppercase tracking-widest">Read Only</span>`;
+          return `<span class="text-slate-600 text-micro font-bold uppercase tracking-widest">Read Only</span>`;
         },
       },
     ],
@@ -314,23 +314,23 @@ function openManageModelsModal(name) {
         li.className =
           "flex justify-between items-center p-4 hover:bg-slate-800/50 transition-colors group";
         const escapedModel = escapeHtml(model);
-        const safeModel = model.replace(/'/g, "\'");
-        const safeBackend = name.replace(/'/g, "\'");
+        const safeModel = escapedModel;
+        const safeBackend = escapeHtml(String(name));
         li.innerHTML = `
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xs">
               <i data-lucide="box" class="w-4 h-4"></i>
             </div>
-            <span class="text-white font-medium text-sm">${escapedModel}</span>
+            <span class="text-ink font-medium text-sm">${escapedModel}</span>
           </div>
-          <button type="button" onclick="deleteRemoteModel('${safeBackend}', '${safeModel}')" class="p-2 text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer" title="Delete model">
+          <button type="button" data-action="delete-model" data-backend="${safeBackend}" data-model="${safeModel}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 text-ink-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer" title="Delete model" aria-label="Delete model">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         `;
         list.appendChild(li);
       });
     } else {
-      list.innerHTML = `<li class="p-8 text-center text-slate-500 italic text-sm">No models registered for this backend.</li>`;
+      list.innerHTML = `<li class="p-8 text-center text-ink-muted italic text-sm">No models registered for this backend.</li>`;
     }
   }
 
@@ -556,3 +556,17 @@ Error: ${msg}`;
     window.lucide.createIcons();
   }
 }
+
+// Delegated row-action handler (names stay inert in data-* attributes).
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const { action, id, backend, model } = btn.dataset;
+  switch (action) {
+    case "manage": return openManageModelsModal(id);
+    case "sync": return syncBackendModels(id);
+    case "edit": return openEditModal(id);
+    case "delete": return deleteBackend(id);
+    case "delete-model": return deleteRemoteModel(backend, model);
+  }
+});

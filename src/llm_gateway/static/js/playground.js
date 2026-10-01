@@ -179,7 +179,7 @@ document
   .addEventListener("click", async () => {
     const statusEl = document.getElementById("modelFetchStatus");
     statusEl.textContent = "Fetching models from all backends...";
-    statusEl.className = "text-xs text-blue-400 mt-1";
+    statusEl.className = "text-caption text-accent mt-1";
 
     try {
       const response = await fetch(BASE_URL + "/admin/models", { credentials: "include" });
@@ -212,7 +212,7 @@ document
           modelSelect.appendChild(opt);
         });
         statusEl.textContent = `Found ${allModels.length} model(s)`;
-        statusEl.className = "text-xs text-green-400 mt-1";
+        statusEl.className = "text-caption text-ok mt-1";
       } else {
         const opt = document.createElement("option");
         opt.value = "";
@@ -220,11 +220,11 @@ document
         modelSelect.appendChild(opt);
         statusEl.textContent =
           "No models found. Try syncing backends first.";
-        statusEl.className = "text-xs text-yellow-400 mt-1";
+        statusEl.className = "text-caption text-warn mt-1";
       }
     } catch (error) {
       statusEl.textContent = error.message;
-      statusEl.className = "text-xs text-red-400 mt-1";
+      statusEl.className = "text-caption text-down mt-1";
     }
     updateRequestPreview();
   });
@@ -374,8 +374,8 @@ function updateFieldVisibility() {
 // Toggle Logic
 function setMode(mode) {
   routingMode = mode;
-  const activeClasses = ["bg-blue-600", "text-white"];
-  const inactiveClasses = ["bg-transparent", "text-slate-400"];
+  const activeClasses = ["bg-accent", "text-white"];
+  const inactiveClasses = ["bg-transparent", "text-ink-muted"];
 
   if (mode === "standard") {
     modeStandardBtn.classList.add(...activeClasses);
@@ -422,9 +422,9 @@ document.getElementById("apiForm").addEventListener("submit", async (e) => {
   // Reset
   responseEl.textContent = "";
   responseEl.className =
-    "text-slate-300 whitespace-pre-wrap font-mono text-sm";
+    "text-ink whitespace-pre-wrap break-words font-mono text-sm";
   statusEl.textContent = "Connecting...";
-  statusEl.className = "text-sm text-yellow-400";
+  statusEl.className = "text-caption font-bold text-warn";
   metricsEl.classList.add("hidden");
   sendBtn.disabled = true;
   sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending...';
@@ -481,7 +481,7 @@ document.getElementById("apiForm").addEventListener("submit", async (e) => {
     }
 
     statusEl.textContent = "Receiving...";
-    statusEl.className = "text-sm text-blue-400";
+    statusEl.className = "text-caption font-bold text-accent";
     loadingIndicator.classList.add("hidden");
 
     const isStreamingRequest = body && body.stream === true;
@@ -566,15 +566,15 @@ document.getElementById("apiForm").addEventListener("submit", async (e) => {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     statusEl.textContent = "Complete";
-    statusEl.className = "text-sm text-green-400";
+    statusEl.className = "text-caption font-bold text-ok";
     document.getElementById("duration").textContent = `${duration}s`;
     metricsEl.classList.remove("hidden");
   } catch (error) {
     statusEl.textContent = "Error";
-    statusEl.className = "text-sm text-red-400";
+    statusEl.className = "text-caption font-bold text-down";
     responseEl.textContent = error.message;
     responseEl.className =
-      "text-red-400 whitespace-pre-wrap font-mono text-sm";
+      "text-down whitespace-pre-wrap break-words font-mono text-sm";
   } finally {
     sendBtn.disabled = false;
     sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Send Request';

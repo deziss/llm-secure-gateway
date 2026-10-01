@@ -178,9 +178,15 @@ function getAvatarColor(str) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+// Escapes for both text nodes AND quoted attribute values. It used to escape
+// only & < >, yet callers interpolate it inside attributes such as
+// title="${escapeHtml(x)}" and value="${escapeHtml(x)}", where a literal quote
+// in the data broke out of the attribute.
 function escapeHtml(text) {
   return String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
