@@ -18,7 +18,7 @@ block content %}
     type="button"
     id="addOwnerBtn"
     onclick="openAddModal()"
-    class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
+    class="min-h-touch px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
   >
     <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
     <span>Register Owner</span>
@@ -28,7 +28,7 @@ block content %}
 
 <!-- Owners Table Section -->
 <div
-  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+  class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden"
 >
   <div class="p-1">
     <table
@@ -36,10 +36,10 @@ block content %}
       class="w-full text-left text-sm border-separate border-spacing-0"
     >
       <thead
-        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest"
       >
         <tr>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Identity & Identity</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Owner</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Classification</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Description</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Access Status</th>
@@ -64,7 +64,7 @@ block content %}
   onclick="if(event.target === this) closeAddModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
@@ -86,7 +86,7 @@ block content %}
         <div>
           <label
             for="addOwnerId"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Owner ID (Unique)</label
           >
           <input
@@ -101,7 +101,7 @@ block content %}
         <div>
           <label
             for="addOwnerName"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Display Name</label
           >
           <input
@@ -118,7 +118,7 @@ block content %}
       <div>
         <label
           for="addOwnerEmail"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Contact Email</label
         >
         <div class="relative">
@@ -136,7 +136,7 @@ block content %}
       <div>
         <label
           for="addOwnerType"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Owner Type</label
         >
         <select
@@ -152,7 +152,7 @@ block content %}
       <div>
         <label
           for="addOwnerDescription"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Description (Optional)</label
         >
         <textarea
@@ -167,7 +167,7 @@ block content %}
       <div>
         <label
           for="addOwnerMaxKeys"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Max Active API Keys</label
         >
         <input
@@ -212,17 +212,17 @@ block content %}
         </div>
       </div>
 
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeAddModal()"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20"
+          class="min-h-touch px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-control transition shadow-lg shadow-indigo-500/20"
         >
           Create Owner
         </button>
@@ -240,7 +240,7 @@ block content %}
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
@@ -262,7 +262,7 @@ block content %}
       <div>
         <label
           for="editName"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Display Name</label
         >
         <input
@@ -277,7 +277,7 @@ block content %}
       <div>
         <label
           for="editEmail"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Contact Email</label
         >
         <input
@@ -291,7 +291,7 @@ block content %}
       <div>
         <label
           for="editType"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Owner Type</label
         >
         <select
@@ -364,7 +364,7 @@ block content %}
       <div>
         <label
           for="editDescription"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Description</label
         >
         <textarea
@@ -379,7 +379,7 @@ block content %}
       <div>
         <label
           for="editMaxKeys"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >Max Active API Keys</label
         >
         <input
@@ -392,17 +392,17 @@ block content %}
         />
       </div>
 
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeEditModal()"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20"
         >
           Sync Changes
         </button>
@@ -420,11 +420,11 @@ block content %}
   onclick="if(event.target === this) closePermissionsModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div
-      class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+      class="p-5 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
     >
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
@@ -447,11 +447,11 @@ block content %}
       </button>
     </div>
 
-    <div class="p-8 flex-1 overflow-y-auto space-y-8">
+    <div class="p-5 sm:p-8 flex-1 overflow-y-auto space-y-8">
       <!-- Active Permissions -->
       <div>
         <h3
-          class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
+          class="text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
         >
           <i data-lucide="layers" class="w-4 h-4" aria-hidden="true"></i> Active Grant Access
         </h3>
@@ -460,7 +460,7 @@ block content %}
         >
           <table class="w-full text-left text-xs">
             <thead
-              class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-[9px] font-bold"
+              class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-micro font-bold"
             >
               <tr>
                 <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">
@@ -494,7 +494,7 @@ block content %}
             <div>
               <label
                 for="permBackend"
-                class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+                class="block text-caption font-medium text-ink-muted mb-2"
                 >Backend Provider</label
               >
               <select
@@ -504,10 +504,10 @@ block content %}
               ></select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">
+              <div id="permEndpointsLabel" class="block text-caption font-medium text-ink-muted mb-2">
                 Endpoint Authorization
-              </label>
-              <div class="w-full bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+              </div>
+              <div role="group" aria-labelledby="permEndpointsLabel" class="w-full bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
                 <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
                 Controlled by API Key Scopes (configured per key)
               </div>
@@ -517,7 +517,7 @@ block content %}
           <div>
             <label
               for="permModels"
-              class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+              class="block text-caption font-medium text-ink-muted mb-2"
               >Allowed Models (CSV or *)</label
             >
             <input
@@ -528,10 +528,10 @@ block content %}
               required
             />
           </div>
-          <div class="flex justify-end pt-2">
+          <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
             <button
               type="submit"
-              class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20"
+              class="min-h-touch px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-indigo-500/20"
             >
               Add Permission Grant
             </button>
@@ -544,20 +544,20 @@ block content %}
 
 <!-- Manage Keys Modal -->
 <div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeKeysModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all" onclick="event.stopPropagation()">
-    <div class="p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all" onclick="event.stopPropagation()">
+    <div class="p-5 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-6 h-6" aria-hidden="true"></i> Manage API Keys</h2>
         <p class="text-amber-400 text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
       </div>
-      <button onclick="closeKeysModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
+      <button type="button" onclick="closeKeysModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
-    <div class="p-8 flex-1 overflow-y-auto space-y-8">
+    <div class="p-5 sm:p-8 flex-1 overflow-y-auto space-y-8">
       <div>
-        <h3 class="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4" aria-hidden="true"></i> Active Keys</h3>
+        <h3 class="text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4" aria-hidden="true"></i> Active Keys</h3>
         <div class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-[9px] font-bold">
+            <thead class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-micro font-bold">
               <tr>
                 <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Key Prefix</th>
                 <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Scopes</th>
@@ -577,7 +577,7 @@ block content %}
         <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 text-sm">
           <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i> New Key Scopes
         </h3>
-        <div id="scopeCheckboxes" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div id="scopeCheckboxes" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:chat" checked class="accent-indigo-500" />
             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:chat</span>
@@ -593,7 +593,7 @@ block content %}
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:*" class="accent-indigo-500" />
             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:*</span>
-            <span class="text-[9px] text-slate-500">(all LLM)</span>
+            <span class="text-micro text-slate-500">(all LLM)</span>
           </label>
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="admin:*" class="accent-indigo-500" />
@@ -604,8 +604,8 @@ block content %}
             <span class="text-xs font-bold text-rose-400">* (full access)</span>
           </label>
         </div>
-        <div class="flex justify-end pt-2">
-          <button onclick="createKeyFromModal()" class="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 to-orange-500 text-white font-bold rounded-xl transition shadow-lg shadow-amber-500/20">
+        <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
+          <button type="button" onclick="createKeyFromModal()" class="min-h-touch w-full sm:w-auto justify-center inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 to-orange-500 text-white font-bold rounded-control transition shadow-lg shadow-amber-500/20">
             <i data-lucide="plus" class="w-4 h-4 mr-2" aria-hidden="true"></i> Issue New Key
           </button>
         </div>

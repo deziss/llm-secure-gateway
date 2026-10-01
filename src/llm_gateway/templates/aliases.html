@@ -3,18 +3,18 @@
 {% block content %}
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
   <div>
-    <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-      <i data-lucide="network" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> Model Virtualization & Resilience
+    <h1 class="text-2xl sm:text-3xl font-bold text-ink tracking-tight flex items-center gap-3">
+      <i data-lucide="network" class="text-accent w-8 h-8" aria-hidden="true"></i> Model Virtualization & Resilience
     </h1>
-    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+    <p class="text-ink-muted text-sm mt-1">
       Define virtual model aliases (e.g. "smart-model") and cross-provider fallback chains for 429/5xx failover.
     </p>
   </div>
-  <div class="flex gap-3">
+  <div class="flex flex-wrap gap-3">
     <button
       id="btnNewFallbackChain"
       onclick="openAddChainModal()"
-      class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg text-slate-800 dark:text-white cursor-pointer"
+      class="min-h-touch px-4 py-2 bg-surface-inset hover:opacity-80 border border-hairline rounded-control transition-opacity font-semibold text-sm flex items-center gap-2 text-ink cursor-pointer"
     >
       <i data-lucide="link" class="text-purple-400 w-4 h-4" aria-hidden="true"></i>
       New Fallback Chain
@@ -22,7 +22,7 @@
     <button
       id="btnAddAlias"
       onclick="openAddAliasModal()"
-      class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20 cursor-pointer"
+      class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 rounded-control transition-opacity font-semibold text-white text-sm flex items-center gap-2 cursor-pointer"
     >
       <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
       Add Alias
@@ -31,26 +31,26 @@
 </div>
 
 <!-- Aliases Table -->
-<div class="mb-10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-      <i data-lucide="tags" class="text-indigo-500 w-5 h-5"></i> Virtual Model Aliases
+<div class="mb-10 rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden">
+  <div class="p-4 sm:p-6 border-b border-hairline flex justify-between items-center">
+    <h2 class="text-lg font-semibold text-ink flex items-center gap-2">
+      <i data-lucide="tags" class="text-accent w-5 h-5"></i> Virtual Model Aliases
     </h2>
   </div>
   <div class="p-1 overflow-x-auto">
     <table class="w-full text-left text-sm border-separate border-spacing-0">
-      <thead class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+      <thead class="bg-surface-inset text-ink-muted text-micro font-semibold uppercase tracking-wider">
         <tr>
-          <th class="p-4 rounded-tl-2xl">Virtual Alias</th>
+          <th class="p-4">Virtual Alias</th>
           <th class="p-4">Target Backend</th>
           <th class="p-4">Real Model Name</th>
           <th class="p-4">Fallback Chain</th>
-          <th class="p-4 rounded-tr-2xl text-right">Actions</th>
+          <th class="p-4 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody id="aliasesTbody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+      <tbody id="aliasesTbody" class="divide-y divide-hairline">
         <tr>
-          <td colspan="5" class="p-8 text-center text-slate-400">Loading model aliases...</td>
+          <td colspan="5" class="p-8 text-center text-ink-muted" role="status">Loading model aliases...</td>
         </tr>
       </tbody>
     </table>
@@ -58,25 +58,25 @@
 </div>
 
 <!-- Fallback Chains Table -->
-<div class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-  <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-      <i data-lucide="shield" class="text-purple-500 w-5 h-5"></i> Cross-Provider Fallback Chains
+<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden">
+  <div class="p-4 sm:p-6 border-b border-hairline flex justify-between items-center">
+    <h2 class="text-lg font-semibold text-ink flex items-center gap-2">
+      <i data-lucide="shield" class="text-accent w-5 h-5"></i> Cross-Provider Fallback Chains
     </h2>
   </div>
   <div class="p-1 overflow-x-auto">
     <table class="w-full text-left text-sm border-separate border-spacing-0">
-      <thead class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+      <thead class="bg-surface-inset text-ink-muted text-micro font-semibold uppercase tracking-wider">
         <tr>
-          <th class="p-4 rounded-tl-2xl">Chain ID</th>
+          <th class="p-4">Chain ID</th>
           <th class="p-4">Chain Name</th>
           <th class="p-4">Target Providers / Models</th>
-          <th class="p-4 rounded-tr-2xl text-right">Actions</th>
+          <th class="p-4 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody id="chainsTbody" class="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+      <tbody id="chainsTbody" class="divide-y divide-hairline">
         <tr>
-          <td colspan="4" class="p-8 text-center text-slate-400">Loading fallback chains...</td>
+          <td colspan="4" class="p-8 text-center text-ink-muted" role="status">Loading fallback chains...</td>
         </tr>
       </tbody>
     </table>
@@ -84,79 +84,79 @@
 </div>
 
 <!-- Add Alias Modal -->
-<div id="addAliasModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target === this) closeAddAliasModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+<div id="addAliasModal" role="dialog" aria-modal="true" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeAddAliasModal()">
+  <div class="bg-surface-raised border border-hairline rounded-panel p-5 sm:p-8 max-w-md w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-        <i data-lucide="tags" class="w-5 h-5 text-indigo-500"></i> Create Model Alias
+      <h3 class="text-xl font-bold text-ink flex items-center gap-2">
+        <i data-lucide="tags" class="w-5 h-5 text-accent" aria-hidden="true"></i> Create Model Alias
       </h3>
-      <button type="button" onclick="closeAddAliasModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-        <i data-lucide="x" class="w-5 h-5"></i>
+      <button type="button" onclick="closeAddAliasModal()" aria-label="Close dialog" class="min-h-touch min-w-touch shrink-0 -mr-2 rounded-control flex items-center justify-center text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
     <form id="addAliasForm" action="javascript:void(0);" onsubmit="submitCreateAlias(event)" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alias Name</label>
-        <input id="aliasInput" required placeholder="e.g. smart-model" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" />
+        <label for="aliasInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Alias Name</label>
+        <input id="aliasInput" required placeholder="e.g. smart-model" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Backend</label>
-        <select id="backendSelectInput" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" onchange="onAliasBackendChange(this)">
+        <label for="backendSelectInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Backend</label>
+        <select id="backendSelectInput" required class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" onchange="onAliasBackendChange(this)">
           <option value="">Select Backend...</option>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Real Model Name</label>
-        <input id="modelNameInput" required placeholder="e.g. llama-3.1-8b" list="aliasModelDatalist" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" />
+        <label for="modelNameInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Real Model Name</label>
+        <input id="modelNameInput" required placeholder="e.g. llama-3.1-8b" list="aliasModelDatalist" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
         <datalist id="aliasModelDatalist"></datalist>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fallback Chain (Optional)</label>
-        <select id="chainSelectInput" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm">
+        <label for="chainSelectInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Fallback Chain (Optional)</label>
+        <select id="chainSelectInput" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40">
           <option value="">None (No fallback)</option>
         </select>
       </div>
-      <div class="flex justify-end gap-3 mt-6">
-        <button type="button" onclick="closeAddAliasModal()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
-        <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20">Save Alias</button>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
+        <button type="button" onclick="closeAddAliasModal()" class="min-h-touch rounded-control px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">Cancel</button>
+        <button type="submit" class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 text-white rounded-control text-sm font-semibold transition-opacity">Save Alias</button>
       </div>
     </form>
   </div>
 </div>
 
 <!-- Add Fallback Chain Modal -->
-<div id="addChainModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target === this) closeAddChainModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+<div id="addChainModal" role="dialog" aria-modal="true" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeAddChainModal()">
+  <div class="bg-surface-raised border border-hairline rounded-panel p-5 sm:p-8 max-w-lg w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+      <h3 class="text-xl font-bold text-ink flex items-center gap-2">
         <i data-lucide="link" class="w-5 h-5 text-purple-400"></i> Create Fallback Chain
       </h3>
-      <button type="button" onclick="closeAddChainModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-        <i data-lucide="x" class="w-5 h-5"></i>
+      <button type="button" onclick="closeAddChainModal()" aria-label="Close dialog" class="min-h-touch min-w-touch shrink-0 -mr-2 rounded-control flex items-center justify-center text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
     <form id="addChainForm" action="javascript:void(0);" onsubmit="submitCreateChain(event)" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Chain Name</label>
-        <input id="chainNameInput" required placeholder="e.g. production-failover" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm" />
+        <label for="chainNameInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Chain Name</label>
+        <input id="chainNameInput" required placeholder="e.g. production-failover" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
       </div>
 
       <div>
         <div class="flex justify-between items-center mb-2">
-          <label class="block text-xs font-bold text-slate-500 uppercase">Ordered Failover Targets</label>
-          <button type="button" onclick="addChainTargetRow()" class="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer">
+          <span id="chainTargetsLabel" class="block text-caption font-medium text-ink-muted">Ordered Failover Targets</span>
+          <button type="button" onclick="addChainTargetRow()" class="min-h-touch text-caption font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer">
             <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Target
           </button>
         </div>
-        <div id="chainTargetsContainer" class="space-y-2.5">
+        <div id="chainTargetsContainer" role="group" aria-labelledby="chainTargetsLabel" class="space-y-2.5">
           <!-- Dynamically added targets -->
         </div>
-        <p class="text-[11px] text-slate-400 mt-1.5">If Target #1 fails with 429/5xx, the proxy seamlessly cascades to Target #2, and so forth.</p>
+        <p class="text-caption text-ink-muted mt-1.5">If Target #1 fails with 429/5xx, the proxy seamlessly cascades to Target #2, and so forth.</p>
       </div>
 
-      <div class="flex justify-end gap-3 mt-6">
-        <button type="button" onclick="closeAddChainModal()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
-        <button type="submit" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/20">Save Chain</button>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
+        <button type="button" onclick="closeAddChainModal()" class="min-h-touch rounded-control px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">Cancel</button>
+        <button type="submit" class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 text-white rounded-control text-sm font-semibold transition-opacity">Save Chain</button>
       </div>
     </form>
   </div>
@@ -165,6 +165,7 @@
 <script>
 let cachedBackends = [];
 let cachedChains = [];
+let targetRowSeq = 0;
 
 async function loadAliasesAndChains() {
   try {
@@ -179,19 +180,20 @@ async function loadAliasesAndChains() {
 
     // Render Aliases Table
     const aliasTbody = document.getElementById('aliasesTbody');
+    const delBtn = 'min-h-touch min-w-touch inline-flex items-center justify-center rounded-control text-down hover:bg-down/10 cursor-pointer';
     if (aliasTbody) {
       if (!aliases || aliases.length === 0) {
-        aliasTbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">No virtual aliases configured yet.</td></tr>';
+        aliasTbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-ink-muted">No aliases yet &mdash; create one to route a friendly model name to a backend model.</td></tr>';
       } else {
         aliasTbody.innerHTML = aliases.map(a => `
-          <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-            <td class="p-4 font-bold text-indigo-500">${escapeHtml(a.alias)}</td>
-            <td class="p-4 text-slate-700 dark:text-slate-300 font-mono text-xs">${escapeHtml(a.backend_name)}</td>
-            <td class="p-4 text-slate-700 dark:text-slate-300 font-mono text-xs">${escapeHtml(a.model_name)}</td>
-            <td class="p-4">${a.fallback_chain_id ? `<span class="px-2.5 py-1 text-xs rounded-full bg-purple-500/10 text-purple-400 font-semibold">Chain #${a.fallback_chain_id}</span>` : '<span class="text-slate-400 text-xs">None</span>'}</td>
+          <tr class="hover:bg-surface-inset/50 transition-colors">
+            <td class="p-4 font-semibold text-accent">${escapeHtml(a.alias)}</td>
+            <td class="p-4 text-ink font-mono text-caption">${escapeHtml(a.backend_name)}</td>
+            <td class="p-4 text-ink font-mono text-caption">${escapeHtml(a.model_name)}</td>
+            <td class="p-4">${a.fallback_chain_id ? `<span class="px-2.5 py-1 text-caption rounded-control bg-accent/10 text-accent font-semibold">Chain #${escapeHtml(a.fallback_chain_id)}</span>` : '<span class="text-ink-muted text-caption">None</span>'}</td>
             <td class="p-4 text-right">
-              <button onclick="deleteAlias('${escapeHtml(a.alias)}')" class="text-rose-500 hover:text-rose-700 p-2 cursor-pointer" title="Delete Alias">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <button type="button" data-action="delete-alias" data-id="${escapeHtml(a.alias)}" class="${delBtn}" aria-label="Delete alias ${escapeHtml(a.alias)}" title="Delete Alias">
+                <i data-lucide="trash-2" class="w-4 h-4" aria-hidden="true"></i>
               </button>
             </td>
           </tr>
@@ -203,25 +205,25 @@ async function loadAliasesAndChains() {
     const chainsTbody = document.getElementById('chainsTbody');
     if (chainsTbody) {
       if (!cachedChains || cachedChains.length === 0) {
-        chainsTbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-400">No fallback chains configured yet.</td></tr>';
+        chainsTbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-ink-muted">No fallback chains yet &mdash; create one to fail over between backends on 429/5xx errors.</td></tr>';
       } else {
         chainsTbody.innerHTML = cachedChains.map(c => `
-          <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-            <td class="p-4 font-mono text-xs text-slate-400">#${c.id}</td>
-            <td class="p-4 font-bold text-slate-900 dark:text-white">${escapeHtml(c.name)}</td>
+          <tr class="hover:bg-surface-inset/50 transition-colors">
+            <td class="p-4 font-mono text-caption text-ink-muted">#${escapeHtml(c.id)}</td>
+            <td class="p-4 font-semibold text-ink">${escapeHtml(c.name)}</td>
             <td class="p-4">
               <div class="flex flex-wrap gap-1.5">
                 ${(c.targets || []).map((t, idx) => `
-                  <span class="px-2 py-0.5 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md font-mono text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <span class="text-purple-400 font-bold">${idx + 1}.</span> ${escapeHtml(t.backend_name)} &rarr; ${escapeHtml(t.model || '*')}
-                    ${t.translate ? '<span class="text-[9px] bg-indigo-500/10 text-indigo-400 px-1 rounded">translate</span>' : ''}
+                  <span class="px-2 py-0.5 text-caption bg-surface-inset border border-hairline rounded-control font-mono text-ink flex items-center gap-1">
+                    <span class="text-accent font-bold">${idx + 1}.</span> ${escapeHtml(t.backend_name)} &rarr; ${escapeHtml(t.model || '*')}
+                    ${t.translate ? '<span class="text-micro bg-accent/10 text-accent px-1 rounded-control">translate</span>' : ''}
                   </span>
                 `).join('')}
               </div>
             </td>
             <td class="p-4 text-right">
-              <button onclick="deleteChain(${c.id})" class="text-rose-500 hover:text-rose-700 p-2 cursor-pointer" title="Delete Chain">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <button type="button" data-action="delete-chain" data-id="${escapeHtml(c.id)}" class="${delBtn}" aria-label="Delete fallback chain #${escapeHtml(c.id)} ${escapeHtml(c.name)}" title="Delete Chain">
+                <i data-lucide="trash-2" class="w-4 h-4" aria-hidden="true"></i>
               </button>
             </td>
           </tr>
@@ -237,12 +239,12 @@ async function loadAliasesAndChains() {
     }
   } catch (err) {
     console.error("Failed to load aliases and chains", err);
+    const msg = '<tr><td colspan="COLS" class="p-8 text-center text-down">Could not load COLLECTION. Check your connection and reload the page, or sign in again if your session expired.</td></tr>';
+    const at = document.getElementById('aliasesTbody');
+    const ct = document.getElementById('chainsTbody');
+    if (at) at.innerHTML = msg.replace('COLS', '5').replace('COLLECTION', 'model aliases');
+    if (ct) ct.innerHTML = msg.replace('COLS', '4').replace('COLLECTION', 'fallback chains');
   }
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
 function populateModalDropdowns() {
@@ -250,14 +252,14 @@ function populateModalDropdowns() {
   if (backendSelect && cachedBackends) {
     const currentVal = backendSelect.value;
     backendSelect.innerHTML = '<option value="">Select Backend...</option>' + 
-      cachedBackends.map(b => `<option value="${escapeHtml(b.name)}" ${b.name === currentVal ? 'selected' : ''}>${escapeHtml(b.name)} (${b.backend_type || 'LLM'})</option>`).join('');
+      cachedBackends.map(b => `<option value="${escapeHtml(b.name)}" ${b.name === currentVal ? 'selected' : ''}>${escapeHtml(b.name)} (${escapeHtml(b.backend_type || 'LLM')})</option>`).join('');
   }
 
   const chainSelect = document.getElementById('chainSelectInput');
   if (chainSelect && cachedChains) {
     const currentVal = chainSelect.value;
     chainSelect.innerHTML = '<option value="">None (No fallback)</option>' + 
-      cachedChains.map(c => `<option value="${c.id}" ${String(c.id) === currentVal ? 'selected' : ''}>#${c.id} - ${escapeHtml(c.name)}</option>`).join('');
+      cachedChains.map(c => `<option value="${escapeHtml(c.id)}" ${String(c.id) === currentVal ? 'selected' : ''}>#${escapeHtml(c.id)} - ${escapeHtml(c.name)}</option>`).join('');
   }
 }
 
@@ -301,7 +303,8 @@ function addChainTargetRow(backend = '', model = '', translate = false) {
   if (!container) return;
   const index = container.children.length + 1;
   const row = document.createElement('div');
-  row.className = 'target-row p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex flex-col gap-2';
+  row.className = 'target-row p-3 rounded-control bg-surface-inset border border-hairline flex flex-col gap-2';
+  const uid = 'tgt' + (++targetRowSeq);
   
   let backendOptions = '<option value="">Select Backend...</option>';
   if (cachedBackends && cachedBackends.length > 0) {
@@ -309,27 +312,27 @@ function addChainTargetRow(backend = '', model = '', translate = false) {
   }
 
   row.innerHTML = `
-    <div class="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+    <div class="flex items-center justify-between text-caption font-semibold text-ink-muted">
       <span class="row-label">Priority Target #${index}</span>
-      <button type="button" onclick="this.closest('.target-row').remove(); reindexTargets();" class="text-rose-500 hover:text-rose-700 cursor-pointer p-1" title="Remove Target">
-        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+      <button type="button" onclick="this.closest('.target-row').remove(); reindexTargets();" class="min-h-touch min-w-touch inline-flex items-center justify-center rounded-control text-down hover:bg-down/10 cursor-pointer" aria-label="Remove target" title="Remove Target">
+        <i data-lucide="trash-2" class="w-4 h-4" aria-hidden="true"></i>
       </button>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
-        <label class="block text-[10px] text-slate-400 font-bold uppercase mb-0.5">Target Backend</label>
-        <select class="target-backend w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs" required onchange="onTargetBackendSelect(this)">
+        <label for="${uid}-backend" class="mb-1 block text-caption font-medium text-ink-muted">Target Backend</label>
+        <select id="${uid}-backend" class="target-backend w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" required onchange="onTargetBackendSelect(this)">
           ${backendOptions}
         </select>
       </div>
       <div>
-        <label class="block text-[10px] text-slate-400 font-bold uppercase mb-0.5">Model Name (or * for all)</label>
-        <input type="text" class="target-model w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs" placeholder="e.g. llama-3.1-8b or *" value="${escapeHtml(model)}" required />
+        <label for="${uid}-model" class="mb-1 block text-caption font-medium text-ink-muted">Model Name (or * for all)</label>
+        <input type="text" id="${uid}-model" class="target-model w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" placeholder="e.g. llama-3.1-8b or *" value="${escapeHtml(model)}" required />
       </div>
     </div>
-    <label class="inline-flex items-center gap-2 cursor-pointer mt-0.5">
-      <input type="checkbox" class="target-translate rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500" ${translate ? 'checked' : ''} />
-      <span class="text-[11px] text-slate-500 dark:text-slate-400">Protocol Translation (OpenAI &harr; Anthropic)</span>
+    <label class="inline-flex items-center gap-2 cursor-pointer min-h-touch">
+      <input type="checkbox" class="target-translate h-4 w-4 rounded-control border-hairline text-accent focus:ring-accent/40" ${translate ? 'checked' : ''} />
+      <span class="text-caption text-ink-muted">Protocol Translation (OpenAI &harr; Anthropic)</span>
     </label>
   `;
   container.appendChild(row);
@@ -486,7 +489,7 @@ async function deleteAlias(aliasName) {
     }
   } catch (err) {
     console.error("Failed to delete alias", err);
-    showToast('Network Error', 'Failed to communicate with server', 'error');
+    showToast('Network Error', 'Could not reach the server. Check your connection and try again.', 'error');
   }
 }
 
@@ -497,7 +500,7 @@ async function deleteChain(chainId) {
   );
   if (!confirmed) return;
   try {
-    const res = await fetchWithCsrf(`/admin/fallback-chains/${chainId}`, { method: 'DELETE' });
+    const res = await fetchWithCsrf(`/admin/fallback-chains/${encodeURIComponent(chainId)}`, { method: 'DELETE' });
     if (res.ok) {
       showToast('Success', `Fallback chain #${chainId} deleted`);
       await loadAliasesAndChains();
@@ -507,11 +510,22 @@ async function deleteChain(chainId) {
     }
   } catch (err) {
     console.error("Failed to delete fallback chain", err);
-    showToast('Network Error', 'Failed to communicate with server', 'error');
+    showToast('Network Error', 'Could not reach the server. Check your connection and try again.', 'error');
   }
 }
 
+function handleAliasAction(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  if (el.dataset.action === 'delete-alias') deleteAlias(el.dataset.id);
+  else if (el.dataset.action === 'delete-chain') deleteChain(el.dataset.id);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  ['aliasesTbody', 'chainsTbody'].forEach(id => {
+    const tb = document.getElementById(id);
+    if (tb) tb.addEventListener('click', handleAliasAction);
+  });
   loadAliasesAndChains();
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {

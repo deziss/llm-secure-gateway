@@ -13,19 +13,20 @@ block content %}
       Manage system access, roles, and security permissions.
     </p>
   </div>
-  <div class="flex gap-3">
+  <div class="flex flex-wrap gap-3">
     <button
       type="button"
       id="addUserBtn"
       onclick="openAddUserModal()"
-      class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
+      class="min-h-touch px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
     >
       <i data-lucide="user-plus" class="w-4 h-4" aria-hidden="true"></i>
       <span>Add User</span>
     </button>
     <button
+      type="button"
       onclick="window.location.href = '/admin/view/settings#invites'"
-      class="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center gap-2 group shadow-lg"
+      class="min-h-touch px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-all font-bold text-sm flex items-center justify-center gap-2 group shadow-lg"
     >
       <i data-lucide="ticket" class="w-4 h-4 text-indigo-400" aria-hidden="true"></i>
       Manage Invites
@@ -35,7 +36,7 @@ block content %}
 
 <!-- Users Table Section -->
 <div
-  class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+  class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden"
 >
   <div class="p-1">
     <table
@@ -43,7 +44,7 @@ block content %}
       class="w-full text-left text-sm border-separate border-spacing-0"
     >
       <thead
-        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest"
+        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest"
       >
         <tr>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">User Access</th>
@@ -68,7 +69,7 @@ block content %}
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
@@ -91,7 +92,7 @@ block content %}
       <div>
         <label
           for="editEmail"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >User Email</label
         >
         <div class="relative">
@@ -112,7 +113,7 @@ block content %}
         <div>
           <label
             for="editRole"
-            class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+            class="block text-caption font-medium text-ink-muted mb-2"
             >Assign Role</label
           >
           <select
@@ -144,17 +145,17 @@ block content %}
         </div>
       </div>
 
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeEditModal()"
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-blue-500/20"
+          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20"
         >
           Save Changes
         </button>
@@ -165,21 +166,21 @@ block content %}
 
 <!-- Add User Modal -->
 <div id="addUserModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeAddUserModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all" onclick="event.stopPropagation()">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all" onclick="event.stopPropagation()">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="user-plus" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> Register User</h2>
       <button onclick="closeAddUserModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
     <form id="addUserForm" action="javascript:void(0);" class="space-y-6">
       <div>
-        <label for="addUserEmail" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">User Email</label>
+        <label for="addUserEmail" class="block text-caption font-medium text-ink-muted mb-2">User Email</label>
         <div class="relative">
           <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input type="email" id="addUserEmail" name="email" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="admin@example.com" />
         </div>
       </div>
       <div>
-        <label for="addUserPassword" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Password</label>
+        <label for="addUserPassword" class="block text-caption font-medium text-ink-muted mb-2">Password</label>
         <div class="relative">
           <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input type="password" id="addUserPassword" name="password" minlength="8" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="Min 8 characters" />
@@ -187,7 +188,7 @@ block content %}
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label for="addUserRole" class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Role</label>
+          <label for="addUserRole" class="block text-caption font-medium text-ink-muted mb-2">Role</label>
           <select id="addUserRole" name="role" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer">
             <option value="VIEWER">Viewer</option>
             <option value="DEVELOPER">Developer</option>
@@ -202,9 +203,9 @@ block content %}
           </label>
         </div>
       </div>
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-        <button type="button" onclick="closeAddUserModal()" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition">Cancel</button>
-        <button type="submit" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20">Register</button>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <button type="button" onclick="closeAddUserModal()" class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition">Cancel</button>
+        <button type="submit" class="min-h-touch px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-control transition shadow-lg shadow-indigo-500/20">Register</button>
       </div>
     </form>
   </div>
@@ -219,7 +220,7 @@ block content %}
   onclick="if(event.target === this) closeResetPasswordModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
@@ -254,7 +255,7 @@ block content %}
       <div>
         <label
           for="resetNewPassword"
-          class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2"
+          class="block text-caption font-medium text-ink-muted mb-2"
           >New Security Password</label
         >
         <div class="relative">
@@ -271,7 +272,7 @@ block content %}
         </div>
       </div>
 
-      <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="
@@ -279,13 +280,13 @@ block content %}
               .getElementById('resetPasswordModal')
               .classList.add('hidden')
           "
-          class="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="px-8 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition shadow-lg shadow-rose-500/20"
+          class="min-h-touch px-8 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-control transition shadow-lg shadow-rose-500/20"
         >
           Force Reset
         </button>

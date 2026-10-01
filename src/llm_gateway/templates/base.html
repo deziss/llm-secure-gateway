@@ -9,7 +9,7 @@
     <!-- Core UI & DataTables Stylesheet -->
     <link rel="stylesheet" href="/static/css/jquery.dataTables.min.css" />
     <!-- Favicon & Brand Logo -->
-    <link rel="icon" type="image/png" href="/static/img/logo.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/static/img/favicon.png" />
     <!-- Lucide Vector Icons -->
     <script src="/static/js/lucide.min.js"></script>
     <script src="/static/js/icons.js"></script>
@@ -43,22 +43,47 @@
     </script>
     <script src="/static/js/globals.js"></script>
     <script>
-        // Apply theme immediately to prevent FOUC
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        // Apply theme before first paint to prevent a flash of the wrong theme.
+        // localStorage throws in private windows / with site data blocked, so
+        // it is guarded; on failure we fall back to the OS preference.
+        (function () {
+            var saved = null;
+            try { saved = window.localStorage.getItem('theme'); } catch (e) {}
+            var dark = saved === 'dark' ||
+                (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', dark);
+        })();
     </script>
   </head>
 
-  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
-    {% if not hide_header %} {% include 'header.html' %} {% endif %}
+  <body class="min-h-screen bg-surface-base font-sans text-ink antialiased">
+    {#
+      One `content` block, rendered once, between conditional wrappers: Jinja
+      forbids defining the same block twice, so the shell/bare split is done
+      around the block rather than by duplicating it.
+    #}
+    {% if not hide_header %}
+    <a href="#main"
+       class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[10000] focus:rounded-control focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-ink">Skip to content</a>
 
-    <div class="container mx-auto p-6">{% block content %}{% endblock %}</div>
+    {% include '_sidebar.html' %}
+
+    <div class="flex min-h-screen flex-col md:pl-rail lg:pl-sidebar">
+      {% include '_topbar.html' %}
+      <main id="main" tabindex="-1" class="mx-auto w-full max-w-screen-2xl flex-1 p-4 outline-none sm:p-6 lg:p-8">
+    {% else %}
+    <main id="main" class="container mx-auto p-6">
+    {% endif %}
+        {% block content %}{% endblock %}
+    {% if not hide_header %}
+      </main>
+    </div>
+    {% else %}
+    </main>
+    {% endif %}
 
     <!-- Global Confirmation Modal -->
-    <div id="globalConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4">
+    <div id="globalConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4" role="alertdialog" aria-modal="true" aria-labelledby="globalConfirmTitle" aria-describedby="globalConfirmMessage">
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="globalConfirmContent">
         <div class="text-center">
           <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
@@ -79,16 +104,17 @@
     </div>
 
     <!-- Global Notification/Toast -->
-    <div id="globalToast" class="fixed bottom-8 right-8 z-[9999] transform transition-all translate-y-20 opacity-0 pointer-events-none" role="alert" aria-live="assertive">
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[300px]">
+    <div id="globalToast" class="fixed inset-x-4 bottom-4 z-[9999] transform transition-all translate-y-20 opacity-0 pointer-events-none sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[22rem]" role="alert" aria-live="assertive">
+        <div class="flex items-center gap-4 rounded-panel bg-surface-raised px-5 py-4 shadow-overlay">
             <div id="toastIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg"></div>
             <div>
-                <p id="toastTitle" class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5"></p>
-                <p id="toastMessage" class="text-sm text-slate-700 dark:text-slate-200 font-medium"></p>
+                <p id="toastTitle" class="mb-0.5 text-caption font-semibold text-ink-muted"></p>
+                <p id="toastMessage" class="text-sm font-medium text-ink"></p>
             </div>
         </div>
     </div>
 
     <script src="/static/js/ui-components.js"></script>
+    {% if not hide_header %}<script src="/static/js/admin-modal.js"></script><script src="/static/js/admin-table.js"></script><script src="/static/js/shell.js"></script>{% endif %}
   </body>
 </html>

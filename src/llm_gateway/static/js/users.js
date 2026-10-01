@@ -26,8 +26,8 @@ $(document).ready(function () {
                 ${initials}
               </div>
               <div class="flex flex-col">
-                <span class="text-white font-bold text-base tracking-tight">${escapeHtml(data.email)}</span>
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">${escapeHtml(data.id)}</span>
+                <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(data.email)}</span>
+                <span class="text-micro font-mono text-ink-muted uppercase tracking-widest">${escapeHtml(data.id)}</span>
               </div>
             </div>
           `;
@@ -50,17 +50,17 @@ $(document).ready(function () {
               ADMIN: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
               MANAGER: "bg-blue-500/10 text-blue-400 border-blue-500/20",
               DEVELOPER: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-              VIEWER: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+              VIEWER: "bg-slate-500/10 text-ink-muted border-slate-500/20",
             }[roleVal] ||
-            "bg-slate-500/10 text-slate-400 border-slate-500/20";
+            "bg-slate-500/10 text-ink-muted border-slate-500/20";
 
           return `
             <div class="flex flex-col gap-2">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusCls} w-fit">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold border ${statusCls} w-fit">
                 <span class="w-1 h-1 rounded-full ${data ? "bg-emerald-400" : "bg-rose-400"} mr-1.5 ${data ? "animate-pulse" : ""}"></span>
                 ${statusText}
               </span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-extrabold border ${roleCls} w-fit uppercase">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-micro font-extrabold border ${roleCls} w-fit uppercase">
                 ${escapeHtml(roleVal)}
               </span>
             </div>
@@ -75,11 +75,11 @@ $(document).ready(function () {
             ? new Date(row.last_login).toLocaleString()
             : "Never";
           return `
-            <div class="flex flex-col text-[11px] gap-1">
-              <div class="flex items-center gap-2 text-slate-400">
-                <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i> <span>Joined: ${created}</span>
+            <div class="flex flex-col text-caption gap-1">
+              <div class="flex items-center gap-2 text-ink-muted">
+                <i data-lucide="calendar" class="w-3.5 h-3.5 text-ink-muted"></i> <span>Joined: ${created}</span>
               </div>
-              <div class="flex items-center gap-2 text-slate-500 font-medium">
+              <div class="flex items-center gap-2 text-ink-muted font-medium">
                 <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-600"></i> <span>Last Login: ${lastLogin}</span>
               </div>
             </div>
@@ -90,26 +90,26 @@ $(document).ready(function () {
         data: null,
         className: "text-right",
         render: function (data) {
-          const safeId = data.id.replace(/'/g, "\'");
+          const safeId = escapeHtml(String(data.id));
           if (USER_ROLE === "admin" || USER_ROLE === "manager") {
             let actions = `
-              <button type="button" onclick="openEditModal('${safeId}')" class="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all border border-slate-700 cursor-pointer" title="Edit Permissions">
+              <button type="button" data-action="edit" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-surface-inset text-ink hover:bg-hairline rounded-lg transition-all border border-hairline cursor-pointer" title="Edit Permissions" aria-label="Edit Permissions">
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
               </button>`;
 
             if (USER_ROLE === "admin") {
               actions += `
-                <button type="button" onclick="openResetPasswordModal('${safeId}')" class="p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Reset Password">
+                <button type="button" data-action="reset" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Reset Password" aria-label="Reset Password">
                   <i data-lucide="key" class="w-4 h-4"></i>
                 </button>
-                <button type="button" onclick="deleteUser('${safeId}')" class="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Delete Account">
+                <button type="button" data-action="delete" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Delete Account" aria-label="Delete Account">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
               `;
             }
             return `<div class="flex justify-end gap-2">${actions}</div>`;
           }
-          return `<span class="text-slate-600 text-[10px] font-bold uppercase tracking-widest italic">Protected</span>`;
+          return `<span class="text-slate-600 text-micro font-bold uppercase tracking-widest italic">Protected</span>`;
         },
       },
     ],
@@ -324,3 +324,15 @@ async function deleteUser(userId) {
     showToast("Error", "Failed to communicate with deletion service.", "error");
   }
 }
+
+// Delegated row-action handler (ids stay inert in data-id).
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const { action, id } = btn.dataset;
+  switch (action) {
+    case "edit": return openEditModal(id);
+    case "reset": return openResetPasswordModal(id);
+    case "delete": return deleteUser(id);
+  }
+});

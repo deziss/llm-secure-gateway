@@ -27,8 +27,8 @@ $(document).ready(function () {
                 ${initials}
               </div>
               <div class="flex flex-col">
-                <span class="text-white font-bold text-base tracking-tight">${escapeHtml(name)}</span>
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">${escapeHtml(d.id)}</span>
+                <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(name)}</span>
+                <span class="text-micro font-mono text-ink-muted uppercase tracking-widest">${escapeHtml(d.id)}</span>
               </div>
             </div>
           `;
@@ -43,13 +43,13 @@ $(document).ready(function () {
               : "bg-blue-500/10 text-blue-400 border-blue-500/20";
           const icon =
             data === "project" ? "layers" : "user";
-          return `<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${escapeHtml(data)}</span>`;
+          return `<span class="px-2.5 py-1 rounded-lg text-micro font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${escapeHtml(data)}</span>`;
         },
       },
       {
         data: "description",
         render: (data) => {
-          return `<div class="text-xs text-slate-400 max-w-[200px] truncate" title="${escapeHtml(data || '')}">${data ? escapeHtml(data) : '<span class="italic opacity-50">No description</span>'}</div>`;
+          return `<div class="text-xs text-ink-muted max-w-[200px] truncate" title="${escapeHtml(data || '')}">${data ? escapeHtml(data) : '<span class="italic opacity-50">No description</span>'}</div>`;
         },
       },
       {
@@ -62,15 +62,15 @@ $(document).ready(function () {
           const isActive = row.is_active !== false;
           const activeCls = isActive
             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-            : "bg-slate-500/10 text-slate-400 border-slate-500/20";
+            : "bg-slate-500/10 text-ink-muted border-slate-500/20";
           const activeText = isActive ? "ACTIVE" : "INACTIVE";
           return `
             <div class="flex flex-col gap-1">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border ${statusCls} w-fit">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold border ${statusCls} w-fit">
                 <span class="w-1 h-1 rounded-full ${data ? "bg-rose-400" : "bg-emerald-400"} mr-1.5"></span>
                 ${statusText}
               </span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border ${activeCls} w-fit">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold border ${activeCls} w-fit">
                 <span class="w-1 h-1 rounded-full ${isActive ? "bg-emerald-400" : "bg-slate-400"} mr-1.5"></span>
                 ${activeText}
               </span>
@@ -82,14 +82,14 @@ $(document).ready(function () {
         data: "id",
         className: "text-right",
         render: function (data) {
-          const safeId = data.replace(/'/g, "\'");
+          const safeId = escapeHtml(String(data));
           let btns = `
-            <button type="button" onclick="openKeysModal('${safeId}')" class="p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Manage API Keys"><i data-lucide="key" class="w-4 h-4"></i></button>
-            <button type="button" onclick="openPermissionsModal('${safeId}')" class="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20 cursor-pointer" title="Access Grants"><i data-lucide="shield-check" class="w-4 h-4"></i></button>
-            <button type="button" onclick="openEditModal('${safeId}')" class="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all border border-slate-700 cursor-pointer" title="Edit Profile"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+            <button type="button" data-action="keys" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Manage API Keys" aria-label="Manage API Keys"><i data-lucide="key" class="w-4 h-4"></i></button>
+            <button type="button" data-action="perms" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20 cursor-pointer" title="Access Grants" aria-label="Access Grants"><i data-lucide="shield-check" class="w-4 h-4"></i></button>
+            <button type="button" data-action="edit" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-surface-inset text-ink hover:bg-hairline rounded-lg transition-all border border-hairline cursor-pointer" title="Edit Profile" aria-label="Edit Profile"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
           `;
           if (["admin", "manager"].includes(USER_ROLE)) {
-            btns += `<button type="button" onclick="deleteOwner('${safeId}')" class="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Revoke Owner"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+            btns += `<button type="button" data-action="delete" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Revoke Owner" aria-label="Revoke Owner"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
           }
           return `<div class="flex justify-end gap-2">${btns}</div>`;
         },
@@ -299,7 +299,7 @@ async function loadKeys(ownerId) {
     const keys = await res.json();
 
     if (keys.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-500 italic text-sm">No active keys. Click 'Issue New Key' below.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-ink-muted italic text-sm">No active keys. Click 'Issue New Key' below.</td></tr>`;
       return;
     }
 
@@ -307,19 +307,19 @@ async function loadKeys(ownerId) {
       .map(
         (k) => `
       <tr class="hover:bg-slate-800/20 transition-colors">
-        <td class="p-4 font-mono font-bold text-white tracking-wider flex items-center gap-2">
+        <td class="p-4 font-mono font-bold text-ink tracking-wider flex items-center gap-2">
           <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500"></i> ${escapeHtml(k.prefix)}••••••••
         </td>
         <td class="p-4">
           <div class="flex flex-wrap gap-1">
-            ${(k.scopes || []).map(s => `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${escapeHtml(s)}</span>`).join('')}
+            ${(k.scopes || []).map(s => `<span class="px-2 py-0.5 rounded text-micro font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${escapeHtml(s)}</span>`).join('')}
           </div>
         </td>
-        <td class="p-4 text-xs text-slate-400">
-          ${k.expires_at ? new Date(k.expires_at).toLocaleDateString() : '<span class="text-slate-500 font-mono">Never</span>'}
+        <td class="p-4 text-xs text-ink-muted">
+          ${k.expires_at ? new Date(k.expires_at).toLocaleDateString() : '<span class="text-ink-muted font-mono">Never</span>'}
         </td>
         <td class="p-4 text-right">
-          <button type="button" onclick="revokeKey('${escapeHtml(k.prefix)}')" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer" title="Revoke Key">
+          <button type="button" data-action="revoke-key" data-prefix="${escapeHtml(k.prefix)}" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer" title="Revoke Key" aria-label="Revoke key">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </td>
@@ -390,24 +390,30 @@ async function createKeyFromModal() {
     const modal = document.createElement("div");
     modal.className =
       "fixed inset-0 bg-black/90 backdrop-blur-xl flex justify-center items-center z-[100] p-4";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "newKeyTitle");
     modal.innerHTML = `
-      <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl text-center">
-        <div class="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl shadow-lg shadow-emerald-500/20">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel w-full max-w-lg shadow-overlay text-center max-h-[90vh] overflow-y-auto">
+        <div class="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl shadow-lg shadow-emerald-500/20" aria-hidden="true">
           <i data-lucide="key" class="w-8 h-8"></i>
         </div>
-        <h3 class="text-2xl font-bold text-white mb-2">New API Key Issued</h3>
-        <p class="text-slate-400 text-sm mb-6">Store this key securely. It will never be shown again.</p>
+        <h3 id="newKeyTitle" class="text-2xl font-bold text-slate-900 dark:text-white mb-2">New API Key Issued</h3>
+        <p class="text-ink-muted dark:text-ink-muted text-sm mb-6">Store this key securely. It will never be shown again.</p>
         <div class="relative group mb-8">
           <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-20 transition"></div>
-          <div class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-emerald-400 break-all select-all">
-            ${escapeHtml(data.api_key)}
-          </div>
+          <div id="newKeyValue" class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-emerald-400 break-all select-all"></div>
         </div>
-        <button onclick="this.closest('.fixed').remove(); loadKeys('${ownerId.replace(/'/g, "\\'")}');" class="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-slate-200 transition cursor-pointer">
-          Acknowledged & Saved
+        <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-3 bg-slate-900 text-white dark:bg-white dark:text-black font-bold rounded-control hover:opacity-90 transition cursor-pointer">
+          Acknowledged &amp; Saved
         </button>
       </div>
     `;
+    modal.querySelector("#newKeyValue").textContent = data.api_key;
+    modal.querySelector("#newKeyCloseBtn").addEventListener("click", () => {
+      modal.remove();
+      loadKeys(ownerId);
+    });
     document.body.appendChild(modal);
     if (window.lucide) window.lucide.createIcons();
   } catch (e) {
@@ -426,7 +432,7 @@ async function loadPermissions(ownerId) {
   if (perms.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="3" class="p-12 text-center text-slate-500 italic">
+        <td colspan="3" class="p-12 text-center text-ink-muted italic">
           <i data-lucide="shield-alert" class="w-8 h-8 mb-4 block mx-auto opacity-20"></i>
           No permissions active. Access will be rejected.
         </td>
@@ -442,19 +448,19 @@ async function loadPermissions(ownerId) {
       <td class="p-4">
         <div class="flex items-center gap-2">
           <div class="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></div>
-          <span class="font-bold text-white tracking-wide">${escapeHtml(p.backend_name)}</span>
+          <span class="font-bold text-ink tracking-wide">${escapeHtml(p.backend_name)}</span>
         </div>
       </td>
       <td class="p-4">
         <div class="flex flex-wrap gap-1">
-          ${(p.allowed_models || []).map((m) => `<span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-slate-400 font-mono">${escapeHtml(m)}</span>`).join("")}
+          ${(p.allowed_models || []).map((m) => `<span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-micro text-ink-muted font-mono">${escapeHtml(m)}</span>`).join("")}
         </div>
       </td>
       <td class="p-4 text-right">
         ${
           USER_ROLE === "admin" || USER_ROLE === "manager"
             ? `
-          <button type="button" onclick="deletePermission(${p.id})" class="text-slate-500 hover:text-red-500 transition-colors p-1 cursor-pointer" title="Remove Grant">
+          <button type="button" data-action="delete-perm" data-id="${escapeHtml(String(p.id))}" class="text-ink-muted hover:text-red-500 transition-colors p-1 cursor-pointer" title="Remove Grant" aria-label="Remove grant">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>`
             : ""
@@ -566,3 +572,19 @@ async function deletePermission(permId) {
     showToast("Error", e.message, "error");
   }
 }
+
+// Delegated row-action handler: ids travel as inert data-* attributes, never
+// interpolated into inline JS.
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const { action, id, prefix } = btn.dataset;
+  switch (action) {
+    case "keys": return openKeysModal(id);
+    case "perms": return openPermissionsModal(id);
+    case "edit": return openEditModal(id);
+    case "delete": return deleteOwner(id);
+    case "revoke-key": return revokeKey(prefix);
+    case "delete-perm": return deletePermission(Number(id));
+  }
+});
