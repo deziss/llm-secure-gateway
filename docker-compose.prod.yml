@@ -30,7 +30,9 @@ services:
     build: .
     container_name: llm-gateway-1
     environment: &gw-env
+    - ENABLE_TELEMETRY=${ENABLE_TELEMETRY:-false}
     - PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT:-http://host.docker.internal:6006}
+    - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
     - LOG_LEVEL=${LOG_LEVEL:-info}
     - UVICORN_LOOP=asyncio

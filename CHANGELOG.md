@@ -1,3 +1,44 @@
+## [0.10.2] - 2026-10-01
+
+### 🔑 Fixed: login returned HTTP 500
+
+Every password check succeeded and then died writing `last_login`:
+
+```
+sqlalchemy.exc.StatementError: (builtins.ValueError) Datetime values must have timezone information.
+[SQL: UPDATE "user" SET last_login=$1::TIMESTAMP WITH TIME ZONE WHERE "user".id = $2::UUID]
+```
+
+All 23 timestamp columns in this schema are `TIMESTAMP WITHOUT TIME ZONE`, and all code writes naive UTC. sqlmodel 0.0.23+ changed a bare `datetime` annotation to map to `UTCDateTime(timezone=True)`, which rejects naive values outright. Because `pyproject.toml` pins only `sqlmodel>=0.0.22`, the change arrived silently through a dependency upgrade — the deployed container had drifted to 0.0.47.
+
+- **Table fields now pin `sa_type=DateTime(timezone=False)`**, matching the existing schema. No migration is required and no stored data changes. `sa_type` is used rather than a `NaiveDatetime` annotation because it works across every sqlmodel version the project supports — `NaiveDatetime` does not exist in 0.0.37 and would have broken the declared floor.
+- **Request/response schemas keep bare `datetime`**, so API clients may still send timezone-aware values.
+- Replaced the deprecated `datetime.utcnow()` in the settings router with the shared `_utcnow()` helper.
+
+### 🔇 Added: `ENABLE_TELEMETRY` on/off switch
+
+Logs were flooded with OTLP retries against a collector that was never reachable:
+
+```
+Transient error HTTPConnectionPool(host='localhost', port=4318): ... [Errno 111] Connection refused ... retrying in 3.71s.
+Failed to export metrics batch due to timeout, max retries or shutdown.
+```
+
+- **`ENABLE_TELEMETRY` (default `false`) is now the master switch** for all OpenTelemetry/Phoenix export, covering the global provider, `setup_phoenix_telemetry()` and the per-tenant `PhoenixTraceManager` tracers.
+- **When off, exporter-free providers are installed explicitly.** Returning early was not sufficient: opentelemetry lazily auto-configures an SDK provider from `OTEL_EXPORTER_OTLP_ENDPOINT` the first time a meter is requested, which is what kept the exporter alive and retrying even with export nominally "off". The OTLP endpoint variables are also cleared and `OTEL_SDK_DISABLED=true` is set.
+- **Fixed a wrong endpoint in `docker-compose.yml`**: `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, commented "Points to host". Inside a container `localhost` is the container itself, so nothing ever listened. It is now `host.docker.internal:4318` and overridable.
+- Exporter retry chatter is capped at `ERROR` when telemetry *is* enabled, so a collector going away mid-run no longer logs a warning per retry.
+
+### ✅ Tests
+
+- Added `tests/test_datetime_and_telemetry.py`: fails if any table timestamp column becomes timezone-aware (the login-500 regression), if `_utcnow()` stops being naive, or if the telemetry switch stops defaulting to off / stops clearing the OTLP endpoint variables. **329 tests passing.**
+
+### ⚠️ Note
+
+Changing `ENABLE_TELEMETRY` in `.env` requires `docker compose up -d`. `docker restart` reuses the container's existing environment and will appear to ignore the change.
+
+---
+
 ## [0.10.1] - 2026-09-21
 
 ### 🐌 Fixed: admin UI and connection pool stalling on unreachable backends

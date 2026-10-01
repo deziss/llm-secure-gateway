@@ -10,11 +10,39 @@ from phoenix.otel import register
 
 from opentelemetry.sdk.trace import TracerProvider as SDKTracerProvider
 
+from .config import (
+    ENABLE_TELEMETRY_ENV,
+    neutralize_otlp_env,
+    silence_otlp_exporter_logs,
+    telemetry_enabled,
+)
 from .metrics import setup_metrics
 
 
 def setup_telemetry(app) -> None:
-    """ Setup Phoenix OpenTelemetry for FastAPI app. """
+    """Set up Phoenix / OpenTelemetry for the FastAPI app.
+
+    No-op unless ENABLE_TELEMETRY is truthy.  When off, no exporter is created,
+    so nothing can retry against an unreachable collector.
+    """
+    if not telemetry_enabled():
+        logging.info(
+            "Telemetry disabled (set %s=true to enable OpenTelemetry/Phoenix export).",
+            ENABLE_TELEMETRY_ENV,
+        )
+        # Explicitly install exporter-free providers.  Simply returning here is
+        # not enough: opentelemetry's get_meter_provider()/get_tracer_provider()
+        # lazily auto-configure an SDK provider from OTEL_EXPORTER_OTLP_ENDPOINT
+        # the first time anything asks for a meter, which is what kept the OTLP
+        # exporter alive -- and retrying forever -- even with export "off".
+        neutralize_otlp_env()
+        trace.set_tracer_provider(SDKTracerProvider())
+        metrics.set_meter_provider(MeterProvider(metric_readers=[]))
+        # Local, in-process metric instruments still work; only export is off.
+        setup_metrics()
+        return
+
+    silence_otlp_exporter_logs()
     resource = Resource.create({
         "service.name": "llm-gateway",
         "service.version": os.getenv("APP_VERSION", "0.6.0"),
@@ -79,6 +107,14 @@ def setup_telemetry(app) -> None:
 
 
 def setup_phoenix_telemetry() -> SDKTracerProvider:
+    """Register a Phoenix tracer provider.
+
+    Returns a plain, exporter-free provider when telemetry is switched off, so
+    callers get a usable object without opening a connection to anything.
+    """
+    if not telemetry_enabled():
+        return SDKTracerProvider()
+
     endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006")
     api_key = os.getenv("PHOENIX_API_KEY")
 

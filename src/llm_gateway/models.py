@@ -1,9 +1,18 @@
 from enum import Enum
 from typing import Optional, List, Dict
+from sqlalchemy import DateTime
 from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import JSON, UniqueConstraint
 from datetime import datetime, timezone
 
+# All timestamp columns in this database are `TIMESTAMP WITHOUT TIME ZONE` and
+# every value written is naive UTC (see _utcnow below).  Since sqlmodel 0.0.23 a
+# bare `datetime` annotation maps to UTCDateTime(timezone=True), which rejects
+# naive values outright -- so table fields pin sa_type=DateTime(timezone=False)
+# to match the existing schema.  sa_type is used rather than a NaiveDatetime
+# annotation because it works on every sqlmodel version this project supports.
+# Non-table request/response schemas keep bare `datetime` so API clients may
+# still send timezone-aware values.
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -36,8 +45,8 @@ class LLMBackend(SQLModel, table=True):
     translation_mode: str = Field(default="none", description="Protocol Translation Mode (none, anthropic_to_openai, openai_to_anthropic)")
     normalize_thinking: bool = Field(default=False, description="Whether to extract and normalize thinking blocks (<think>...</think>)")
     weight: int = Field(default=100, description="Load balancing weight (higher = more traffic)")
-    created_at: datetime = Field(default_factory=_utcnow)
-    updated_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
 
 class APIKeyScope(str, Enum):
     """Hierarchical scopes for API key access control.
@@ -71,11 +80,11 @@ class APIKey(SQLModel, table=True):
     prefix: str = Field(index=True)  # Added index for revoke_key lookups
     owner_id: str = Field(foreign_key="owner.id", index=True, description="Owner of the key")
     scopes: List[str] = Field(sa_column=Column(JSON))
-    expires_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     rate_limit_rpm: Optional[int] = Field(default=60)
     monthly_budget_usd: Optional[float] = Field(default=None, description="Monthly spend limit in USD (None=unlimited)")
-    created_at: datetime = Field(default_factory=_utcnow)
-    updated_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     is_active: bool = True
 
     # Back-reference to Owner
@@ -100,8 +109,8 @@ class Owner(SQLModel, table=True):
     description: Optional[str] = Field(default=None, description="Description of this owner/project")
     max_keys: int = Field(default=5, description="Maximum number of active API keys allowed")
     monthly_budget_usd: Optional[float] = Field(default=None, description="Monthly spend limit in USD (None=unlimited)")
-    created_at: datetime = Field(default_factory=_utcnow)
-    updated_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     
     # Relationships for cascade operations
     api_keys: List["APIKey"] = Relationship(back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan", "foreign_keys": "[APIKey.owner_id]"})
@@ -129,8 +138,8 @@ class ProviderKey(SQLModel, table=True):
     owner_id: str = Field(foreign_key="owner.id", index=True, description="Owner of this key")
     provider_id: str = Field(index=True, description="Provider identifier (e.g. 'openai')")
     encrypted_key: str = Field(description="Encrypted API key")
-    created_at: datetime = Field(default_factory=_utcnow)
-    updated_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     
     # Back-reference
     owner: Optional[Owner] = Relationship(back_populates="provider_keys")
@@ -143,7 +152,7 @@ class OwnerPermission(SQLModel, table=True):
     backend_name: str = Field(foreign_key="llmbackend.name", index=True, description="Allowed backend")
     allowed_models: List[str] = Field(default_factory=lambda: ["*"], sa_column=Column(JSON), description="List of allowed models, or ['*'] for all")
     allowed_endpoints: List[str] = Field(default_factory=lambda: ["*"], sa_column=Column(JSON), description="DEPRECATED: No longer enforced. Endpoint auth is handled by API key scopes.")
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
     # Back-reference
     owner: Optional[Owner] = Relationship(back_populates="permissions")
@@ -151,12 +160,12 @@ class OwnerPermission(SQLModel, table=True):
 class SystemSetting(SQLModel, table=True):
     key: str = Field(primary_key=True, description="Configuration key (e.g., REQUIRE_INVITE)")
     value: str = Field(description="Configuration value")
-    updated_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 class AuditLog(SQLModel, table=True):
     """Persistent audit trail. Written when ENABLE_AUDIT_DB is true."""
     id: Optional[int] = Field(default=None, primary_key=True)
-    timestamp: datetime = Field(default_factory=_utcnow, index=True)
+    timestamp: datetime = Field(default_factory=_utcnow, index=True, sa_type=DateTime(timezone=False))
     event_type: str = Field(index=True, description="e.g. policy_eval, key_created, key_revoked")
     identity: str = Field(index=True, description="e.g. apikey:dev-team, spiffe:..., unknown")
     resource: str = Field(description="Affected resource path or ID")
@@ -170,7 +179,7 @@ class InviteCode(SQLModel, table=True):
     created_by: str = Field(description="Admin user email who created this invite")
     used_by: Optional[str] = Field(default=None, description="Email of user who claimed this invite")
     is_used: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 class LLMBot(SQLModel, table=True):
@@ -184,7 +193,7 @@ class LLMBot(SQLModel, table=True):
     webhook_secret: Optional[str] = Field(default=None, description="Secret token for webhooks")
     enabled: bool = Field(default=True, description="Whether the bot is active")
     history_limit: int = Field(default=10, description="Max conversation messages to retain in memory context")
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 class LLMBotMessage(SQLModel, table=True):
@@ -193,7 +202,7 @@ class LLMBotMessage(SQLModel, table=True):
     chat_id: str = Field(index=True, description="Unique chat or channel ID from platform")
     role: str = Field(description="Message role: user or assistant")
     content: str = Field(description="Message content")
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 class LLMBotResponse(SQLModel):
@@ -216,7 +225,7 @@ class FallbackChain(SQLModel, table=True):
     name: str = Field(unique=True, index=True, description="Human-readable chain name, e.g. 'production-code'")
     targets: List[Dict] = Field(default_factory=list, sa_column=Column(JSON),
         description='Ordered list of targets: [{"backend_name": "...", "model": "...", "translate": false}]')
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 class ModelAlias(SQLModel, table=True):
@@ -226,7 +235,7 @@ class ModelAlias(SQLModel, table=True):
     model_name: str = Field(description="Real model name on that backend")
     fallback_chain_id: Optional[int] = Field(default=None, foreign_key="fallbackchain.id",
         description="Optional fallback chain to use on failure")
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 class SpendRecord(SQLModel, table=True):
@@ -239,7 +248,7 @@ class SpendRecord(SQLModel, table=True):
     input_tokens: int = Field(default=0)
     output_tokens: int = Field(default=0)
     cost_usd: float = Field(default=0.0, description="Calculated cost in USD")
-    created_at: datetime = Field(default_factory=_utcnow, index=True)
+    created_at: datetime = Field(default_factory=_utcnow, index=True, sa_type=DateTime(timezone=False))
 
 
 # ── v0.7.0: Performance & Caching ────────────────────────────────────
@@ -253,6 +262,6 @@ class CachedResponse(SQLModel, table=True):
     input_tokens: int = Field(default=0)
     output_tokens: int = Field(default=0)
     hit_count: int = Field(default=0, description="Number of cache hits")
-    created_at: datetime = Field(default_factory=_utcnow)
-    expires_at: datetime = Field(description="Expiry timestamp for TTL enforcement")
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    expires_at: datetime = Field(description="Expiry timestamp for TTL enforcement", sa_type=DateTime(timezone=False))
 
