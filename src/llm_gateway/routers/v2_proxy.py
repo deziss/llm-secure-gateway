@@ -13,6 +13,7 @@ from ..services import ConfigService, get_config_service
 from ..database import get_session
 from ..telemetry import record_request_metrics, stream_with_telemetry, flatten_attributes, PhoenixTraceManager
 from ..proxy_helpers import (
+    passthrough_response_headers,
     get_owner_id_from_request,
     apply_rate_limit,
     check_owner_permissions,
@@ -80,6 +81,17 @@ async def direct_proxy(
     backend = await config_service.get_backend(session, backend_name)
     if not backend:
         raise HTTPException(status_code=404, detail=f"Backend '{backend_name}' not found")
+
+    # Direct mode targets one named backend explicitly, so there is no model
+    # alias to resolve and therefore no fallback chain. The provider and legacy
+    # routes set this while resolving aliases; it was never set here, so every
+    # /direct/... request raised NameError and returned 500.
+    fallback_chain_id = None
+    # Direct mode doesn't consult the response cache, so it doesn't populate it
+    # either. These were also never defined here; a non-streaming direct call
+    # would have hit a NameError while writing the response.
+    cache_key = None
+    enable_semantic_cache = "false"
 
     # 1. Fast-Path Optimization check
     enable_fast_path = await config_service.get_setting(session, "ENABLE_FAST_PATH_OPTIMIZATIONS", "false")
@@ -212,7 +224,7 @@ async def direct_proxy(
                     on_complete=on_stream_complete,
                 ),
                 status_code=r.status_code,
-                headers=dict(r.headers),
+                headers=passthrough_response_headers(r.headers),
             )
 
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:
@@ -553,7 +565,7 @@ async def dynamic_proxy(
                     on_complete=on_stream_complete,
                 ),
                 status_code=r.status_code,
-                headers=dict(r.headers),
+                headers=passthrough_response_headers(r.headers),
             )
 
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:

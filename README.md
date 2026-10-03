@@ -1,6 +1,6 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.11.1-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.12.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -10,7 +10,7 @@
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
 <p align="center">
-  <img src="assets/dashboard.png" alt="The LLM Secure Gateway admin dashboard on desktop: sidebar navigation, active users, backend health, model count, a requests-per-minute chart and live connections" width="640" />
+  <img src="assets/dashboard.png" alt="The LLM Secure Gateway admin dashboard: KPI cards for users, backends, models, spend and tokens; live traffic chart; 14-day spend; top models; budget and key-expiry alerts; cache savings; security events; backend health" width="720" />
   &nbsp;
   <img src="assets/dashboard-mobile.png" alt="The same admin panel on a phone: a hamburger menu and user records shown as labelled cards" width="190" />
   <br />
@@ -79,6 +79,13 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Granular Model Quarantining**: Temporarily isolates failing `(backend, model)` routes upon HTTP errors (401/403: 1h, 429: 5m, 503: 1m, 500: 30s) while keeping healthy models on the same host operational.
 - **Cross-Provider Fallback Chains**: Prioritized failover across backends and models if a provider fails or exceeds capacity.
 - **Per-Backend Circuit Breaking**: Automatically trips unhealthy backend endpoints after consecutive transport failures.
+
+### 🧪 Built-in Playgrounds & Operations Dashboard
+- **Operations Dashboard**: Live traffic plus spend and token cards, a 14-day spend chart, top models, budget and key-expiry alerts, response-cache savings, security events from the audit log, and a backend health strip.
+- **API Tester**: Request history with one-click re-run, a timing bar (time to first byte and first token, tokens, tokens/s), Body / Headers / Stream tabs that surface the gateway's `X-Cache` and budget headers, and copy-as-code for cURL, Python (`openai` SDK) and JavaScript.
+- **Chat & Model Arena**: Markdown rendering with copy buttons, a live "thinking" panel that collapses when the answer starts, and per-message and per-conversation token and context usage.
+- **Embedding Playground**: PCA, t-SNE and UMAP layouts computed in a Web Worker; nearest-neighbour scores, a similarity matrix, semantic search and vector arithmetic; clustering; cosine, dot and euclidean metrics; sessions saved in the browser; JSON/CSV import and export.
+- **Audit History**: A filterable view of the persistent audit trail for admins and managers.
 
 ### 📊 Full-Stack Observability & Governance
 - **Arize Phoenix Tracing**: OpenInference-compliant distributed tracing with per-tenant project sandboxing.
@@ -202,7 +209,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.11.1"}
+# Output: {"version": "0.12.0"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -233,7 +240,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.11.1` | Gateway release version emitted in logs & telemetry |
+| `APP_VERSION` | No | `0.12.0` | Gateway release version emitted in logs & telemetry |
 
 ### Performance & Scaling Options
 
@@ -246,6 +253,31 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `ENABLE_TELEMETRY` | `false` | Master on/off switch for all OpenTelemetry / Phoenix **export**. Off by default — no exporter is created, so an unreachable collector cannot produce retry spam |
 | `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Target endpoint for Arize Phoenix OTLP traces (only used when `ENABLE_TELEMETRY=true`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTLP collector endpoint. Inside Docker this must **not** be `localhost` — that resolves to the container itself. Use `host.docker.internal` or the collector's service name |
+
+### Running on a LAN IP without HTTPS (dev mode)
+
+The session cookie is `Secure`, and browsers silently drop `Secure` cookies on
+plain-HTTP origins other than `localhost`. Opening the admin panel as
+`http://<server-ip>:6130` therefore "logs in" and bounces straight back to the
+login page.
+
+The proper fix is HTTPS: put a TLS reverse proxy (nginx, Caddy, Traefik) in
+front of the gateway, or browse it via `http://localhost:6130` (for example over
+an SSH tunnel), which browsers treat as secure.
+
+For a trusted dev LAN only, you can opt in to insecure HTTP:
+
+```bash
+# .env
+ALLOW_INSECURE_HTTP=true
+```
+
+then `docker compose up -d`. Cookies are sent without `Secure` (still
+`HttpOnly`, `SameSite=Lax`), HSTS is not sent even if `FORCE_HTTPS=true`, a
+warning is logged at startup and the top bar shows a "Dev mode: insecure HTTP"
+badge. Session cookies and passwords then travel **unencrypted** — never use
+this in production. Chrome's "Password fields present on an insecure page"
+warning is expected and only goes away with HTTPS.
 
 ---
 
@@ -306,7 +338,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.11.1-py314 pytest tests/ -v
+  llm-gateway:v0.12.0-py314 pytest tests/ -v
 ```
 
 ### Performance & Benchmarking Scripts

@@ -13,6 +13,7 @@ from ..services import ConfigService, get_config_service
 from ..database import get_session
 from ..pagination import pagination_params
 from .admin import require_admin, require_manager, current_active_user
+from ..services.federation_service import openai_models_url
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +227,7 @@ async def sync_backend_models(
                 headers = {}
                 if backend.api_key:
                     headers["Authorization"] = f"Bearer {backend.api_key}"
-                r = await client.get(f"{url}/v1/models", headers=headers)
+                r = await client.get(openai_models_url(url), headers=headers)
                 if r.status_code == 200:
                     data = r.json()
                     models_found = [m["id"] for m in data.get("data", [])]
@@ -238,8 +239,12 @@ async def sync_backend_models(
         await service.update_backend(session, name, {"models": models_found})
         await session.commit()
         return {"backend": name, "synced": True, "models": models_found, "count": len(models_found)}
-    else:
-        return {"backend": name, "synced": False, "models": backend.models, "message": "Could not fetch models from backend"}
+    # Reachable but returned no usable model list. Report it as a failure so the
+    # UI says so, instead of a 200 the admin page rendered as "Success".
+    raise HTTPException(
+        status_code=502,
+        detail=f"Backend '{name}' responded but returned no models. Check its base URL and API key.",
+    )
 
 class ModelNameRequest(BaseModel):
     name: str

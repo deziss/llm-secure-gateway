@@ -2,427 +2,382 @@
 endblock %} {% block content %}
 
 <style>
-  #embed-page {
-    --page-pad: 2rem; /* p-4 top+bottom */
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    height: calc(100vh - 3.5rem - var(--page-pad));
-    height: calc(100dvh - 3.5rem - var(--page-pad));
-    min-height: 28rem;
+  /* Scoped to #ep. Colours come from the app's theme tokens, so light and
+     dark both work; emerald stays this page's accent. */
+  #ep {
+    --ep-accent: 16 185 129;
+    --ep-accent-ink: 3 36 26;
+    --ep-page-pad: 2rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+    height: calc(100vh - 3.5rem - var(--ep-page-pad));
+    height: calc(100dvh - 3.5rem - var(--ep-page-pad));
+    min-height: 34rem;
+    font-size: 0.875rem;
   }
-  @media (min-width: 640px) { #embed-page { --page-pad: 3rem; } }
-  @media (min-width: 1024px) { #embed-page { --page-pad: 4rem; } }
+  @media (min-width: 640px) { #ep { --ep-page-pad: 3rem; } }
+  @media (min-width: 1024px) { #ep { --ep-page-pad: 4rem; } }
+  #ep [hidden] { display: none !important; }
 
-  .pg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
-  .pg-head .pg-tools { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
-  .pg-link, .pg-btn {
-    display: inline-flex; align-items: center; gap: 0.35rem;
-    min-height: 44px; padding: 0 0.25rem;
-    color: rgb(var(--ink-muted)); font-size: 0.875rem; background: none; border: 0; cursor: pointer;
-    transition: color 0.15s;
-  }
-  .pg-link:hover, .pg-btn:hover { color: rgb(var(--ink)); }
-  .pg-btn.danger:hover { color: rgb(var(--down)); }
-  @media (min-width: 768px) { .pg-link, .pg-btn { min-height: 32px; } }
-  .hide-xs { display: none; }
-  @media (min-width: 640px) { .hide-xs { display: inline; } }
+  #ep .ep-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
+  #ep .ep-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  #ep .ep-status { display: inline-flex; align-items: center; gap: 7px; color: rgb(var(--ink-muted)); font-size: 0.8rem; margin-right: 6px; white-space: nowrap; }
+  #ep .ep-status i { width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--ep-accent)); flex: none; }
+  #ep .ep-status[data-state=busy] i { background: rgb(var(--warn)); animation: ep-pulse 1s infinite; }
+  #ep .ep-status[data-state=error] i { background: rgb(var(--down)); }
+  @keyframes ep-pulse { 50% { opacity: 0.3; } }
 
-  #embed-layout {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid rgb(var(--hairline));
-    background: rgb(var(--surface-raised));
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-  }
-  @media (min-width: 768px) { #embed-layout { flex-direction: row; } }
+  #ep .ep-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgb(var(--hairline)); background: rgb(var(--surface-raised)); color: rgb(var(--ink)); cursor: pointer; font-weight: 600; font-size: 0.8rem; white-space: nowrap; }
+  #ep .ep-btn:hover { background: rgb(var(--surface-inset)); }
+  #ep .ep-btn.primary { background: rgb(var(--ep-accent)); border-color: rgb(var(--ep-accent)); color: rgb(var(--ep-accent-ink)); font-weight: 700; }
+  #ep .ep-btn.primary:hover { filter: brightness(1.08); }
+  #ep .ep-btn.ghost { background: transparent; border-color: transparent; color: rgb(var(--ink-muted)); }
+  #ep .ep-btn.ghost:hover { color: rgb(var(--ink)); background: rgb(var(--surface-inset)); }
+  #ep .ep-btn.small { height: 28px; padding: 0 10px; font-size: 0.75rem; }
+  #ep .ep-btn.danger { color: rgb(var(--down)); }
+  #ep .ep-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  #ep .ep-btn svg, #ep .ep-btn i[data-lucide] { width: 15px; height: 15px; }
 
-  #settings-toggle {
-    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-    min-height: 44px; padding: 0 16px; width: 100%;
-    background: rgb(var(--surface-inset));
-    border: 0; border-bottom: 1px solid rgb(var(--hairline));
-    color: rgb(var(--ink)); font-size: 0.875rem; font-weight: 600; cursor: pointer;
-  }
-  #settings-toggle i.chev { transition: transform 0.2s; color: rgb(var(--ink-muted)); }
-  #settings-toggle[aria-expanded="true"] i.chev { transform: rotate(180deg); }
-  @media (min-width: 768px) { #settings-toggle { display: none; } }
+  #ep .ep-app { flex: 1; min-height: 0; display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 10px; }
+  #ep .ep-side { background: rgb(var(--surface-raised)); border: 1px solid rgb(var(--hairline)); border-radius: 12px; overflow-y: auto; padding: 0 12px 10px; min-height: 0; scrollbar-width: thin; }
+  #ep .ep-side section { padding: 10px 0; border-bottom: 1px solid rgb(var(--hairline)); }
+  #ep .ep-side section:last-child { border-bottom: 0; }
+  #ep .ep-side h2 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 7px; color: rgb(var(--ink)); display: flex; justify-content: space-between; align-items: center; }
+  #ep .ep-side h2 .count { color: rgb(var(--ink-muted)); font-weight: 600; font-variant-numeric: tabular-nums; }
+  #ep .ep-field { display: block; margin-bottom: 7px; }
+  #ep .ep-field > .lbl { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: rgb(var(--ink-muted)); margin-bottom: 3px; }
+  #ep .ep-input { width: 100%; height: 30px; padding: 0 9px; border-radius: 8px; border: 1px solid rgb(var(--hairline)); background: rgb(var(--surface-base)); color: rgb(var(--ink)); outline: none; font-size: 0.82rem; }
+  #ep .ep-input:focus { border-color: rgb(var(--ep-accent)); }
+  #ep .ep-icon-btn { border: 0; background: none; color: rgb(var(--ink-muted)); cursor: pointer; padding: 2px; border-radius: 5px; display: inline-flex; }
+  #ep .ep-icon-btn:hover { color: rgb(var(--ep-accent)); }
+  #ep .ep-icon-btn svg, #ep .ep-icon-btn i[data-lucide] { width: 15px; height: 15px; }
+  #ep .ep-note { font-size: 0.7rem; color: rgb(var(--ink-muted)); margin: 6px 0 0; line-height: 1.4; }
+  #ep .ep-linkish { border: 0; background: none; padding: 0; color: rgb(var(--ink-muted)); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-size: 0.75rem; }
+  #ep .ep-linkish:hover { color: rgb(var(--ink)); }
 
-  #embed-sidebar {
-    display: none;
-    flex-direction: column;
-    gap: 14px;
-    padding: 16px;
-    max-height: 55%;
-    overflow-y: auto;
-    background: rgb(var(--surface-inset));
-    border-bottom: 1px solid rgb(var(--hairline));
-  }
-  #embed-sidebar.is-open { display: flex; }
-  @media (min-width: 768px) {
-    #embed-sidebar {
-      display: flex;
-      width: clamp(14.5rem, 28vw, 18.75rem);
-      flex-shrink: 0;
-      max-height: none;
-      border-bottom: 0;
-      border-right: 1px solid rgb(var(--hairline));
-    }
-  }
+  #ep .ep-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: rgb(var(--surface-base)); border: 1px solid rgb(var(--hairline)); border-radius: 8px; padding: 2px; gap: 2px; }
+  #ep .ep-seg button { height: 24px; border: 0; border-radius: 6px; background: transparent; color: rgb(var(--ink-muted)); font-weight: 700; font-size: 0.74rem; cursor: pointer; padding: 0 4px; }
+  #ep .ep-seg button:hover { color: rgb(var(--ink)); }
+  #ep .ep-seg button[aria-pressed=true] { background: rgb(var(--ep-accent)); color: rgb(var(--ep-accent-ink)); }
+  #ep .ep-seg.inline { display: inline-grid; }
+  #ep .ep-seg.inline button { height: 24px; font-size: 0.74rem; padding: 0 10px; }
+  #ep .ep-range { margin-top: 8px; }
+  #ep .ep-range label { display: flex; justify-content: space-between; gap: 6px; font-size: 0.72rem; color: rgb(var(--ink-muted)); margin-bottom: 2px; }
+  #ep .ep-range output { color: rgb(var(--ink)); font-variant-numeric: tabular-nums; font-weight: 700; }
+  #ep input[type=range] { width: 100%; accent-color: rgb(var(--ep-accent)); margin: 0; }
+  #ep .ep-check { display: flex; gap: 8px; align-items: center; font-size: 0.74rem; color: rgb(var(--ink-muted)); margin-top: 8px; cursor: pointer; }
+  #ep .ep-check input { accent-color: rgb(var(--ep-accent)); width: 15px; height: 15px; margin: 0; }
+  #ep .ep-warn { margin-top: 8px; padding: 7px 8px; border-radius: 8px; background: rgb(var(--warn) / 0.08); border: 1px solid rgb(var(--warn) / 0.35); color: rgb(var(--ink)); font-size: 0.75rem; line-height: 1.5; }
+  #ep .ep-row2 { display: flex; gap: 6px; margin-top: 8px; }
+  #ep .ep-row2 .ep-btn { height: 28px; padding: 0 6px; font-size: 0.74rem; }
+  #ep .ep-row2 .ep-btn { flex: 1; }
 
-  #embed-main {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    background: rgb(var(--surface-raised));
-    position: relative;
-  }
-  #canvas-container {
-    flex: 1;
-    min-height: 8rem;
-    position: relative;
-    overflow: hidden;
-  }
-  #embedCanvas {
-    width: 100%;
-    height: 100%;
-    cursor: crosshair;
-    display: block;
-    touch-action: none;
-  }
+  #ep .ep-points { margin-top: 8px; display: flex; flex-direction: column; gap: 1px; }
+  #ep .ep-pt { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; cursor: pointer; font-size: 0.76rem; color: rgb(var(--ink)); }
+  #ep .ep-pt:hover, #ep .ep-pt.on { background: rgb(var(--surface-inset)); }
+  #ep .ep-pt.on { box-shadow: inset 2px 0 0 rgb(var(--ep-accent)); }
+  #ep .ep-pt .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  #ep .ep-pt .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ep .ep-pt .lb { font-size: 0.7rem; color: rgb(var(--ink-muted)); max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ep .ep-pt .x { border: 0; background: none; color: rgb(var(--ink-muted)); cursor: pointer; width: 20px; height: 20px; border-radius: 5px; flex: none; font-size: 16px; line-height: 1; }
+  #ep .ep-pt .x:hover { color: rgb(var(--down)); background: rgb(var(--down) / 0.12); }
 
-  .sidebar-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: rgb(var(--ink-muted));
-    margin-bottom: 4px;
-  }
-  .sidebar-input, .sidebar-select {
-    width: 100%;
-    background: rgb(var(--surface-raised));
-    border: 1px solid rgb(var(--hairline));
-    border-radius: 8px;
-    padding: 8px 10px;
-    min-height: 44px;
-    color: rgb(var(--ink));
-    font-size: 1rem;
-  }
-  @media (min-width: 768px) {
-    .sidebar-input, .sidebar-select { font-size: 0.82rem; min-height: 36px; }
-  }
-  .sidebar-input:focus, .sidebar-select:focus { border-color: rgb(16 185 129); }
-  .sidebar-input::placeholder { color: rgb(var(--ink-muted)); }
-  .sidebar-divider { border: none; border-top: 1px solid rgb(var(--hairline)); margin: 4px 0; }
-  #fetchBtn {
-    min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
-    color: rgb(5 150 105); background: none; border: 0; cursor: pointer;
-  }
-  :root.dark #fetchBtn { color: rgb(52 211 153); }
+  #ep .ep-main { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: rgb(var(--surface-raised)); border: 1px solid rgb(var(--hairline)); border-radius: 12px; min-height: 0; min-width: 0; overflow: hidden; }
+  #ep .ep-tabs { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid rgb(var(--hairline)); }
+  #ep .ep-tab { height: 30px; padding: 0 12px; border-radius: 8px; border: 0; background: none; color: rgb(var(--ink-muted)); font-weight: 700; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+  #ep .ep-tab:hover { color: rgb(var(--ink)); }
+  #ep .ep-tab[aria-selected=true] { background: rgb(var(--surface-inset)); color: rgb(var(--ink)); box-shadow: inset 0 -2px 0 rgb(var(--ep-accent)); }
+  #ep .ep-meta { margin-left: auto; color: rgb(var(--ink-muted)); font-size: 0.75rem; font-variant-numeric: tabular-nums; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #ep .ep-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+  #ep .ep-toolbar { display: flex; align-items: center; gap: 14px; padding: 6px 10px 6px 12px; border-bottom: 1px solid rgb(var(--hairline)); font-size: 0.75rem; color: rgb(var(--ink-muted)); flex-wrap: wrap; min-height: 42px; }
+  #ep .ep-toolbar .spacer { flex: 1; }
+  #ep .ep-hint { display: inline-flex; align-items: center; gap: 6px; }
+  #ep .ep-hint i[data-lucide] { width: 14px; height: 14px; }
+  #ep .ep-wrap { position: relative; min-height: 0; overflow: hidden; }
+  #ep .ep-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #ep #epMap { cursor: grab; touch-action: none; }
+  #ep #epMap.over { cursor: pointer; }
+  #ep #epMap.panning { cursor: grabbing; }
+  #ep .ep-progress { position: absolute; left: 0; top: 0; height: 2px; background: rgb(var(--ep-accent)); width: 0; opacity: 0; transition: width 0.2s, opacity 0.3s; z-index: 3; }
+  #ep .ep-progress.on { opacity: 1; }
+  #ep .ep-tooltip { position: absolute; pointer-events: none; max-width: 300px; background: rgb(var(--surface-raised) / 0.97); border: 1px solid rgb(var(--hairline)); border-radius: 9px; padding: 8px 10px; font-size: 0.75rem; box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); display: none; z-index: 6; color: rgb(var(--ink)); }
+  #ep .ep-tooltip .tt { font-size: 0.8rem; margin-bottom: 6px; word-break: break-word; font-weight: 600; }
+  #ep .ep-tooltip .sub { color: rgb(var(--ink-muted)); margin: 6px 0 2px; }
+  #ep .ep-kv { display: flex; justify-content: space-between; gap: 14px; color: rgb(var(--ink-muted)); }
+  #ep .ep-kv span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ep .ep-kv b { color: rgb(var(--ink)); font-weight: 700; font-variant-numeric: tabular-nums; flex: none; }
+  #ep .ep-layout-info { position: absolute; left: 12px; bottom: 10px; font-size: 0.74rem; color: rgb(var(--ink-muted)); max-width: min(560px, 60%); pointer-events: none; line-height: 1.5; z-index: 2; }
+  #ep .ep-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: rgb(var(--ink-muted)); text-align: center; padding: 24px; z-index: 2; }
+  #ep .ep-empty h3 { margin: 0; color: rgb(var(--ink)); font-size: 1rem; font-weight: 700; }
+  #ep .ep-empty p { margin: 0; max-width: 440px; }
+  #ep .ep-empty .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
-  .method-btn {
-    flex: 1; min-height: 44px; font-size: 0.8rem; font-weight: 600;
-    border-radius: 8px; transition: background 0.15s; cursor: pointer;
-    background: rgb(var(--surface-raised)); color: rgb(var(--ink-muted));
-    border: 1px solid rgb(var(--hairline));
-  }
-  .method-btn.is-active { background: #059669; color: #fff; border-color: #059669; }
-  @media (min-width: 768px) { .method-btn { min-height: 32px; } }
+  #ep .ep-detail { position: absolute; top: 10px; right: 10px; width: 300px; max-height: calc(100% - 20px); overflow: auto; background: rgb(var(--surface-raised) / 0.98); border: 1px solid rgb(var(--hairline)); border-radius: 12px; padding: 12px; z-index: 4; box-shadow: 0 14px 40px rgb(0 0 0 / 0.25); color: rgb(var(--ink)); }
+  #ep .d-head { display: flex; align-items: flex-start; gap: 10px; }
+  #ep .d-head .dot { width: 11px; height: 11px; border-radius: 50%; margin-top: 5px; flex: none; }
+  #ep .d-text { flex: 1; margin: 0; font-weight: 700; font-size: 0.85rem; word-break: break-word; max-height: 140px; overflow: auto; }
+  #ep .d-meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
+  #ep .ep-chip { font-size: 0.7rem; padding: 1px 8px; border-radius: 99px; background: rgb(var(--surface-inset)); border: 1px solid rgb(var(--hairline)); color: rgb(var(--ink-muted)); }
+  #ep .ep-detail h3 { font-size: 0.74rem; color: rgb(var(--ink-muted)); font-weight: 600; margin: 12px 0 6px; }
+  #ep .ep-nb { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  #ep .ep-nb li { display: grid; grid-template-columns: 1fr 52px; gap: 2px 10px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
+  #ep .ep-nb li:hover { background: rgb(var(--surface-inset)); }
+  #ep .ep-nb .n-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ep .ep-nb .n-s { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+  #ep .ep-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgb(var(--hairline)); }
+  #ep .ep-bar i { display: block; height: 100%; border-radius: 2px; background: rgb(var(--ep-accent)); }
+  #ep .d-actions { display: flex; gap: 8px; margin-top: 12px; }
+  #ep .d-actions .ep-btn { flex: 1; }
 
-  #textInputArea {
-    background: rgb(var(--surface-inset) / 0.6);
-    border-top: 1px solid rgb(var(--hairline));
-    padding: 12px 16px;
-  }
-  @media (min-width: 768px) { #textInputArea { padding: 16px 20px; } }
+  #ep .ep-legend { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+  #ep .ep-legend .grad { width: 110px; height: 8px; border-radius: 4px; border: 1px solid rgb(var(--hairline)); }
+  #ep .ep-readout { color: rgb(var(--ink)); font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
 
-  #embed-textarea {
-    width: 100%;
-    min-width: 0;
-    background: rgb(var(--surface-raised));
-    border: 1px solid rgb(var(--hairline));
-    border-radius: 12px;
-    padding: 12px;
-    color: rgb(var(--ink));
-    resize: none;
-    font-size: 1rem;
-    line-height: 1.5;
-    transition: border-color 0.2s;
-  }
-  @media (min-width: 768px) { #embed-textarea { font-size: 0.88rem; } }
-  #embed-textarea::placeholder { color: rgb(var(--ink-muted)); }
-  #embed-textarea:focus { border-color: rgb(16 185 129); }
+  #ep .ep-search { overflow: auto; padding: 16px 18px; }
+  #ep .ep-search-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #ep .ep-search-row .ep-input { flex: 1; min-width: 220px; height: 38px; }
+  #ep .ep-search-row select.ep-input { width: 130px; min-width: 0; flex: none; }
+  #ep .ep-help { color: rgb(var(--ink-muted)); font-size: 0.8rem; max-width: 640px; margin: 10px 0 0; }
+  #ep .ep-help code { background: rgb(var(--surface-inset)); padding: 1px 6px; border-radius: 5px; color: rgb(var(--ink)); }
+  #ep .res-head { max-width: 820px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 8px; color: rgb(var(--ink-muted)); font-size: 0.8rem; }
+  #ep .ep-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-width: 820px; }
+  #ep .ep-results li { display: grid; grid-template-columns: 28px minmax(0, 1fr) 60px auto; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; background: rgb(var(--surface-inset)); color: rgb(var(--ink)); }
+  #ep .ep-results .rank { color: rgb(var(--ink-muted)); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  #ep .ep-results .r-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ep .ep-results .r-text .ep-chip { margin-left: 8px; }
+  #ep .ep-results .ep-bar { margin-top: 6px; }
+  #ep .ep-results .r-score { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
 
-  #add-btn {
-    min-height: 44px;
-    padding: 8px 20px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #059669, #10b981);
-    font-size: 0.84rem;
-    font-weight: 600;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    flex-shrink: 0;
-  }
-  #add-btn:hover { opacity: 0.85; }
-  #add-btn:disabled { opacity: 0.4; }
+  #ep .ep-composer { display: flex; gap: 12px; padding: 10px 12px; border-top: 1px solid rgb(var(--hairline)); background: rgb(var(--surface-inset) / 0.5); }
+  #ep .ep-composer textarea { flex: 1; min-height: 62px; max-height: 200px; resize: vertical; border-radius: 10px; border: 1px solid rgb(var(--hairline)); background: rgb(var(--surface-raised)); color: rgb(var(--ink)); padding: 9px 11px; outline: none; line-height: 1.5; font-size: 0.85rem; }
+  #ep .ep-composer textarea:focus { border-color: rgb(var(--ep-accent)); }
+  #ep .ep-composer .c-side { display: flex; flex-direction: column; gap: 8px; justify-content: space-between; align-items: stretch; width: 190px; }
+  #ep .ep-composer .opts { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.75rem; color: rgb(var(--ink-muted)); }
+  #ep .ep-composer .ep-check { margin: 0; font-size: 0.75rem; }
+  #ep .ep-composer .ep-btn.primary { height: 38px; font-size: 0.85rem; }
 
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px 4px 6px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: opacity 0.15s;
+  #ep #epSideToggle { display: none; }
+  @media (max-width: 900px) {
+    #ep { height: auto; }
+    #ep .ep-app { grid-template-columns: 1fr; }
+    #ep #epSideToggle { display: inline-flex; }
+    #ep .ep-side { display: none; max-height: 70vh; }
+    #ep .ep-side.is-open { display: block; }
+    #ep .ep-main { height: 82vh; }
+    #ep .ep-composer { flex-direction: column; }
+    #ep .ep-composer .c-side { width: auto; }
+    #ep .ep-hint { display: none; }
+    #ep .ep-detail { width: auto; left: 10px; }
   }
-  .chip:hover { opacity: 0.75; }
-  .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-  #tooltip {
-    position: fixed;
-    background: rgb(var(--surface-raised));
-    border: 1px solid rgb(var(--hairline));
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 0.78rem;
-    color: rgb(var(--ink));
-    pointer-events: none;
-    z-index: 100;
-    display: none;
-    max-width: 220px;
-  }
-
-  #info-bar {
-    padding: 8px 16px;
-    background: rgb(var(--surface-inset) / 0.6);
-    border-bottom: 1px solid rgb(var(--hairline));
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 16px;
-    font-size: 0.75rem;
-    color: rgb(var(--ink-muted));
-  }
-
-  #canvas-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgb(var(--surface-raised) / 0.92);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 16px;
-    z-index: 10;
-    transition: opacity 0.3s;
-  }
-  .pulse-ring {
-    width: 60px; height: 60px; border-radius: 50%;
-    border: 3px solid rgba(16, 185, 129, 0.6);
-    border-top-color: transparent;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #ep * { animation: none !important; transition: none !important; } }
 </style>
 
-<div id="embed-page">
-<div class="pg-head">
-  <a href="/admin/view/playground" class="pg-link">
-    <i class="fas fa-arrow-left" aria-hidden="true"></i>
-    <span><span class="hide-xs">Back to </span>API Tester</span>
-  </a>
-  <span class="text-slate-600 text-xs hide-xs" aria-hidden="true">•</span>
-  <h1
-    class="text-lg font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2"
-  >
-    <i class="fas fa-project-diagram text-emerald-400 text-base" aria-hidden="true"></i>
-    Embedding Playground
-  </h1>
-  <div class="pg-tools text-xs text-ink-muted">
-    <span id="statusDisplay" class="flex items-center gap-1.5">
-      <span class="w-2 h-2 rounded-full bg-green-500 inline-block" aria-hidden="true"></span>
-      <span class="sr-only">Status:</span> Ready
-    </span>
-    <button onclick="clearAll()" class="pg-btn danger">
-      <i class="fas fa-trash-alt" aria-hidden="true"></i>Clear
-    </button>
-  </div>
-</div>
-
-<div id="embed-layout">
-  <button
-    type="button"
-    id="settings-toggle"
-    aria-expanded="false"
-    aria-controls="embed-sidebar"
-    onclick="toggleSettings(this)"
-  >
-    <span><i class="fas fa-sliders-h mr-2" aria-hidden="true"></i>Settings</span>
-    <i class="fas fa-chevron-down chev" aria-hidden="true"></i>
-  </button>
-  <!-- SIDEBAR -->
-  <div id="embed-sidebar">
-    <div>
-      <label for="providerSelect" class="sidebar-label">Provider</label>
-      <select id="providerSelect" class="sidebar-select">
-        <option value="ollama">Ollama</option>
-        <option value="vllm">vLLM</option>
-        <option value="openai">OpenAI</option>
+<div id="ep">
+  <header class="ep-top">
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="network" class="h-5 w-5 text-ok" aria-hidden="true"></i>
+      Embedding Playground
+    </h1>
+    <div class="ep-actions">
+      <span class="ep-status" id="epStatus" data-state="ready" role="status"><i></i><span>Ready</span></span>
+      <button type="button" class="ep-btn ghost" id="epSideToggle" aria-expanded="false" aria-controls="epSide"><i data-lucide="sliders-horizontal" aria-hidden="true"></i>Settings</button>
+      <select class="ep-input" id="epSampleSelect" style="width:160px;height:32px" aria-label="Load a sample dataset">
+        <option value="">Load sample…</option>
+        <option value="tech">Tech roles and tools</option>
+        <option value="animals">Animals and vehicles</option>
+        <option value="topics">Sentences on four topics</option>
+        <option value="multi">Same meaning, four languages</option>
+        <option value="apple">Apple: fruit or company?</option>
       </select>
+      <button type="button" class="ep-btn ghost" id="epImportBtn"><i data-lucide="upload" aria-hidden="true"></i>Import</button>
+      <input type="file" id="epImportFile" accept=".json,application/json" hidden />
+      <button type="button" class="ep-btn ghost" id="epExportBtn"><i data-lucide="download" aria-hidden="true"></i>Export</button>
+      <button type="button" class="ep-btn ghost" id="epClearBtn"><i data-lucide="trash-2" aria-hidden="true"></i>Clear</button>
     </div>
-    <div>
-      <div class="sidebar-label flex justify-between">
-        <label for="modelSelect">Embedding Model</label>
-        <button
-          id="fetchBtn"
-          class="text-xs"
-          aria-label="Refresh models"
-          title="Refresh models"
-        >
-          <i class="fas fa-sync-alt" aria-hidden="true"></i>
-        </button>
+  </header>
+
+  <div class="ep-app">
+    <aside class="ep-side" id="epSide" aria-label="Playground settings">
+      <section>
+        <h2>Connection</h2>
+        <label class="ep-field"><span class="lbl">Provider</span>
+          <select class="ep-input" id="epProvider">
+            <option value="vllm">vLLM</option>
+            <option value="ollama">Ollama</option>
+            <option value="openai">OpenAI</option>
+            <option value="demo">Demo (offline)</option>
+          </select>
+        </label>
+        <div id="epConnFields">
+          <label class="ep-field"><span class="lbl">Model
+            <button type="button" class="ep-icon-btn" id="epRefreshModels" title="Load models from the gateway's backends" aria-label="Load models from the gateway's backends"><i data-lucide="refresh-cw" aria-hidden="true"></i></button></span>
+            <input class="ep-input" id="epModel" list="epModelList" placeholder="bge-m3" spellcheck="false" autocomplete="off" />
+            <datalist id="epModelList"></datalist>
+          </label>
+          <label class="ep-field"><span class="lbl">Gateway API key (optional)</span>
+            <input class="ep-input" id="epApiKey" type="password" placeholder="Leave empty to use your sign-in" autocomplete="off" />
+          </label>
+          <p class="ep-note">Empty: runs as you. With a key: that owner's rules. Never saved.</p>
+        </div>
+        <p class="ep-note" id="epDemoNote" hidden>Demo vectors come from character patterns, so they match similar spelling rather than meaning. Use them to try the interface without a backend.</p>
+        <div class="ep-row2">
+          <button type="button" class="ep-btn" id="epTestBtn">Test connection</button>
+          <button type="button" class="ep-btn" id="epReembedBtn">Re-embed all</button>
+        </div>
+        <div class="ep-warn" id="epModelWarn" hidden></div>
+      </section>
+
+      <section>
+        <h2>Layout</h2>
+        <div class="ep-seg" data-setting="method" role="group" aria-label="Layout method">
+          <button type="button" data-v="pca">PCA</button><button type="button" data-v="tsne">t-SNE</button><button type="button" data-v="umap">UMAP</button>
+        </div>
+        <div class="ep-range" id="epPerplexityRow">
+          <label for="epPerplexity">Perplexity <output id="epPerplexityOut"></output></label>
+          <input type="range" id="epPerplexity" data-setting="perplexity" min="2" max="50" step="1" />
+        </div>
+        <div class="ep-range" id="epNeighborsRow">
+          <label for="epNNeighbors">Neighbors <output id="epNNeighborsOut"></output></label>
+          <input type="range" id="epNNeighbors" data-setting="nNeighbors" min="2" max="50" step="1" />
+        </div>
+        <p class="ep-note" id="epMethodNote"></p>
+      </section>
+
+      <section>
+        <h2>Similarity</h2>
+        <label class="ep-field"><span class="lbl">Distance metric</span>
+          <select class="ep-input" id="epMetric">
+            <option value="cosine">Cosine similarity</option>
+            <option value="dot">Dot product</option>
+            <option value="euclidean">Euclidean (lower = closer)</option>
+          </select>
+        </label>
+        <div class="ep-seg" data-setting="edgeMode" role="group" aria-label="Lines between points">
+          <button type="button" data-v="knn">Nearest</button><button type="button" data-v="threshold">Threshold</button><button type="button" data-v="off">Off</button>
+        </div>
+        <div class="ep-range" id="epKRow">
+          <label for="epK">Neighbours per point <output id="epKOut"></output></label>
+          <input type="range" id="epK" data-setting="k" data-live="1" min="1" max="10" step="1" />
+        </div>
+        <div class="ep-range" id="epThrRow">
+          <label for="epThreshold">Min cosine <output id="epThresholdOut"></output></label>
+          <input type="range" id="epThreshold" data-setting="threshold" data-live="1" min="0" max="1" step="0.01" />
+        </div>
+        <label class="ep-check"><input type="checkbox" id="epEdgeScores" /> Show scores on lines</label>
+        <p class="ep-note" id="epEdgeNote"></p>
+      </section>
+
+      <section>
+        <h2>Colour</h2>
+        <div class="ep-seg" data-setting="colorBy" role="group" aria-label="Colour points by">
+          <button type="button" data-v="point">Point</button><button type="button" data-v="label">Label</button><button type="button" data-v="cluster">Cluster</button>
+        </div>
+        <div class="ep-range" id="epClusterRow">
+          <label for="epClusterK">Number of clusters <output id="epClusterKOut"></output></label>
+          <input type="range" id="epClusterK" data-setting="clusterK" min="2" max="12" step="1" />
+        </div>
+      </section>
+
+      <section>
+        <h2>Display</h2>
+        <div class="ep-range" style="margin-top:0">
+          <label for="epPointSize">Point size <output id="epPointSizeOut"></output></label>
+          <input type="range" id="epPointSize" data-setting="pointSize" data-live="1" min="3" max="14" step="1" />
+        </div>
+        <div class="ep-field" style="margin:8px 0 0"><span class="lbl">Text labels</span>
+          <div class="ep-seg" data-setting="labelMode" role="group" aria-label="Text labels">
+            <button type="button" data-v="auto">Auto</button><button type="button" data-v="all">All</button><button type="button" data-v="none">On hover</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Points <span class="count" id="epCount">0</span></h2>
+        <input class="ep-input" id="epPointFilter" placeholder="Filter points" aria-label="Filter points" />
+        <div class="ep-points" id="epPointList"></div>
+        <button type="button" class="ep-linkish mt-3" id="epClearCache">Clear embedding cache</button>
+      </section>
+    </aside>
+
+    <main class="ep-main" aria-label="Embedding views">
+      <nav class="ep-tabs" role="tablist" aria-label="View">
+        <button type="button" class="ep-tab" role="tab" id="epTab-map" data-tab="map" aria-controls="epPanel-map" aria-selected="true">Map</button>
+        <button type="button" class="ep-tab" role="tab" id="epTab-heatmap" data-tab="heatmap" aria-controls="epPanel-heatmap" aria-selected="false" tabindex="-1">Similarity matrix</button>
+        <button type="button" class="ep-tab" role="tab" id="epTab-search" data-tab="search" aria-controls="epPanel-search" aria-selected="false" tabindex="-1">Search</button>
+        <span class="ep-meta" id="epMeta"></span>
+      </nav>
+
+      <div class="ep-panel" id="epPanel-map" role="tabpanel" aria-labelledby="epTab-map">
+        <div class="ep-toolbar">
+          <span class="ep-hint"><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>Click a point to see its closest matches</span>
+          <span class="ep-hint"><i data-lucide="zoom-in" aria-hidden="true"></i>Scroll to zoom, drag to pan</span>
+          <span class="spacer"></span>
+          <button type="button" class="ep-btn small ghost" id="epFitBtn" title="Shortcut: F">Fit view</button>
+          <button type="button" class="ep-btn small ghost" id="epPngBtn">Save PNG</button>
+        </div>
+        <div class="ep-wrap" id="epMapWrap">
+          <canvas id="epMap" aria-label="Map of embedded points" role="img"></canvas>
+          <div class="ep-progress" id="epProgress"></div>
+          <div class="ep-tooltip" id="epTooltip"></div>
+          <div class="ep-layout-info" id="epLayoutInfo"></div>
+          <div class="ep-detail" id="epDetail" hidden aria-live="polite"></div>
+          <div class="ep-empty" id="epEmpty">
+            <h3>Nothing embedded yet</h3>
+            <p>Type text in the box below, one item per line, or start from a sample set.</p>
+            <div class="row">
+              <button type="button" class="ep-btn" data-sample="tech">Tech roles and tools</button>
+              <button type="button" class="ep-btn" data-sample="topics">Sentences on four topics</button>
+              <button type="button" class="ep-btn" data-sample="multi">Four languages</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <select id="modelSelect" class="sidebar-select">
-        <option value="nomic-embed-text">nomic-embed-text</option>
-        <option value="mxbai-embed-large">mxbai-embed-large</option>
-        <option value="all-minilm">all-minilm</option>
-      </select>
-      <input
-        id="modelInput"
-        class="sidebar-input mt-2"
-        placeholder="or type model name..."
-        aria-label="Custom model name"
-      />
-    </div>
-    <div>
-      <label for="apiKey" class="sidebar-label">Gateway API Key</label>
-      <input
-        id="apiKey"
-        type="password"
-        class="sidebar-input"
-        placeholder="sk-gateway-..."
-      />
-    </div>
 
-    <hr class="sidebar-divider" />
-
-    <div class="sidebar-label">Dimension Reduction</div>
-    <div class="flex gap-2">
-      <button
-        id="methodPCA"
-        onclick="setMethod('pca')"
-        class="method-btn is-active"
-      >
-        PCA
-      </button>
-      <button
-        id="methodTSNE"
-        onclick="setMethod('tsne')"
-        class="method-btn"
-      >
-        t-SNE
-      </button>
-    </div>
-
-    <hr class="sidebar-divider" />
-
-    <div>
-      <label for="pointSize" class="sidebar-label">Point Size</label>
-      <input
-        type="range"
-        id="pointSize"
-        min="4"
-        max="20"
-        value="9"
-        class="w-full accent-emerald-500"
-      />
-    </div>
-
-    <div>
-      <div class="sidebar-label">Points (<span id="pointsCount">0</span>)</div>
-      <div
-        id="chips"
-        class="flex flex-col gap-1.5 max-h-[220px] overflow-y-auto"
-      ></div>
-    </div>
-
-    <hr class="sidebar-divider" />
-    <div class="text-xs text-ink-muted">
-      <p>
-        💡 Add multiple texts and visualize their semantic distances in 2D
-        space.
-      </p>
-    </div>
-  </div>
-
-  <!-- MAIN CANVAS -->
-  <div id="embed-main">
-    <div id="info-bar">
-      <span
-        ><i class="fas fa-mouse-pointer mr-1" aria-hidden="true"></i>Hover points to see text</span
-      >
-      <span><i class="fas fa-search mr-1" aria-hidden="true"></i>Scroll to zoom</span>
-      <span><i class="fas fa-arrows-alt mr-1" aria-hidden="true"></i>Drag to pan</span>
-      <span id="embeddingDim" class="ml-auto"></span>
-    </div>
-
-    <div id="canvas-container">
-      <canvas id="embedCanvas"></canvas>
-
-      <!-- Loading overlay -->
-      <div id="canvas-overlay">
-        <div class="text-5xl mb-6 opacity-20">🧩</div>
-        <p class="text-ink-muted text-sm mb-2">
-          Add texts to begin visualizing
-        </p>
-        <p class="text-ink-muted text-xs">
-          Embeddings are mapped to 2D using PCA
-        </p>
+      <div class="ep-panel" id="epPanel-heatmap" role="tabpanel" aria-labelledby="epTab-heatmap" hidden>
+        <div class="ep-toolbar">
+          <span>Order</span>
+          <div class="ep-seg inline" data-setting="hmOrder" role="group" aria-label="Matrix order">
+            <button type="button" data-v="added">Added</button><button type="button" data-v="cluster">Cluster</button><button type="button" data-v="label">Label</button>
+          </div>
+          <span class="ep-legend"><span id="epHmMin">0.00</span><span class="grad" id="epHmGrad"></span><span id="epHmMax">1.00</span></span>
+          <span class="ep-readout" id="epHmReadout">Hover a cell to see the score</span>
+          <span class="spacer"></span>
+          <button type="button" class="ep-btn small ghost" id="epCsvBtn">Export CSV</button>
+        </div>
+        <div class="ep-wrap"><canvas id="epHeat" aria-label="Similarity matrix" role="img"></canvas></div>
       </div>
-    </div>
 
-    <!-- Input area -->
-    <div id="textInputArea">
-      <div class="flex gap-2 sm:gap-3 items-end">
-        <textarea
-          id="embed-textarea"
-          rows="2"
-          placeholder="Enter text to embed..." title="One per line, or add individually"
-          aria-label="Text to embed"
-        ></textarea>
-        <button id="add-btn" onclick="addTexts()">
-          <i class="fas fa-plus mr-1" aria-hidden="true"></i>Embed
-        </button>
+      <div class="ep-panel" id="epPanel-search" role="tabpanel" aria-labelledby="epTab-search" hidden style="grid-template-rows:minmax(0,1fr)">
+        <div class="ep-search">
+          <div class="ep-search-row">
+            <input class="ep-input" id="epQuery" placeholder="Search your points by meaning" aria-label="Search query" />
+            <select class="ep-input" id="epSearchMode" aria-label="Search mode">
+              <option value="meaning">Meaning</option>
+              <option value="math">Vector math</option>
+            </select>
+            <select class="ep-input" id="epTopN" aria-label="Number of results">
+              <option value="5">Top 5</option><option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option>
+            </select>
+            <button type="button" class="ep-btn primary" id="epSearchBtn" style="height:38px">Search</button>
+          </div>
+          <p class="ep-help" id="epSearchHelp"></p>
+          <div id="epResults"></div>
+        </div>
       </div>
-    </div>
+
+      <div class="ep-composer">
+        <textarea id="epInput" placeholder="Enter text to embed. One item per line. Add a label after a bar, for example:  kubernetes | tool" aria-label="Text to embed"></textarea>
+        <div class="c-side">
+          <div class="opts">
+            <label class="ep-check"><input type="checkbox" id="epSplitLines" /> One per line</label>
+            <button type="button" class="ep-linkish" id="epUploadBtn">Upload file</button>
+            <input type="file" id="epUploadFile" accept=".txt,.csv,.tsv,text/plain,text/csv" hidden />
+          </div>
+          <button type="button" class="ep-btn primary" id="epEmbedBtn" title="Ctrl + Enter"><i data-lucide="plus" aria-hidden="true"></i>Embed</button>
+        </div>
+      </div>
+    </main>
   </div>
 </div>
-</div>
 
-<div id="tooltip"></div>
-
-<script>
-  function toggleSettings(btn) {
-    var open = btn.getAttribute("aria-expanded") !== "true";
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-    document.getElementById("embed-sidebar").classList.toggle("is-open", open);
-  }
-</script>
-<script src="/static/js/embedding-playground.js"></script>
+<script src="/static/js/embedding-playground.js?v={{ asset_v }}" data-asset-v="{{ asset_v }}"></script>
 {% endblock %}

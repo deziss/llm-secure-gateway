@@ -27,7 +27,7 @@ $(document).ready(function () {
               </div>
               <div class="flex flex-col">
                 <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(data.email)}</span>
-                <span class="text-micro font-mono text-ink-muted uppercase tracking-widest">${escapeHtml(data.id)}</span>
+                <span class="text-micro font-mono text-ink-muted">${escapeHtml(data.id)}</span>
               </div>
             </div>
           `;
@@ -80,7 +80,7 @@ $(document).ready(function () {
                 <i data-lucide="calendar" class="w-3.5 h-3.5 text-ink-muted"></i> <span>Joined: ${created}</span>
               </div>
               <div class="flex items-center gap-2 text-ink-muted font-medium">
-                <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-600"></i> <span>Last Login: ${lastLogin}</span>
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-ink-muted"></i> <span>Last Login: ${lastLogin}</span>
               </div>
             </div>
           `;
@@ -109,7 +109,7 @@ $(document).ready(function () {
             }
             return `<div class="flex justify-end gap-2">${actions}</div>`;
           }
-          return `<span class="text-slate-600 text-micro font-bold uppercase tracking-widest italic">Protected</span>`;
+          return `<span class="text-ink-muted text-micro font-bold uppercase tracking-widest italic">Protected</span>`;
         },
       },
     ],

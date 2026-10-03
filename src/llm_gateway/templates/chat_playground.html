@@ -264,6 +264,20 @@ endblock %} {% block content %}
   #chat-sidebar .toggle-row { min-height: 44px; }
   #chat-sidebar .foot { color: rgb(var(--ink-muted)); font-size: 0.75rem; text-align: center; }
 
+  /* Thinking state (shown inside the reply bubble until real text arrives) */
+  .thinking { display: inline-flex; align-items: center; gap: 0.5rem; color: rgb(var(--ink-muted)); font-size: 0.8125rem; }
+  .thinking .dots { display: inline-flex; gap: 4px; }
+  .reasoning { margin: 0 0 0.5rem; border-left: 2px solid rgb(var(--hairline)); padding-left: 0.6rem; }
+  .reasoning summary { cursor: pointer; font-size: 0.75rem; color: rgb(var(--ink-muted)); user-select: none; }
+  .reasoning .reasoning-body { white-space: pre-wrap; font-size: 0.75rem; line-height: 1.45; color: rgb(var(--ink-muted)); max-height: 14rem; overflow-y: auto; margin-top: 0.35rem; }
+  .msg-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; margin: 0.35rem 0 0 2.75rem;
+    font-size: 0.6875rem; color: rgb(var(--ink-muted)); font-variant-numeric: tabular-nums; }
+  .msg-stats b { color: rgb(var(--ink)); font-weight: 600; }
+  .ctx-bar { display: inline-block; width: 4rem; height: 4px; border-radius: 9999px; background: rgb(var(--hairline)); vertical-align: middle; overflow: hidden; }
+  .ctx-bar > i { display: block; height: 100%; background: rgb(var(--ok)); }
+  .ctx-bar.warn > i { background: rgb(var(--warn)); }
+  .ctx-bar.down > i { background: rgb(var(--down)); }
+
   /* Typing indicator */
   .typing-dot {
     width: 7px; height: 7px; border-radius: 50%;
@@ -287,15 +301,10 @@ endblock %} {% block content %}
 
 <div id="chat-page">
 <div class="pg-head">
-  <a href="/admin/view/playground" class="pg-link">
-    <i class="fas fa-arrow-left" aria-hidden="true"></i>
-    <span><span class="hide-xs">Back to </span>API Tester</span>
-  </a>
-  <span class="text-slate-600 text-xs hide-xs" aria-hidden="true">•</span>
   <h1
-    class="text-lg font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2"
+    class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2"
   >
-    <i class="fas fa-comment-dots text-indigo-400 text-base" aria-hidden="true"></i>
+    <i data-lucide="message-square" class="h-5 w-5 text-accent" aria-hidden="true"></i>
     Chat Playground
   </h1>
   <span
@@ -406,6 +415,12 @@ You are a helpful assistant.</textarea
         max="8192"
         class="sidebar-input"
       />
+      <label for="contextWindow" class="sidebar-label" style="margin-top:0.75rem">Context window (tokens)</label>
+      <input id="contextWindow" type="number" min="512" step="512" placeholder="Unknown — e.g. 32768"
+        class="sidebar-input" aria-describedby="contextWindowHint" />
+      <p id="contextWindowHint" class="text-caption text-ink-muted" style="margin-top:0.25rem">
+        Optional. Used for the context-usage gauge; remembered per model.
+      </p>
     </div>
 
     <hr class="sidebar-divider" />
@@ -450,7 +465,8 @@ You are a helpful assistant.</textarea
         ></span>
       </div>
       <div class="flex items-center gap-2">
-        <span id="tokenCount" class="text-xs text-ink-muted"></span>
+        <span id="tokenCount" class="text-xs text-ink-muted font-mono" aria-live="polite"
+          title="Totals for this conversation. Context = prompt tokens of the latest turn, i.e. everything the model had to read."></span>
       </div>
     </div>
 
@@ -473,8 +489,9 @@ You are a helpful assistant.</textarea
       <div class="composer-row">
         <label
           id="imageUploadBtn"
-          class="hidden text-ink-muted hover:text-purple-400 transition cursor-pointer items-center justify-center"
-          style="min-width:44px;min-height:44px"
+          tabindex="0"
+          role="button"
+          class="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-control border border-hairline bg-surface-inset text-ink-muted transition-colors hover:border-accent hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           title="Attach image"
         >
           <i data-lucide="image" class="w-5 h-5" aria-hidden="true"></i>
@@ -507,6 +524,7 @@ You are a helpful assistant.</textarea
 <link rel="stylesheet" href="/static/css/highlight-github-dark.min.css" />
 <script src="/static/js/marked.min.js"></script>
 <script src="/static/js/highlight.min.js"></script>
+<script src="/static/js/markdown-view.js?v={{ asset_v }}"></script>
 
 <script>
   function toggleSettings(btn) {
@@ -515,5 +533,5 @@ You are a helpful assistant.</textarea
     document.getElementById("chat-sidebar").classList.toggle("is-open", open);
   }
 </script>
-<script src="/static/js/chat-playground.js"></script>
+<script src="/static/js/chat-playground.js?v={{ asset_v }}"></script>
 {% endblock %}

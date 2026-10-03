@@ -28,7 +28,7 @@ $(document).ready(function () {
               </div>
               <div class="flex flex-col">
                 <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(name)}</span>
-                <span class="text-micro font-mono text-ink-muted uppercase tracking-widest">${escapeHtml(d.id)}</span>
+                <span class="text-micro font-mono text-ink-muted">${escapeHtml(d.id)}</span>
               </div>
             </div>
           `;
@@ -274,10 +274,21 @@ async function deleteOwner(id) {
 
 let currentOwnerIdForKeys = null;
 
+// Date for the keys table. Timestamps are stored as naive UTC (no offset), so
+// append "Z" before parsing; otherwise the browser reads them as local time and
+// the date can be off by a day. Full timestamp goes in the tooltip.
+function keyDate(value, fallback) {
+  if (!value) return `<span class="font-mono">${fallback}</span>`;
+  const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : value + "Z";
+  const d = new Date(iso);
+  if (isNaN(d)) return escapeHtml(String(value));
+  return `<time datetime="${escapeHtml(d.toISOString())}" title="${escapeHtml(d.toLocaleString())}">${escapeHtml(d.toLocaleDateString())}</time>`;
+}
+
 async function openKeysModal(ownerId) {
   currentOwnerIdForKeys = ownerId;
-  const ownerEl = document.getElementById("keysModalOwnerId");
-  if (ownerEl) ownerEl.innerText = ownerId.toUpperCase();
+  const ownerEl = document.getElementById("keysOwnerIdDisplay");
+  if (ownerEl) ownerEl.textContent = ownerId;
   await loadKeys(ownerId);
   const modal = document.getElementById("keysModal");
   if (modal) modal.classList.remove("hidden");
@@ -294,25 +305,26 @@ async function loadKeys(ownerId) {
     const keys = await res.json();
 
     if (keys.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-ink-muted italic text-sm">No active keys. Click 'Issue New Key' below.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-ink-muted italic text-sm">No active keys. Click 'Issue New Key' below.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = keys
       .map(
         (k) => `
-      <tr class="hover:bg-slate-800/20 transition-colors">
-        <td class="p-4 font-mono font-bold text-ink tracking-wider flex items-center gap-2">
-          <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500"></i> ${escapeHtml(k.prefix)}••••••••
+      <tr class="hover:bg-surface-inset transition-colors">
+        <td class="p-4 font-mono font-bold text-ink tracking-wider">
+          <span class="inline-flex items-center gap-2 whitespace-nowrap">
+            <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500" aria-hidden="true"></i>${escapeHtml(k.prefix)}••••••••
+          </span>
         </td>
         <td class="p-4">
           <div class="flex flex-wrap gap-1">
             ${(k.scopes || []).map(s => `<span class="px-2 py-0.5 rounded text-micro font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${escapeHtml(s)}</span>`).join('')}
           </div>
         </td>
-        <td class="p-4 text-xs text-ink-muted">
-          ${k.expires_at ? new Date(k.expires_at).toLocaleDateString() : '<span class="text-ink-muted font-mono">Never</span>'}
-        </td>
+        <td class="p-4 text-xs text-ink-muted whitespace-nowrap">${keyDate(k.created_at, "—")}</td>
+        <td class="p-4 text-xs text-ink-muted whitespace-nowrap">${keyDate(k.expires_at, "Never")}</td>
         <td class="p-4 text-right">
           <button type="button" data-action="revoke-key" data-prefix="${escapeHtml(k.prefix)}" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer" title="Revoke Key" aria-label="Revoke key">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -389,17 +401,17 @@ async function createKeyFromModal() {
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", "newKeyTitle");
     modal.innerHTML = `
-      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel w-full max-w-lg shadow-overlay text-center max-h-[90vh] overflow-y-auto">
-        <div class="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl shadow-lg shadow-emerald-500/20" aria-hidden="true">
-          <i data-lucide="key" class="w-8 h-8"></i>
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-5 rounded-panel w-full max-w-lg shadow-overlay text-center max-h-[90vh] overflow-y-auto">
+        <div class="w-12 h-12 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-lg shadow-lg shadow-emerald-500/20" aria-hidden="true">
+          <i data-lucide="key" class="w-6 h-6"></i>
         </div>
-        <h3 id="newKeyTitle" class="text-2xl font-bold text-slate-900 dark:text-white mb-2">New API Key Issued</h3>
-        <p class="text-ink-muted dark:text-ink-muted text-sm mb-6">Store this key securely. It will never be shown again.</p>
-        <div class="relative group mb-8">
+        <h3 id="newKeyTitle" class="text-lg font-bold text-slate-900 dark:text-white mb-2">New API Key Issued</h3>
+        <p class="text-ink-muted dark:text-ink-muted text-sm mb-4">Store this key securely. It will never be shown again.</p>
+        <div class="relative group mb-5">
           <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-20 transition"></div>
-          <div id="newKeyValue" class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-emerald-400 break-all select-all"></div>
+          <div id="newKeyValue" class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-ok break-all select-all"></div>
         </div>
-        <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-3 bg-slate-900 text-white dark:bg-white dark:text-black font-bold rounded-control hover:opacity-90 transition cursor-pointer">
+        <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-2.5 bg-slate-900 text-white dark:bg-white dark:text-black font-bold rounded-control hover:opacity-90 transition cursor-pointer">
           Acknowledged &amp; Saved
         </button>
       </div>
@@ -439,7 +451,7 @@ async function loadPermissions(ownerId) {
   tbody.innerHTML = perms
     .map(
       (p) => `
-    <tr class="hover:bg-slate-800/20 transition-colors">
+    <tr class="hover:bg-surface-inset transition-colors">
       <td class="p-4">
         <div class="flex items-center gap-2">
           <div class="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></div>
@@ -485,7 +497,7 @@ async function fetchBackendsForSelect() {
 async function openPermissionsModal(ownerId) {
   currentOwnerIdForPerms = ownerId;
   const disp = document.getElementById("permOwnerIdDisplay");
-  if (disp) disp.innerText = ownerId.toUpperCase();
+  if (disp) disp.textContent = ownerId;
   const formOwner = document.getElementById("permFormOwnerId");
   if (formOwner) formOwner.value = ownerId;
 

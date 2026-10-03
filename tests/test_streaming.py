@@ -117,3 +117,62 @@ class TestSSEEndpoint:
             assert "count" in entry
             assert isinstance(entry["count"], int)
             assert ":" in entry["label"]  # HH:MM format
+
+
+# ── Regression: normalize_thinking corrupted bodies split across chunks ──
+# The thinking parser split each network chunk on "\n" and re-appended "\n"
+# to every piece, so a JSON embeddings body cut mid-number gained a newline
+# ("Expected ',' or ']' after array element ... line 2 column 1") and grew
+# past the upstream Content-Length.
+
+class _ChunkedResponse:
+    def __init__(self, chunks, content_type):
+        self._chunks = chunks
+        self.headers = {"content-type": content_type}
+
+    async def aiter_raw(self):
+        for c in self._chunks:
+            yield c
+
+
+async def _collect(chunks, content_type):
+    import json as _json  # noqa: F401
+    from unittest.mock import MagicMock
+    from llm_gateway.telemetry.streaming import stream_with_telemetry
+
+    span = MagicMock()
+    span.is_recording.return_value = False
+    out = b""
+    async for b in stream_with_telemetry(
+        _ChunkedResponse(chunks, content_type), 0, "u", "m", "/v1/chat/completions", "o", span,
+        normalize_thinking=True,
+    ):
+        out += b
+    return out
+
+
+async def test_normalize_thinking_passes_json_body_through_unchanged():
+    import json
+    body = json.dumps({"data": [{"embedding": [0.0123456789] * 3000}]}).encode()
+    chunks = [body[i:i + 4096] for i in range(0, len(body), 4096)]
+    assert await _collect(chunks, "application/json") == body
+
+
+async def test_normalize_thinking_handles_lines_and_utf8_split_across_chunks():
+    import json
+    sse = (
+        "data: " + json.dumps({"choices": [{"delta": {"content": "<think>hmm</think>héllo 世界"}}]}) + "\n\n"
+        "data: [DONE]\n\n"
+    ).encode()
+    chunks = [sse[i:i + 7] for i in range(0, len(sse), 7)]
+    out = (await _collect(chunks, "text/event-stream")).decode()
+    events = [json.loads(l[6:]) for l in out.split("\n") if l.startswith("data: {")]
+    assert events[0]["choices"][0]["delta"] == {"reasoning_content": "hmm", "content": "héllo 世界"}
+    assert "data: [DONE]" in out
+
+
+def test_passthrough_response_headers_drops_length_and_encoding():
+    from llm_gateway.proxy_helpers import passthrough_response_headers
+    h = passthrough_response_headers({"Content-Length": "10", "content-encoding": "gzip",
+                                      "content-type": "application/json", "x-request-id": "a"})
+    assert h == {"content-type": "application/json", "x-request-id": "a"}

@@ -67,17 +67,22 @@ async def get_system_metrics(
         active_backends = 0
         total_models = 0
         
-        async def check_backend(b):
+        # Copy plain values out of the ORM rows before any await: the probes
+        # yield to other requests, and an expired/detached row then raises
+        # DetachedInstanceError on attribute access (seen in production logs).
+        targets = [(b.base_url, len(b.models or [])) for b in backends]
+
+        async def check_backend(base_url, n_models):
             nonlocal active_backends, total_models
             try:
                 async with httpx.AsyncClient(timeout=2.0) as client:
-                    r = await client.get(f"{b.base_url.rstrip('/')}/")
+                    await client.get(f"{base_url.rstrip('/')}/")
                     active_backends += 1
             except (httpx.RequestError, httpx.TimeoutException):
                 pass
-            total_models += len(b.models or [])
+            total_models += n_models
 
-        await asyncio.gather(*(check_backend(b) for b in backends))
+        await asyncio.gather(*(check_backend(u, n) for u, n in targets))
         
         cpu_usage = psutil.cpu_percent(interval=None)
         memory = psutil.virtual_memory()

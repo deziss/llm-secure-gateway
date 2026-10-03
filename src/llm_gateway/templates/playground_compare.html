@@ -3,10 +3,10 @@
 {% block content %}
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
   <div>
-    <h1 class="text-3xl font-extrabold text-ink tracking-tight flex items-center gap-3">
-      <i data-lucide="columns-2" class="text-accent w-8 h-8" aria-hidden="true"></i> Side-by-Side Model Arena
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="columns-2" class="h-5 w-5 text-accent" aria-hidden="true"></i> Side-by-Side Model Arena
     </h1>
-    <p class="text-ink-muted text-sm mt-1">
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       Benchmark quality, latency, and tokens across any backends or models simultaneously with identical prompts.
     </p>
   </div>
@@ -62,12 +62,20 @@
       </div>
     </div>
 
-    <div id="outputA" aria-live="polite" class="p-4 flex-1 min-h-0 overflow-y-auto font-mono text-xs whitespace-pre-wrap break-words text-ink">
+    <div id="outputA" aria-live="polite" class="md p-4 flex-1 min-h-0 overflow-y-auto break-words text-ink">
       <span class="text-ink-muted">Response A will stream here...</span>
     </div>
 
     <div class="p-3 border-t border-hairline bg-surface-inset text-xs flex flex-wrap justify-between gap-x-4 text-ink-muted font-mono rounded-b-panel">
-      <span id="latencyA">Latency: -- ms</span>
+      <span class="flex items-center gap-2">
+        <span id="latencyA">Latency: -- ms</span>
+        <span class="reply-tools">
+          <button type="button" class="md-copy" data-copy-source="outputA" aria-label="Copy response A" title="Copy response">
+            <i data-lucide="copy" aria-hidden="true"></i><span data-copy-label>Copy</span></button>
+          <button type="button" class="md-copy" data-raw-toggle="outputA" aria-pressed="false" aria-label="Show raw text for response A" title="Show raw Markdown">
+            <i data-lucide="code-2" aria-hidden="true"></i><span>Raw</span></button>
+        </span>
+      </span>
       <span id="tokensA">Tokens: --</span>
     </div>
   </div>
@@ -116,12 +124,20 @@
       </div>
     </div>
 
-    <div id="outputB" aria-live="polite" class="p-4 flex-1 min-h-0 overflow-y-auto font-mono text-xs whitespace-pre-wrap break-words text-ink">
+    <div id="outputB" aria-live="polite" class="md p-4 flex-1 min-h-0 overflow-y-auto break-words text-ink">
       <span class="text-ink-muted">Response B will stream here...</span>
     </div>
 
     <div class="p-3 border-t border-hairline bg-surface-inset text-xs flex flex-wrap justify-between gap-x-4 text-ink-muted font-mono rounded-b-panel">
-      <span id="latencyB">Latency: -- ms</span>
+      <span class="flex items-center gap-2">
+        <span id="latencyB">Latency: -- ms</span>
+        <span class="reply-tools">
+          <button type="button" class="md-copy" data-copy-source="outputB" aria-label="Copy response B" title="Copy response">
+            <i data-lucide="copy" aria-hidden="true"></i><span data-copy-label>Copy</span></button>
+          <button type="button" class="md-copy" data-raw-toggle="outputB" aria-pressed="false" aria-label="Show raw text for response B" title="Show raw Markdown">
+            <i data-lucide="code-2" aria-hidden="true"></i><span>Raw</span></button>
+        </span>
+      </span>
       <span id="tokensB">Tokens: --</span>
     </div>
   </div>
@@ -129,6 +145,16 @@
 
 <!-- Shared Prompt Box -->
 <div class="sticky bottom-2 sm:static z-30 rounded-panel border border-hairline bg-surface-raised shadow-overlay sm:shadow-rest p-3 sm:p-4">
+  <div class="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+    <label for="arenaApiKey" class="text-caption font-medium text-ink-muted whitespace-nowrap">Owner API key</label>
+    <input id="arenaApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-gateway-… (required to call models)"
+      aria-describedby="arenaApiKeyHint"
+      class="w-full sm:max-w-md min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink text-sm font-mono placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
+    <p id="arenaApiKeyHint" class="text-caption text-ink-muted">
+      Runs as that owner, using their backend permissions. Kept for this tab only.
+      <a href="/admin/view/owners" class="text-accent hover:underline">Get a key from Owners</a>
+    </p>
+  </div>
   <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
     <label for="promptInput" class="sr-only">Prompt to send to both models</label>
     <textarea id="promptInput" rows="2" placeholder="Type prompt to send to both models simultaneously..." class="flex-1 min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink text-sm placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"></textarea>
@@ -138,7 +164,27 @@
   </div>
 </div>
 
+<link rel="stylesheet" href="/static/css/highlight-github-dark.min.css" />
+<script src="/static/js/marked.min.js"></script>
+<script src="/static/js/highlight.min.js"></script>
+<script src="/static/js/markdown-view.js?v={{ asset_v }}"></script>
 <script>
+const selectedModel = { A: "", B: "" };
+
+// Owner API key for the arena, kept in sessionStorage: survives reloads in
+// this tab, cleared when the tab closes (it's a secret; not localStorage).
+document.addEventListener("DOMContentLoaded", () => {
+  const el = document.getElementById("arenaApiKey");
+  if (!el) return;
+  try { el.value = sessionStorage.getItem("arenaApiKey") || ""; } catch (e) {}
+  el.addEventListener("change", () => {
+    try {
+      const v = el.value.trim();
+      if (v) sessionStorage.setItem("arenaApiKey", v); else sessionStorage.removeItem("arenaApiKey");
+    } catch (e) {}
+  });
+});
+
 // State
 let allBackends = []; // [{name, backend_type, base_url, models}]
 let allModels = [];   // [{model, backend, backend_type}]
@@ -213,9 +259,11 @@ async function fetchBackendsAndModels() {
     const inputB = document.getElementById("modelBInput");
     if (inputA.value === "gpt-4o" || !inputA.value) {
       inputA.value = allModels[0].model;
+      selectedModel.A = inputA.value;
     }
     if (inputB.value === "claude-3-5-sonnet-20241022" || !inputB.value) {
       inputB.value = allModels[1] ? allModels[1].model : allModels[0].model;
+      selectedModel.B = inputB.value;
     }
   }
 
@@ -254,6 +302,16 @@ function populateBackendFilters() {
 }
 
 function onBackendFilterChange(pane) {
+  // Requests are routed by model name, so a model left selected from a
+  // different backend would silently run there, not on the backend shown.
+  // Clear it when it isn't on the newly chosen backend.
+  const backend = document.getElementById(`backendFilter${pane}`).value;
+  const input = document.getElementById(`model${pane}Input`);
+  if (backend && input && input.value) {
+    const onBackend = allModels.some((m) => m.backend === backend && m.model === input.value);
+    const viaBackends = (allBackends.find((b) => b.name === backend) || {}).models || [];
+    if (!onBackend && !viaBackends.includes(input.value)) input.value = "";
+  }
   renderDropdown(pane);
   openDropdown(pane);
 }
@@ -333,7 +391,11 @@ function openDropdown(pane) {
   renderDropdown(pane);
   const otherPane = pane === 'A' ? 'B' : 'A';
   closeDropdown(otherPane);
-  document.getElementById(`dropdown${pane}`).classList.remove("hidden");
+  const dd = document.getElementById(`dropdown${pane}`);
+  dd.classList.remove("hidden");
+  // Show the current model in the (now full) list.
+  const current = dd.querySelector('[aria-selected="true"]');
+  if (current) current.scrollIntoView({ block: "nearest" });
   document.getElementById(`model${pane}Input`).setAttribute("aria-expanded", "true");
   if (window.lucide) {
     lucide.createIcons();
@@ -348,8 +410,14 @@ function closeDropdown(pane) {
   activeIdx[pane] = -1;
 }
 
+// (selectedModel declared near the top of this script)
+// The model last chosen from the list, per pane. While the input still shows
+// exactly that name, opening the list shows every model (with it highlighted);
+// filtering only starts once the user edits the text.
+
 function selectModel(pane, modelName) {
   document.getElementById(`model${pane}Input`).value = modelName;
+  selectedModel[pane] = modelName;
   closeDropdown(pane);
 }
 
@@ -357,7 +425,11 @@ function renderDropdown(pane) {
   const dd = document.getElementById(`dropdown${pane}`);
   const input = document.getElementById(`model${pane}Input`);
   const filterBackend = document.getElementById(`backendFilter${pane}`).value.toLowerCase();
-  const searchInput = input.value.toLowerCase().trim();
+  // Don't filter by the already-selected model's own name: that collapsed the
+  // list to one entry, so other models seemed to be missing.
+  const typed = input.value.trim();
+  const isExactModel = typed && (typed === selectedModel[pane] || allModels.some((m) => m.model === typed));
+  const searchInput = isExactModel ? "" : typed.toLowerCase();
   activeIdx[pane] = -1;
   input.removeAttribute("aria-activedescendant");
 
@@ -439,16 +511,46 @@ function renderDropdown(pane) {
   dd.innerHTML = html;
 }
 
+
+// Render a reply as Markdown; keep the original text for Copy and Raw view.
+function showReply(el, text) {
+  el.dataset.raw = text;
+  const toggle = document.querySelector(`[data-raw-toggle="${el.id}"]`);
+  const raw = toggle && toggle.getAttribute("aria-pressed") === "true";
+  if (raw || !window.MarkdownView) {
+    el.textContent = "";
+    const pre = document.createElement("pre");
+    pre.className = "whitespace-pre-wrap break-words font-mono text-xs";
+    pre.textContent = text;
+    el.appendChild(pre);
+  } else {
+    MarkdownView.render(el, text);
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-raw-toggle]");
+  if (!btn) return;
+  const el = document.getElementById(btn.dataset.rawToggle);
+  btn.setAttribute("aria-pressed", String(btn.getAttribute("aria-pressed") !== "true"));
+  btn.querySelector("span").textContent = btn.getAttribute("aria-pressed") === "true" ? "Rendered" : "Raw";
+  if (el && el.dataset.raw != null) showReply(el, el.dataset.raw);
+});
+
 // Model Query Execution
 async function queryModel(modelName, prompt, outputElem, latencyElem, tokenElem) {
+  outputElem.removeAttribute("data-raw");
   outputElem.textContent = "Requesting...";
   latencyElem.textContent = "Latency: streaming...";
   const t0 = performance.now();
 
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const key = (document.getElementById('arenaApiKey').value || '').trim();
+    if (key) headers['Authorization'] = 'Bearer ' + key;
     const res = await fetch('/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         model: modelName,
         messages: [{ role: "user", content: prompt }]
@@ -460,7 +562,14 @@ async function queryModel(modelName, prompt, outputElem, latencyElem, tokenElem)
 
     if (!res.ok) {
       const err = await res.text();
-      outputElem.textContent = `Error (${res.status}): ${err}`;
+      // Without a key the request runs as the signed-in admin, who usually
+      // isn't an owner with backend permissions -- say what to do about it.
+      const hint = (res.status === 401 || res.status === 403) && !key
+        ? "\n\nEnter an owner's API key above: requests without one run as your admin login, which has no backend permissions."
+        : (res.status === 403 && /no permissions for backend/.test(err))
+          ? "\n\nThis owner has no permission for that backend. Grant it on the Owners page (shield icon), or use another owner's key."
+          : "";
+      outputElem.textContent = `Error (${res.status}): ${err}${hint}`;
       return;
     }
 
@@ -468,7 +577,7 @@ async function queryModel(modelName, prompt, outputElem, latencyElem, tokenElem)
     const reply = data.choices?.[0]?.message?.content || 
                   data.choices?.[0]?.message?.reasoning || 
                   JSON.stringify(data, null, 2);
-    outputElem.textContent = reply;
+    showReply(outputElem, reply);
 
     if (data.usage) {
       tokenElem.textContent = `Tokens: in=${data.usage.prompt_tokens || 0} out=${data.usage.completion_tokens || 0}`;

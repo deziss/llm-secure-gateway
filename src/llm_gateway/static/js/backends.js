@@ -64,7 +64,7 @@ $(document).ready(function () {
             const manageBtn =
               row.backend_type === "ollama"
                 ? `<button type="button" data-action="manage" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg transition-all border border-indigo-500/20 cursor-pointer" title="Manage Models" aria-label="Manage Models"><i data-lucide="boxes" class="w-4 h-4"></i></button>`
-                : `<button type="button" data-action="sync" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-500/20 cursor-pointer" title="Sync Models" aria-label="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
+                : `<button type="button" data-action="sync" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-500/20 cursor-pointer" title="Sync Models" aria-label="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
 
             return `
               <div class="flex justify-end gap-2">
@@ -74,7 +74,7 @@ $(document).ready(function () {
               </div>
             `;
           }
-          return `<span class="text-slate-600 text-micro font-bold uppercase tracking-widest">Read Only</span>`;
+          return `<span class="text-ink-muted text-micro font-bold uppercase tracking-widest">Read Only</span>`;
         },
       },
     ],
@@ -387,7 +387,7 @@ async function checkBackendHealth(name) {
     });
     const data = await res.json();
     if (data.status === "healthy") {
-      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span class="text-emerald-400">ONLINE</span>`;
+      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span class="text-ok">ONLINE</span>`;
     } else {
       el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> <span class="text-red-400">OFFLINE</span>`;
     }
@@ -399,25 +399,41 @@ async function checkBackendHealth(name) {
   }
 }
 
-async function syncBackendModels(name) {
-  const res = await fetchWithCsrf(`/admin/backends/${encodeURIComponent(name)}/sync-models`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (res.ok) {
-    showToast("Success", "Models synced for " + name);
-    $("#backendsTable").DataTable().ajax.reload(null, false);
-  } else {
-    showToast("Sync Failed", "Failed to sync models for " + name, "error");
+// Returns {ok, count, error}. `quiet` suppresses the per-backend toast so
+// "Sync all" can report one summary instead of a toast per backend.
+async function syncBackendModels(name, quiet) {
+  let result;
+  try {
+    const res = await fetchWithCsrf(`/admin/backends/${encodeURIComponent(name)}/sync-models`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const body = await res.json().catch(() => ({}));
+    result = res.ok && body.synced !== false
+      ? { ok: true, count: body.count || 0 }
+      : { ok: false, error: formatErrorMessage(body, `Could not fetch models from ${name}`) };
+  } catch (e) {
+    result = { ok: false, error: `Could not reach the gateway while syncing ${name}` };
   }
+  if (!quiet) {
+    if (result.ok) showToast("Models synced", `${name}: ${result.count} model${result.count === 1 ? "" : "s"}`);
+    else showToast("Sync failed", result.error, "error");
+    $("#backendsTable").DataTable().ajax.reload(null, false);
+  }
+  return result;
 }
 
 async function syncAllBackends() {
   const names = Object.keys(backendsData);
-  for (const name of names) {
-    checkBackendHealth(name);
-    await syncBackendModels(name);
-  }
+  const btn = document.getElementById("syncAllBtn");
+  if (btn) btn.disabled = true;
+  // In parallel: each sync can take up to its timeout on an unreachable host.
+  const results = await Promise.all(names.map((n) => syncBackendModels(n, true)));
+  if (btn) btn.disabled = false;
+  $("#backendsTable").DataTable().ajax.reload(null, false);
+  const failed = names.filter((_, i) => !results[i].ok);
+  if (!failed.length) showToast("Models synced", `All ${names.length} backends updated`);
+  else showToast("Sync incomplete", `Failed: ${failed.join(", ")}`, failed.length === names.length ? "error" : "warning");
 }
 
 async function deleteBackend(name) {

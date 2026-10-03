@@ -3,10 +3,10 @@
 {% block content %}
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
   <div>
-    <h1 class="text-2xl sm:text-3xl font-bold text-ink tracking-tight flex items-center gap-3">
-      <i data-lucide="network" class="text-accent w-8 h-8" aria-hidden="true"></i> Model Virtualization & Resilience
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="network" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Model Virtualization & Resilience
     </h1>
-    <p class="text-ink-muted text-sm mt-1">
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       Define virtual model aliases (e.g. "smart-model") and cross-provider fallback chains for 429/5xx failover.
     </p>
   </div>
@@ -85,9 +85,9 @@
 
 <!-- Add Alias Modal -->
 <div id="addAliasModal" role="dialog" aria-modal="true" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeAddAliasModal()">
-  <div class="bg-surface-raised border border-hairline rounded-panel p-5 sm:p-8 max-w-md w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
+  <div class="bg-surface-raised border border-hairline rounded-panel p-4 sm:p-5 max-w-md w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-xl font-bold text-ink flex items-center gap-2">
+      <h3 class="text-lg font-bold text-ink flex items-center gap-2">
         <i data-lucide="tags" class="w-5 h-5 text-accent" aria-hidden="true"></i> Create Model Alias
       </h3>
       <button type="button" onclick="closeAddAliasModal()" aria-label="Close dialog" class="min-h-touch min-w-touch shrink-0 -mr-2 rounded-control flex items-center justify-center text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">
@@ -126,9 +126,9 @@
 
 <!-- Add Fallback Chain Modal -->
 <div id="addChainModal" role="dialog" aria-modal="true" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onclick="if(event.target === this) closeAddChainModal()">
-  <div class="bg-surface-raised border border-hairline rounded-panel p-5 sm:p-8 max-w-lg w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
+  <div class="bg-surface-raised border border-hairline rounded-panel p-4 sm:p-5 max-w-lg w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-xl font-bold text-ink flex items-center gap-2">
+      <h3 class="text-lg font-bold text-ink flex items-center gap-2">
         <i data-lucide="link" class="w-5 h-5 text-purple-400"></i> Create Fallback Chain
       </h3>
       <button type="button" onclick="closeAddChainModal()" aria-label="Close dialog" class="min-h-touch min-w-touch shrink-0 -mr-2 rounded-control flex items-center justify-center text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">
