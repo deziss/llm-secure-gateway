@@ -1,14 +1,14 @@
-{% extends "base.html" %} {% block title %}Owners - LLM Gateway{% endblock %} {%
+{% extends "base.html" %} {% block title %}Projects - LLM Gateway{% endblock %} {%
 block content %}
 <div
   class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
 >
   <div>
     <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
-      <i data-lucide="users" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> API Owners
+      <i data-lucide="folder-kanban" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> Projects &amp; API keys
     </h1>
     <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
-      Manage API consumers and their granular access permissions.
+      API keys, budgets and server access belong to projects. Users sign in; projects call the API.
     </p>
   </div>
   {% if user and user_role in ['admin', 'manager'] %}
@@ -19,7 +19,7 @@ block content %}
     class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
   >
     <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
-    <span>Register Owner</span>
+    <span>New project</span>
   </button>
   {% endif %}
 </div>
@@ -37,8 +37,8 @@ block content %}
         class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest"
       >
         <tr>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Owner</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Classification</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Project</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Type</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Description</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Access Status</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">
@@ -53,7 +53,7 @@ block content %}
   </div>
 </div>
 
-<!-- Add Owner Modal -->
+<!-- New Project Modal -->
 <div
   id="addModal"
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
@@ -67,7 +67,7 @@ block content %}
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="user-plus" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> New API Owner
+        <i data-lucide="user-plus" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> New project
       </h2>
       <button
         onclick="closeAddModal()"
@@ -85,7 +85,7 @@ block content %}
           <label
             for="addOwnerId"
             class="block text-caption font-medium text-ink-muted mb-2"
-            >Owner ID (Unique)</label
+            >Project ID (unique)</label
           >
           <input
             type="text"
@@ -126,7 +126,7 @@ block content %}
             id="addOwnerEmail"
             name="email"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
-            placeholder="owner@example.com"
+            placeholder="team@example.com"
           />
         </div>
       </div>
@@ -135,15 +135,15 @@ block content %}
         <label
           for="addOwnerType"
           class="block text-caption font-medium text-ink-muted mb-2"
-          >Owner Type</label
+          >Type</label
         >
         <select
           id="addOwnerType"
           name="type"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer"
         >
-          <option value="user">Individual User</option>
-          <option value="project">Service Account / Project</option>
+          <option value="user">Personal (one person)</option>
+          <option value="project">Team or service</option>
         </select>
       </div>
 
@@ -158,7 +158,7 @@ block content %}
           name="description"
           rows="2"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition resize-none"
-          placeholder="What is this owner/project used for?"
+          placeholder="What is this project used for?"
         ></textarea>
       </div>
 
@@ -222,14 +222,14 @@ block content %}
           type="submit"
           class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition"
         >
-          Create Owner
+          Create project
         </button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Edit Owner Modal -->
+<!-- Edit Project Modal -->
 <div
   id="editModal"
   class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
@@ -243,7 +243,7 @@ block content %}
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit API Owner
+        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit project
       </h2>
       <button
         onclick="closeEditModal()"
@@ -290,15 +290,15 @@ block content %}
         <label
           for="editType"
           class="block text-caption font-medium text-ink-muted mb-2"
-          >Owner Type</label
+          >Type</label
         >
         <select
           name="type"
           id="editType"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
         >
-          <option value="user">Individual User</option>
-          <option value="project">Service Account / Project</option>
+          <option value="user">Personal (one person)</option>
+          <option value="project">Team or service</option>
         </select>
       </div>
 
@@ -354,7 +354,7 @@ block content %}
             </label>
           </div>
           <p class="text-xs text-slate-500 font-medium">
-            Deactivating will reject all API requests for this owner.
+            Deactivating rejects every API request made with this project's keys.
           </p>
         </div>
       </div>
@@ -370,7 +370,7 @@ block content %}
           id="editDescription"
           rows="2"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
-          placeholder="What is this owner/project used for?"
+          placeholder="What is this project used for?"
         ></textarea>
       </div>
 
@@ -426,7 +426,7 @@ block content %}
     >
       <div>
         <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <i data-lucide="shield-check" class="text-emerald-500 w-5 h-5" aria-hidden="true"></i> Manage Permissions
+          <i data-lucide="shield-check" class="text-emerald-500 w-5 h-5" aria-hidden="true"></i> Server access
         </h2>
         <p
           class="text-ok text-sm font-mono font-bold mt-1"
@@ -462,7 +462,7 @@ block content %}
             >
               <tr>
                 <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">
-                  Backend Provider
+                  Model server
                 </th>
                 <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Allowed Models</th>
                 <th class="p-4 border-b border-slate-200 dark:border-slate-800/50 text-right"></th>
@@ -481,7 +481,7 @@ block content %}
           class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2"
           id="addPermissionHeader"
         >
-          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i> Grant New Permission
+          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i> Grant access to a server
         </h3>
         <form
           id="addPermissionForm" action="javascript:void(0);"
@@ -493,7 +493,7 @@ block content %}
               <label
                 for="permBackend"
                 class="block text-caption font-medium text-ink-muted mb-2"
-                >Backend Provider</label
+                >Model server</label
               >
               <select
                 id="permBackend"

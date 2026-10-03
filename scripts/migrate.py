@@ -80,7 +80,7 @@ def _detect_state(engine) -> str:
         insp = inspect(conn)
         tables = insp.get_table_names()
 
-        has_app_tables = any(t in tables for t in ["llmbackend", "apikey", "owner", "user"])
+        has_app_tables = any(t in tables for t in ["model_server", "llmbackend", "apikey", "owner", "user"])
         has_alembic = "alembic_version" in tables
 
         if not has_app_tables and not has_alembic:

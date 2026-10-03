@@ -26,7 +26,7 @@ SQL
 
 echo "=== Importing LLM Backends ==="
 docker compose exec -T postgres psql -U gateway -d gateway_db <<'SQL'
-INSERT INTO llmbackend (name, base_url, backend_type, api_key, models)
+INSERT INTO model_server (name, base_url, backend_type, api_key, models)
 VALUES
   ('local-ollama', 'http://host.docker.internal:11434', 'OLLAMA', NULL, '["llama3.2:latest"]'),
   ('ollama-kaveri', 'http://10.120.130.55:11434', 'OLLAMA', NULL, '["llama3.2:latest"]'),
@@ -37,4 +37,4 @@ ON CONFLICT (name) DO UPDATE SET
 SQL
 
 echo "=== Import complete! ==="
-echo "Verify with: docker compose exec postgres psql -U gateway -d gateway_db -c 'SELECT name, base_url FROM llmbackend;'"
+echo "Verify with: docker compose exec postgres psql -U gateway -d gateway_db -c 'SELECT name, base_url FROM model_server;'"

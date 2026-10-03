@@ -33,7 +33,7 @@
         <tr>
           <th class="px-6 py-4 border-b border-hairline">Bot Info</th>
           <th class="px-6 py-4 border-b border-hairline">Platform</th>
-          <th class="px-6 py-4 border-b border-hairline">Backend &amp; Model</th>
+          <th class="px-6 py-4 border-b border-hairline">Server &amp; model</th>
           <th class="px-6 py-4 border-b border-hairline">Webhook Endpoint</th>
           <th class="px-6 py-4 border-b border-hairline text-center">Status</th>
           <th class="px-6 py-4 border-b border-hairline text-right">Actions</th>
@@ -52,8 +52,8 @@
         Add a bot connection using your Telegram or Discord tokens to start relaying user prompts directly to configured gateway backends.
       </p>
       <div id="noBackendNotice" class="hidden mt-4 p-3 rounded-control bg-warn/10 border border-warn/30 text-warn text-caption flex flex-col items-center gap-2">
-        <span>No LLM backends configured yet. Bots require at least one backend to handle queries.</span>
-        <a href="/admin/view/backends" class="px-3 py-2 min-h-touch inline-flex items-center rounded-control bg-warn text-slate-900 font-semibold hover:opacity-90 transition">
+        <span>No model servers configured yet. Bots need at least one server to answer.</span>
+        <a href="/admin/view/servers" class="px-3 py-2 min-h-touch inline-flex items-center rounded-control bg-warn text-slate-900 font-semibold hover:opacity-90 transition">
           <i class="fas fa-server mr-1"></i> Configure Backends First
         </a>
       </div>
@@ -106,14 +106,14 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label for="addBackendSelect" class="mb-1.5 block text-caption font-medium text-ink-muted">Target Gateway Backend</label>
+          <label for="addBackendSelect" class="mb-1.5 block text-caption font-medium text-ink-muted">Target model server</label>
           <select name="backend_name" id="addBackendSelect" required class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40">
             <!-- Dynamically populated -->
           </select>
         </div>
         <div>
           <label for="addBotModel" class="mb-1.5 block text-caption font-medium text-ink-muted">Model Override (Optional)</label>
-          <input type="text" id="addBotModel" name="model_name" placeholder="Defaults to backend's primary model"
+          <input type="text" id="addBotModel" name="model_name" placeholder="Defaults to the server's first model"
             class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
         </div>
       </div>
@@ -129,7 +129,7 @@
           <label for="addBotLimit" class="mb-1.5 block text-caption font-medium text-ink-muted">Context Thread Limit</label>
           <input type="number" id="addBotLimit" name="history_limit" value="10" min="1" max="100" required
             class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
-          <p class="text-micro text-ink-muted mt-1">Number of stateful history messages to relay to the LLM backend.</p>
+          <p class="text-micro text-ink-muted mt-1">How many previous messages to send to the model with each reply.</p>
         </div>
         <div class="flex items-center gap-3 pt-4">
           <label class="relative inline-flex items-center cursor-pointer">
@@ -198,14 +198,14 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label for="editBackendSelect" class="mb-1.5 block text-caption font-medium text-ink-muted">Target Gateway Backend</label>
+          <label for="editBackendSelect" class="mb-1.5 block text-caption font-medium text-ink-muted">Target model server</label>
           <select name="backend_name" id="editBackendSelect" required class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40">
             <!-- Dynamically populated -->
           </select>
         </div>
         <div>
           <label for="editBotModel" class="mb-1.5 block text-caption font-medium text-ink-muted">Model Override (Optional)</label>
-          <input type="text" name="model_name" id="editBotModel" placeholder="Defaults to backend's primary model"
+          <input type="text" name="model_name" id="editBotModel" placeholder="Defaults to the server's first model"
             class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
         </div>
       </div>
@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadBackends() {
     try {
-        const resp = await fetchWithCsrf('/admin/backends');
+        const resp = await fetchWithCsrf('/admin/servers');
         if (resp.ok) {
             activeBackends = await resp.json();
             populateBackendDropdowns();
@@ -379,7 +379,7 @@ function renderBotsTable() {
                 <div class="font-medium text-ink flex items-center gap-1.5">
                     <i data-lucide="server" class="w-3.5 h-3.5 text-ink-muted" aria-hidden="true"></i> ${escapeHtml(bot.backend_name)}
                 </div>
-                <div class="text-micro text-ink-muted font-mono mt-0.5">${escapeHtml(bot.model_name || 'Primary Backend Model')}</div>
+                <div class="text-micro text-ink-muted font-mono mt-0.5">${escapeHtml(bot.model_name || 'Server default model')}</div>
             </td>
             <td class="px-4 sm:px-6 py-4 border-b border-hairline">
                 <div class="flex items-center gap-2 min-w-0">
@@ -419,7 +419,7 @@ function renderBotsTable() {
 
 function openAddModal() {
     if (activeBackends.length === 0) {
-        showToast('Configuration Notice', 'Please register at least one backend in the "Backends" tab first.', 'warning');
+        showToast('Configuration Notice', 'Add at least one model server first (Model servers page).', 'warning');
         return;
     }
     const form = document.getElementById('addBotForm');

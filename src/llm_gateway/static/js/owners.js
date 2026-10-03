@@ -1,11 +1,30 @@
-// owners.js — Owners page logic
+// owners.js — Projects page logic (formerly "Owners"; the API is /admin/projects).
 
 let ownersTable = null;
+
+// Which signed-in user a project belongs to. Admins and managers can list
+// users, so they see the email; developers only ever see their own projects.
+let userEmailById = {};
+function linkedUserLabel(d) {
+  if (!d.user_id) return "Service · no linked user";
+  if (USER_ROLE !== "admin" && USER_ROLE !== "manager") return "Linked to you";
+  const email = userEmailById[d.user_id];
+  return "User: " + escapeHtml(email || d.user_id);
+}
+if (USER_ROLE === "admin" || USER_ROLE === "manager") {
+  fetch("/admin/users", { credentials: "include" })
+    .then((r) => (r.ok ? r.json() : []))
+    .then((users) => {
+      users.forEach((u) => { userEmailById[u.id] = u.email; });
+      if (ownersTable) ownersTable.rows().invalidate("data").draw(false);
+    })
+    .catch(() => {});
+}
 
 $(document).ready(function () {
   ownersTable = $("#ownersTable").DataTable({
     ajax: {
-      url: "/admin/owners",
+      url: "/admin/projects",
       dataSrc: function (json) {
         if (Array.isArray(json)) {
           json.forEach((item) => (ownersData[item.id] = item));
@@ -29,6 +48,7 @@ $(document).ready(function () {
               <div class="flex flex-col">
                 <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(name)}</span>
                 <span class="text-micro font-mono text-ink-muted">${escapeHtml(d.id)}</span>
+                <span class="text-micro text-ink-muted">${linkedUserLabel(d)}</span>
               </div>
             </div>
           `;
@@ -43,7 +63,7 @@ $(document).ready(function () {
               : "bg-blue-500/10 text-blue-400 border-blue-500/20";
           const icon =
             data === "project" ? "layers" : "user";
-          return `<span class="px-2.5 py-1 rounded-lg text-micro font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${escapeHtml(data)}</span>`;
+          return `<span class="px-2.5 py-1 rounded-lg text-micro font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${data === "project" ? "Team" : "Personal"}</span>`;
         },
       },
       {
@@ -122,7 +142,7 @@ $(document).ready(function () {
     if (data.max_keys) data.max_keys = parseInt(data.max_keys, 10);
 
     try {
-      const res = await fetchWithCsrf("/admin/owners", {
+      const res = await fetchWithCsrf("/admin/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -130,7 +150,7 @@ $(document).ready(function () {
       });
 
       if (res.ok) {
-        showToast("Success", `Owner '${data.name || data.id}' registered successfully`);
+        showToast("Success", `Project '${data.name || data.id}' created`);
         closeAddModal();
         ownersTable.ajax.reload(null, false);
       } else {
@@ -165,7 +185,7 @@ $(document).ready(function () {
     if (data.max_keys) data.max_keys = parseInt(data.max_keys, 10);
 
     try {
-      const res = await fetchWithCsrf("/admin/owners/" + encodeURIComponent(id), {
+      const res = await fetchWithCsrf("/admin/projects/" + encodeURIComponent(id), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -173,7 +193,7 @@ $(document).ready(function () {
       });
 
       if (res.ok) {
-        showToast("Success", `Owner '${id}' updated successfully`);
+        showToast("Success", `Project '${id}' updated`);
         closeEditModal();
         ownersTable.ajax.reload(null, false);
       } else {
@@ -249,18 +269,18 @@ window.closeKeysModal = closeKeysModal;
 
 async function deleteOwner(id) {
   const confirmed = await showConfirm(
-    "Revoke Owner",
-    `Are you sure you want to permanently revoke owner '${id}'? This will delete all associated API keys immediately.`
+    "Delete project",
+    `Permanently delete project '${id}'? All of its API keys stop working immediately.`
   );
   if (!confirmed) return;
 
   try {
-    const res = await fetchWithCsrf("/admin/owners/" + encodeURIComponent(id), {
+    const res = await fetchWithCsrf("/admin/projects/" + encodeURIComponent(id), {
       method: "DELETE",
       credentials: "include",
     });
     if (res.ok) {
-      showToast("Success", "Owner revoked successfully");
+      showToast("Success", "Project deleted");
       delete ownersData[id];
       if (ownersTable) ownersTable.ajax.reload(null, false);
     } else {
@@ -300,7 +320,7 @@ async function loadKeys(ownerId) {
   const tbody = document.getElementById("keysList");
   if (!tbody) return;
   try {
-    const res = await fetchWithCsrf(`/admin/owners/${encodeURIComponent(ownerId)}/keys`);
+    const res = await fetchWithCsrf(`/admin/projects/${encodeURIComponent(ownerId)}/keys`);
     if (!res.ok) throw new Error("Failed to load keys");
     const keys = await res.json();
 
@@ -431,7 +451,7 @@ async function createKeyFromModal() {
 let currentOwnerIdForPerms = null;
 
 async function loadPermissions(ownerId) {
-  const res = await fetchWithCsrf(`/admin/owners/${encodeURIComponent(ownerId)}/permissions`);
+  const res = await fetchWithCsrf(`/admin/projects/${encodeURIComponent(ownerId)}/permissions`);
   const perms = await res.json().catch(() => []);
   const tbody = document.getElementById("permissionsList");
   if (!tbody) return;
@@ -482,7 +502,7 @@ async function loadPermissions(ownerId) {
 
 async function fetchBackendsForSelect() {
   try {
-    const res = await fetchWithCsrf("/admin/backends");
+    const res = await fetchWithCsrf("/admin/servers");
     if (!res.ok) return;
     const backends = await res.json();
     const select = document.getElementById("permBackend");
@@ -490,7 +510,7 @@ async function fetchBackendsForSelect() {
       select.innerHTML = backends.map(b => `<option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (${escapeHtml(b.backend_type)})</option>`).join("");
     }
   } catch(e) {
-    console.error("Failed to fetch backends for permissions select");
+    console.error("Failed to load model servers for the access list");
   }
 }
 
@@ -535,7 +555,7 @@ $("#addPermissionForm").on("submit", async function (e) {
 
   try {
     const res = await fetchWithCsrf(
-      `/admin/owners/${encodeURIComponent(currentOwnerIdForPerms)}/permissions`,
+      `/admin/projects/${encodeURIComponent(currentOwnerIdForPerms)}/permissions`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -567,7 +587,7 @@ async function deletePermission(permId) {
   if (!confirmed) return;
   try {
     const res = await fetchWithCsrf(
-      `/admin/owners/${encodeURIComponent(currentOwnerIdForPerms)}/permissions/${permId}`,
+      `/admin/projects/${encodeURIComponent(currentOwnerIdForPerms)}/permissions/${permId}`,
       {
         method: "DELETE",
       },

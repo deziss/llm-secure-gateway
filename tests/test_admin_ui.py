@@ -52,12 +52,12 @@ def _nav_links(html):
 @pytest.mark.parametrize(
     "role,expected_count,must_have,must_lack",
     [
-        ("admin", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/backends"], []),
+        ("admin", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/servers"], []),
         ("manager", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/users"], []),
-        ("developer", 6, ["/admin/view/owners", "/admin/dashboard"],
-         ["/admin/view/backends", "/admin/view/users", "/admin/view/settings", "/admin/view/spend", "/admin/view/audit"]),
+        ("developer", 6, ["/admin/view/projects", "/admin/dashboard"],
+         ["/admin/view/servers", "/admin/view/users", "/admin/view/settings", "/admin/view/spend", "/admin/view/audit"]),
         ("viewer", 5, ["/admin/dashboard", "/admin/view/playground"],
-         ["/admin/view/owners", "/admin/view/backends", "/admin/view/settings"]),
+         ["/admin/view/projects", "/admin/view/servers", "/admin/view/settings"]),
     ],
 )
 def test_sidebar_role_gating(role, expected_count, must_have, must_lack):

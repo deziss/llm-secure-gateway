@@ -1,5 +1,24 @@
 # Upgrade Guide
 
+## Upgrading to v0.13.0: "backends" become "model servers"
+
+Migration `005_model_server` renames the table `llmbackend` to `model_server`. Foreign keys from `ownerpermission`, `modelalias` and `llmbot` follow it automatically, and column names (`backend_name`, `backend_type`) are unchanged.
+
+1. **Back up first:**
+   ```bash
+   docker exec llm-gateway-postgres pg_dump -U gateway -d gateway_db -Fc -f /tmp/pre_005.dump
+   ```
+2. **Run the migration before the new gateway code starts.** With the default `docker-compose.yml`, `docker compose up -d` already does this: the gateway waits for the `migrate` service. If an override removes that dependency (as `docker-compose.override.yml` does for the shared local stack), run:
+   ```bash
+   docker stop llm-gateway
+   docker compose up migrate
+   docker start llm-gateway
+   ```
+   If the gateway does start first, its startup `create_all` makes an empty `model_server` table. The migration drops that empty table and renames the real one; it aborts if both tables contain rows.
+
+API clients need no changes: `/admin/backends/*` and `backend_type` keep working, alongside the new `/admin/servers/*` and `server_type`.
+
+
 ## Upgrading to v0.5.4 & PostgreSQL 18
 
 LLM Secure Gateway v0.5.4 upgrades PostgreSQL from version 15 to **PostgreSQL 18** (`postgres:18-alpine`).

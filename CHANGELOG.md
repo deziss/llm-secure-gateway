@@ -1,3 +1,34 @@
+## [0.13.0] - 2026-10-03
+
+### 🔐 Security
+
+- **Fixed a privilege escalation.** `PATCH /admin/users/{id}` required only MANAGER but wrote `role`, `is_superuser` and `is_active` unchecked, so a manager could make themselves admin. Now:
+  - only admins change roles or the superuser flag, or edit admin, superuser or manager accounts;
+  - managers may set DEVELOPER/VIEWER and toggle active on those accounts;
+  - nobody can change their own role or state.
+- **Viewers are read-only** on projects and API keys. The API used to accept their writes even though the page was hidden from them.
+
+### ✨ Changed
+
+- **"Backends" are now "Model servers".**
+  - The page is `/admin/view/servers`; `/admin/view/backends` redirects there.
+  - The API is `/admin/servers/*`; `/admin/backends/*` is deprecated but still works.
+  - Responses add `server_type` next to `backend_type`, and requests accept either.
+  - The Python class is `ModelServer`; `LLMBackend` remains as an alias.
+  - **Database:** migration `005_model_server` renames table `llmbackend` to `model_server`. It is idempotent and drops an empty duplicate left by `create_all`. See UPGRADE.md.
+  - **API tester:** the routing modes "Standard / Direct" are now "By type / Pick server", with an explanation; "Provider" selectors read "Server type" across the playgrounds.
+- **"Owners" are now "Projects" everywhere in the UI, with the type options *Personal* and *Team or service*.
+  - `/admin/projects/*` is the canonical API. `/admin/owners/*` still works and is marked deprecated in OpenAPI.
+  - `/admin/view/owners` redirects to `/admin/view/projects`.
+  - The Projects list shows each project's linked user (or "Service"), and the Users list shows each user's project count.
+  - The README gains a Key Concepts section.
+- **Manager access aligned with the UI.**
+  - Managers get dashboard live metrics, Spend, the Bots tab, and backend edit, delete, health and sync.
+  - Pulling and deleting models on an Ollama host stays admin-only, and its button is hidden for managers.
+  - Developers and viewers see a playground workspace on the dashboard instead of empty cards.
+
+---
+
 ## [0.12.0] - 2026-10-03
 
 ### ✨ New

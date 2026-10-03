@@ -1,14 +1,14 @@
-{% extends "base.html" %} {% block title %}Backends - LLM Gateway{% endblock %}
+{% extends "base.html" %} {% block title %}Model servers - LLM Gateway{% endblock %}
 {% block content %}
 <div
   class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
 >
   <div>
     <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
-      <i data-lucide="server" class="h-5 w-5 shrink-0 text-blue-500" aria-hidden="true"></i> LLM Backends
+      <i data-lucide="server" class="h-5 w-5 shrink-0 text-blue-500" aria-hidden="true"></i> Model servers
     </h1>
     <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
-      Manage and monitor your model providers in real-time.
+      The upstream servers and provider accounts the gateway routes to: Ollama hosts, vLLM clusters, OpenAI and others.
     </p>
   </div>
   {% if user and (user_role in ['admin', 'manager'] or user.is_superuser) %}
@@ -33,7 +33,7 @@
       class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
     >
       <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
-      <span>Add Backend</span>
+      <span>Add server</span>
     </button>
   </div>
   {% endif %}
@@ -52,7 +52,7 @@
         class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest"
       >
         <tr>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Backend Info</th>
+          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Server</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Type & Status</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Models Available</th>
           <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">Actions</th>
@@ -79,7 +79,7 @@
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="plus-circle" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Register Backend
+        <i data-lucide="plus-circle" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Add model server
       </h2>
       <button
         type="button"
@@ -113,7 +113,7 @@
           <label
             for="addBackendType"
             class="block text-caption font-medium text-ink-muted mb-2"
-            >Backend Type</label
+            >Server type</label
           >
           <select
             id="addBackendType"
@@ -226,7 +226,7 @@
           class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="check" class="w-4 h-4"></i>
-          <span>Save Backend</span>
+          <span>Save server</span>
         </button>
       </div>
     </form>
@@ -247,7 +247,7 @@
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit Backend
+        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit model server
       </h2>
       <button
         type="button"
@@ -376,7 +376,7 @@
           class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="check" class="w-4 h-4"></i>
-          <span>Update Backend</span>
+          <span>Update server</span>
         </button>
       </div>
     </form>

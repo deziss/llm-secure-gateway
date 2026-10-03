@@ -2,6 +2,18 @@
 
 let usersTable = null;
 
+// How many projects (API consumers) each user is linked to.
+let projectCountByUser = {};
+fetch("/admin/projects", { credentials: "include" })
+  .then((r) => (r.ok ? r.json() : []))
+  .then((projects) => {
+    projects.forEach((p) => {
+      if (p.user_id) projectCountByUser[p.user_id] = (projectCountByUser[p.user_id] || 0) + 1;
+    });
+    if (usersTable) usersTable.rows().invalidate("data").draw(false);
+  })
+  .catch(() => {});
+
 $(document).ready(function () {
   usersTable = $("#usersTable").DataTable({
     ajax: {
@@ -28,6 +40,7 @@ $(document).ready(function () {
               <div class="flex flex-col">
                 <span class="text-ink font-bold text-base tracking-tight">${escapeHtml(data.email)}</span>
                 <span class="text-micro font-mono text-ink-muted">${escapeHtml(data.id)}</span>
+                <a href="/admin/view/projects" class="text-micro text-accent hover:underline">${(() => { const n = projectCountByUser[data.id] || 0; return n ? n + (n === 1 ? " project" : " projects") : "No projects"; })()}</a>
               </div>
             </div>
           `;
