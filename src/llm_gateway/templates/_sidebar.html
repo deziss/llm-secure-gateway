@@ -7,8 +7,8 @@
 
   Role gating mirrors the old header.html exactly:
     Dashboard                                   everyone
-    Backends, Spend, Aliases                    admin, manager
-    Owners                                      admin, manager, developer
+    Model servers, Spend, Aliases               admin, manager
+    Projects (API consumers)                    admin, manager, developer
     System: Users, Audit history, Settings      admin, manager (bots: Settings tab)
 
   The Playground group is rendered as a flat section rather than a dropdown.
@@ -49,10 +49,10 @@
     {{ nav_link('/admin/dashboard', 'line-chart', 'Dashboard') }}
 
     {% if user and user_role in ['admin', 'manager'] %}
-    {{ nav_link('/admin/view/backends', 'server', 'Backends') }}
+    {{ nav_link('/admin/view/servers', 'server', 'Model servers') }}
     {% endif %}
     {% if user and user_role in ['admin', 'manager', 'developer'] %}
-    {{ nav_link('/admin/view/owners', 'users', 'Owners') }}
+    {{ nav_link('/admin/view/projects', 'folder-kanban', 'Projects') }}
     {% endif %}
     {% if user and user_role in ['admin', 'manager'] %}
     {{ nav_link('/admin/view/spend', 'dollar-sign', 'Spend') }}

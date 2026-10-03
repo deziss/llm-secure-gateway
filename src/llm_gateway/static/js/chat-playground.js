@@ -106,7 +106,7 @@ async function fetchModels() {
   const statusEl = document.getElementById("modelStatus");
   statusEl.textContent = "Fetching...";
   try {
-    const res = await fetch(BASE_URL + "/admin/backends", {
+    const res = await fetch(BASE_URL + "/admin/servers", {
       credentials: "include",
     });
     backends = await res.json();
@@ -581,7 +581,7 @@ function recordTurnStats(wrapper, s) {
     `<span>${secs.toFixed(1)}s${s.tFirst ? ` · first token ${((s.tFirst - s.t0) / 1000).toFixed(1)}s` : ""}${tps ? ` · ${tps.toFixed(0)} tok/s` : ""}</span>`,
     `<span title="Messages sent as context, including the system prompt">Memory <b>${s.contextMessages}</b> msgs</span>`,
     ctxGauge(prompt, windowSize),
-    exact ? "" : `<span title="The backend didn't report usage; counts are estimated at ~4 characters per token">estimated</span>`,
+    exact ? "" : `<span title="The server didn't report usage; counts are estimated at ~4 characters per token">estimated</span>`,
   ].filter(Boolean).join("");
   const bubble = wrapper.querySelector(".bubble-ai");
   if (bubble) {

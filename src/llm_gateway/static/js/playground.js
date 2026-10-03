@@ -57,7 +57,7 @@ const backendSelect = document.getElementById("backendSelect");
 document.addEventListener("DOMContentLoaded", async () => {
   // Fetch backends
   try {
-    const res = await fetch(BASE_URL + "/admin/backends", { credentials: "include" });
+    const res = await fetch(BASE_URL + "/admin/servers", { credentials: "include" });
     if (res.ok) {
       backends = await res.json();
       populateBackends();
@@ -74,7 +74,7 @@ function populateBackends() {
   backendSelect.innerHTML = "";
   if (backends.length === 0) {
     const opt = document.createElement("option");
-    opt.text = "No backends found";
+    opt.text = "No model servers found";
     backendSelect.add(opt);
     return;
   }
@@ -219,7 +219,7 @@ document
         opt.textContent = "No models found";
         modelSelect.appendChild(opt);
         statusEl.textContent =
-          "No models found. Try syncing backends first.";
+          "No models found. Sync models on the Model servers page first.";
         statusEl.className = "text-caption text-warn mt-1";
       }
     } catch (error) {
@@ -379,6 +379,8 @@ function updateFieldVisibility() {
 // Toggle Logic
 function setMode(mode) {
   routingMode = mode;
+  const hint = document.getElementById("modeHint");
+  if (hint) hint.classList.toggle("hidden", mode !== "standard");
   const activeClasses = ["bg-accent", "text-white"];
   const inactiveClasses = ["bg-transparent", "text-ink-muted"];
 
@@ -416,8 +418,8 @@ const STREAM_MAX_ROWS = 2000;
 const GATEWAY_HEADERS = {
   "x-cache": "Gateway response cache: HIT, SEMANTIC-HIT or MISS",
   "x-cache-similarity": "Similarity of the semantic cache match",
-  "x-budget-spent": "Spend so far this month for this key/owner (USD)",
-  "x-budget-limit": "Monthly budget for this key/owner (USD)",
+  "x-budget-spent": "Spend so far this month for this key/project (USD)",
+  "x-budget-limit": "Monthly budget for this key/project (USD)",
 };
 
 let last = null; // { text, json, headers, events, status }

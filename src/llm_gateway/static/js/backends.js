@@ -3,7 +3,7 @@
 $(document).ready(function () {
   const table = $("#backendsTable").DataTable({
     ajax: {
-      url: "/admin/backends",
+      url: "/admin/servers",
       dataSrc: function (json) {
         json.forEach((item) => (backendsData[item.name] = item));
         return json;
@@ -62,7 +62,8 @@ $(document).ready(function () {
             const escaped = escapeHtml(data);
             const safeName = escapeHtml(String(data));
             const manageBtn =
-              row.backend_type === "ollama"
+              // Pulling/deleting models changes the Ollama host's disk: admin-only.
+              row.backend_type === "ollama" && USER_ROLE === "admin"
                 ? `<button type="button" data-action="manage" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg transition-all border border-indigo-500/20 cursor-pointer" title="Manage Models" aria-label="Manage Models"><i data-lucide="boxes" class="w-4 h-4"></i></button>`
                 : `<button type="button" data-action="sync" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-500/20 cursor-pointer" title="Sync Models" aria-label="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
 
@@ -128,7 +129,7 @@ $(document).ready(function () {
     }
 
     try {
-      const res = await fetchWithCsrf("/admin/backends", {
+      const res = await fetchWithCsrf("/admin/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -136,13 +137,13 @@ $(document).ready(function () {
       });
 
       if (res.ok) {
-        showToast("Success", `Backend '${name}' registered successfully`);
+        showToast("Success", `Server '${name}' added`);
         closeAddModal();
         table.ajax.reload(null, false);
       } else {
         const err = await res.json().catch(() => ({ detail: "Invalid response from server" }));
         const msg = window.formatErrorMessage
-          ? window.formatErrorMessage(err, "Backend registration failed")
+          ? window.formatErrorMessage(err, "Could not add the server")
           : (err.detail || "Validation failed");
         showToast("Registration Failed", msg, "error");
       }
@@ -195,7 +196,7 @@ $(document).ready(function () {
     payload.allowed_endpoints = rawEndpoints.length > 0 ? rawEndpoints : ["*"];
 
     try {
-      const res = await fetchWithCsrf("/admin/backends/" + encodeURIComponent(name), {
+      const res = await fetchWithCsrf("/admin/servers/" + encodeURIComponent(name), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -203,13 +204,13 @@ $(document).ready(function () {
       });
 
       if (res.ok) {
-        showToast("Success", `Backend '${name}' updated successfully`);
+        showToast("Success", `Server '${name}' updated`);
         closeEditModal();
         table.ajax.reload(null, false);
       } else {
         const err = await res.json().catch(() => ({ detail: "Invalid response from server" }));
         const msg = window.formatErrorMessage
-          ? window.formatErrorMessage(err, "Backend update failed")
+          ? window.formatErrorMessage(err, "Could not update the server")
           : (err.detail || "Validation failed");
         showToast("Update Failed", msg, "error");
       }
@@ -326,7 +327,7 @@ function openManageModelsModal(name) {
         list.appendChild(li);
       });
     } else {
-      list.innerHTML = `<li class="p-8 text-center text-ink-muted italic text-sm">No models registered for this backend.</li>`;
+      list.innerHTML = `<li class="p-8 text-center text-ink-muted italic text-sm">No models registered for this server.</li>`;
     }
   }
 
@@ -381,7 +382,7 @@ async function checkBackendHealth(name) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
   try {
-    const res = await fetch(`/admin/backends/${encodeURIComponent(name)}/health`, {
+    const res = await fetch(`/admin/servers/${encodeURIComponent(name)}/health`, {
       credentials: "include",
       signal: controller.signal,
     });
@@ -404,7 +405,7 @@ async function checkBackendHealth(name) {
 async function syncBackendModels(name, quiet) {
   let result;
   try {
-    const res = await fetchWithCsrf(`/admin/backends/${encodeURIComponent(name)}/sync-models`, {
+    const res = await fetchWithCsrf(`/admin/servers/${encodeURIComponent(name)}/sync-models`, {
       method: "POST",
       credentials: "include",
     });
@@ -432,24 +433,24 @@ async function syncAllBackends() {
   if (btn) btn.disabled = false;
   $("#backendsTable").DataTable().ajax.reload(null, false);
   const failed = names.filter((_, i) => !results[i].ok);
-  if (!failed.length) showToast("Models synced", `All ${names.length} backends updated`);
+  if (!failed.length) showToast("Models synced", `All ${names.length} servers updated`);
   else showToast("Sync incomplete", `Failed: ${failed.join(", ")}`, failed.length === names.length ? "error" : "warning");
 }
 
 async function deleteBackend(name) {
   const confirmed = await showConfirm(
     "Revoke Backend",
-    "Are you sure you want to permanently remove backend '" + name + "'? This will affect all associated models."
+    "Permanently remove server '" + name + "'? This will affect all associated models."
   );
   if (!confirmed) return;
 
   try {
-    const res = await fetchWithCsrf("/admin/backends/" + encodeURIComponent(name), {
+    const res = await fetchWithCsrf("/admin/servers/" + encodeURIComponent(name), {
       method: "DELETE",
       credentials: "include",
     });
     if (res.ok) {
-      showToast("Success", "Backend deleted successfully");
+      showToast("Success", "Server removed");
       delete backendsData[name];
       $("#backendsTable").DataTable().ajax.reload(null, false);
     } else {
@@ -465,13 +466,13 @@ async function deleteBackend(name) {
 async function deleteRemoteModel(backendName, modelName) {
   const confirmed = await showConfirm(
     "Delete Model",
-    `Are you sure you want to delete '${modelName}' from backend '${backendName}'?`
+    `Delete '${modelName}' from server '${backendName}'?`
   );
   if (!confirmed) return;
 
   try {
     const res = await fetchWithCsrf(
-      `/admin/backends/${encodeURIComponent(backendName)}/models/${encodeURIComponent(modelName)}`,
+      `/admin/servers/${encodeURIComponent(backendName)}/models/${encodeURIComponent(modelName)}`,
       {
         method: "DELETE",
         credentials: "include",
@@ -511,7 +512,7 @@ async function pullModel() {
 
   try {
     const response = await fetchWithCsrf(
-      `/admin/backends/${encodeURIComponent(backendName)}/pull`,
+      `/admin/servers/${encodeURIComponent(backendName)}/pull`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

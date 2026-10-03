@@ -57,21 +57,22 @@ endblock %} {% block content %}
           id="modeStandard"
           class="mode-btn flex-1 min-h-touch sm:min-h-0 px-2 py-1 rounded-control text-xs font-medium transition-colors bg-accent text-white"
         >
-          <i class="fas fa-globe mr-2" aria-hidden="true"></i>Standard
+          <i class="fas fa-globe mr-2" aria-hidden="true"></i>By type
         </button>
         <button
           type="button"
           id="modeDirect"
           class="mode-btn flex-1 min-h-touch sm:min-h-0 px-2 py-1 rounded-control text-xs font-medium transition-colors bg-transparent text-ink-muted"
         >
-          <i class="fas fa-bullseye mr-2" aria-hidden="true"></i>Direct
+          <i class="fas fa-bullseye mr-2" aria-hidden="true"></i>Pick server
         </button>
       </div>
 
+      <p id="modeHint" class="text-caption text-ink-muted">By type: the gateway picks a healthy server of that type and fails over if it errors.</p>
       <!-- Standard Provider Select -->
       <div id="providerContainer">
         <label for="provider" class="block text-caption font-medium text-ink-muted mb-1.5"
-          >Provider</label
+          >Server type</label
         >
         <select
           id="provider"
@@ -90,7 +91,7 @@ endblock %} {% block content %}
       <!-- Direct Backend Select -->
       <div id="backendContainer" class="hidden">
         <label for="backendSelect" class="block text-caption font-medium text-ink-muted mb-1.5"
-          >Target Backend</label
+          >Model server</label
         >
         <select
           id="backendSelect"
@@ -99,7 +100,7 @@ endblock %} {% block content %}
           <option>Loading...</option>
         </select>
         <p class="text-caption text-ink-muted mt-1">
-          Directly routes to this specific machine.
+          Sends the request to this server only, with no fallback.
         </p>
       </div>
 
@@ -138,7 +139,7 @@ endblock %} {% block content %}
             type="button"
             id="fetchModelsBtn"
             class="ml-2 text-caption text-accent hover:underline px-1 transition"
-            title="Fetch models from backend via api/tags"
+            title="Load models from the gateway's servers"
           >
             <i class="fas fa-sync-alt mr-1" aria-hidden="true"></i>Fetch Models
           </button>
@@ -162,7 +163,7 @@ endblock %} {% block content %}
           placeholder="sk-gateway-..."
           class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
         />
-        <p class="text-caption text-ink-muted mt-1">From the Owners page.</p>
+        <p class="text-caption text-ink-muted mt-1">From the Projects page.</p>
       </div>
 
       <div id="messageContainer">

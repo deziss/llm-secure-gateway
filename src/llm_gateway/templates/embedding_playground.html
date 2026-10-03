@@ -199,7 +199,7 @@ endblock %} {% block content %}
     <aside class="ep-side" id="epSide" aria-label="Playground settings">
       <section>
         <h2>Connection</h2>
-        <label class="ep-field"><span class="lbl">Provider</span>
+        <label class="ep-field"><span class="lbl">Server type</span>
           <select class="ep-input" id="epProvider">
             <option value="vllm">vLLM</option>
             <option value="ollama">Ollama</option>
@@ -209,16 +209,16 @@ endblock %} {% block content %}
         </label>
         <div id="epConnFields">
           <label class="ep-field"><span class="lbl">Model
-            <button type="button" class="ep-icon-btn" id="epRefreshModels" title="Load models from the gateway's backends" aria-label="Load models from the gateway's backends"><i data-lucide="refresh-cw" aria-hidden="true"></i></button></span>
+            <button type="button" class="ep-icon-btn" id="epRefreshModels" title="Load models from the gateway's servers" aria-label="Load models from the gateway's servers"><i data-lucide="refresh-cw" aria-hidden="true"></i></button></span>
             <input class="ep-input" id="epModel" list="epModelList" placeholder="bge-m3" spellcheck="false" autocomplete="off" />
             <datalist id="epModelList"></datalist>
           </label>
           <label class="ep-field"><span class="lbl">Gateway API key (optional)</span>
             <input class="ep-input" id="epApiKey" type="password" placeholder="Leave empty to use your sign-in" autocomplete="off" />
           </label>
-          <p class="ep-note">Empty: runs as you. With a key: that owner's rules. Never saved.</p>
+          <p class="ep-note">Empty: runs as you. With a key: that project's rules. Never saved.</p>
         </div>
-        <p class="ep-note" id="epDemoNote" hidden>Demo vectors come from character patterns, so they match similar spelling rather than meaning. Use them to try the interface without a backend.</p>
+        <p class="ep-note" id="epDemoNote" hidden>Demo vectors come from character patterns, so they match similar spelling rather than meaning. Use them to try the interface without a model server.</p>
         <div class="ep-row2">
           <button type="button" class="ep-btn" id="epTestBtn">Test connection</button>
           <button type="button" class="ep-btn" id="epReembedBtn">Re-embed all</button>

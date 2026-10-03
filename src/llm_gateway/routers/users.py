@@ -94,6 +94,44 @@ async def create_user_admin(
         last_login=None
     )
 
+def _role_of(u) -> str:
+    return (u.role.value if hasattr(u.role, "value") else str(u.role or "")).upper()
+
+
+def _is_admin(u) -> bool:
+    return bool(u.is_superuser) or _role_of(u) == Role.ADMIN.value
+
+
+def _check_user_update_allowed(actor, target, update: "UserUpdate") -> None:
+    """Who may change what on PATCH /admin/users/{id}.
+
+    The route only requires MANAGER, and it used to write role,
+    is_superuser and is_active with no further check, so a manager could
+    promote themselves (or anyone) to ADMIN/superuser or deactivate the
+    admins. Now:
+      - nobody changes their own role, superuser flag or active state
+        (prevents locking yourself out, and self-promotion);
+      - only admins grant or revoke superuser;
+      - only admins edit an admin or superuser account;
+      - managers may set role only to DEVELOPER or VIEWER, and toggle
+        is_active, on DEVELOPER/VIEWER accounts.
+    """
+    if str(actor.id) == str(target.id) and (
+        update.role is not None or update.is_superuser is not None or update.is_active is not None
+    ):
+        raise HTTPException(status_code=403, detail="You cannot change your own role, superuser flag or active state")
+    if _is_admin(actor):
+        return
+    if update.is_superuser is not None:
+        raise HTTPException(status_code=403, detail="Only admins can change the superuser flag")
+    if _is_admin(target):
+        raise HTTPException(status_code=403, detail="Only admins can modify an admin account")
+    if _role_of(target) == Role.MANAGER.value:
+        raise HTTPException(status_code=403, detail="Only admins can modify a manager account")
+    if update.role is not None and (update.role.value if hasattr(update.role, "value") else str(update.role)).upper() not in (Role.DEVELOPER.value, Role.VIEWER.value):
+        raise HTTPException(status_code=403, detail="Managers can only assign the DEVELOPER or VIEWER role")
+
+
 @router.patch("/users/{user_id}")
 async def update_user(
     user_id: str,
@@ -110,6 +148,7 @@ async def update_user(
     db_user = result.scalars().first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+    _check_user_update_allowed(user, db_user, update)
     if update.is_superuser is not None:
         db_user.is_superuser = update.is_superuser
     if update.is_active is not None:

@@ -150,7 +150,7 @@
       const li = el("li", "py-2 first:pt-0 last:pb-0");
       const row = el("div", "flex items-center justify-between gap-2 text-sm");
       const label = el("span", "min-w-0 truncate text-ink");
-      label.append(el("span", "text-ink-muted", b.kind === "key" ? "Key " : "Owner "), el("span", "font-medium", b.label));
+      label.append(el("span", "text-ink-muted", b.kind === "key" ? "Key " : "Project "), el("span", "font-medium", b.label));
       row.append(label, el("span", `shrink-0 text-caption font-semibold tabular-nums ${over ? "text-down" : "text-warn"}`,
         `${Math.round(b.ratio * 100)}%`));
       const bar = el("div", "mt-1 h-1.5 rounded-full bg-surface-inset overflow-hidden");
@@ -213,12 +213,12 @@
   };
   function renderBackends(rows) {
     const list = $("dashBackends");
-    if (!rows.length) return empty(list, "No backends configured.");
+    if (!rows.length) return empty(list, "No model servers configured.");
     list.replaceChildren(...rows.map((b) => {
       const st = STATE[b.state] || STATE.idle;
       const li = el("li");
       const a = el("a", "flex items-center gap-3 rounded-control border border-hairline px-3 py-2 hover:bg-surface-inset min-w-0");
-      a.href = "/admin/view/backends";
+      a.href = "/admin/view/servers";
       const dot = el("span", `h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}`);
       dot.setAttribute("aria-hidden", "true");
       const body = el("span", "min-w-0 flex-1");

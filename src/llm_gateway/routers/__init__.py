@@ -1,7 +1,7 @@
 from .admin import router as admin_router
 from .proxy import router as proxy_router
 from .v2_proxy import router as v2_proxy_router
-from .backends import router as backends_router
+from .backends import router as backends_router, servers_router
 from .owners import router as owners_router
 from .users import router as users_router
 from .settings import router as settings_router

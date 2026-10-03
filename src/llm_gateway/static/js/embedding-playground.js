@@ -148,7 +148,7 @@
       try { const j = JSON.parse(msg); msg = j.detail || (j.error && (j.error.message || j.error)) || j.message || msg; } catch (e) { /* not JSON */ }
       if (typeof msg !== "string") msg = JSON.stringify(msg);
       const hint = res.status === 401 ? " Sign in again, or add an API key."
-        : res.status === 403 ? " This key's owner may not have access to this backend or endpoint."
+        : res.status === 403 ? " This key's project may not have access to this server or endpoint."
         : res.status === 404 ? " Check the provider and model name." : "";
       const err = new Error(`Gateway answered ${res.status}: ${msg.slice(0, 220) || res.statusText}.${hint}`);
       err.status = res.status;
@@ -958,14 +958,14 @@
   // Models for the chosen provider, from the gateway's backend list.
   async function loadModels(quiet) {
     try {
-      const res = await fetch(BASE_URL + "/admin/backends", { credentials: "include" });
+      const res = await fetch(BASE_URL + "/admin/servers", { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const backends = await res.json();
       const ids = [...new Set(backends.filter((b) => b.backend_type === settings.provider).flatMap((b) => b.models || []))];
       $("#epModelList").innerHTML = ids.map((id) => `<option value="${esc(id)}">`).join("");
       const guess = ids.find((m) => /embed|bge|e5|gte|minilm|nomic|mxbai|arctic/i.test(m));
       if (!settings.model && (guess || ids.length === 1)) setSetting("model", guess || ids[0]);
-      if (!quiet) toast(ids.length ? `Found ${ids.length} model${ids.length > 1 ? "s" : ""}: ${ids.slice(0, 5).join(", ")}${ids.length > 5 ? "…" : ""}` : "No backends of this type list any models.");
+      if (!quiet) toast(ids.length ? `Found ${ids.length} model${ids.length > 1 ? "s" : ""}: ${ids.slice(0, 5).join(", ")}${ids.length > 5 ? "…" : ""}` : "No servers of this type list any models.");
     } catch (e) { if (!quiet) toast("Couldn't load models: " + e.message, "error"); }
   }
   $("#epRefreshModels").addEventListener("click", () => loadModels(false));

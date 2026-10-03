@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional, List, Dict
 from sqlalchemy import DateTime
 from sqlmodel import SQLModel, Field, Column, Relationship
+from pydantic import computed_field, model_validator
 from sqlalchemy import JSON, UniqueConstraint
 from datetime import datetime, timezone
 
@@ -34,7 +35,28 @@ class BackendType(str, Enum):
                 return cls.LLAMACPP
         return super()._missing_(value)
 
-class LLMBackend(SQLModel, table=True):
+class ModelServer(SQLModel, table=True):
+    """An upstream model server the gateway routes to: an Ollama host, a vLLM
+    cluster, an OpenAI account... Called "backend" before v0.13: the table was
+    `llmbackend` (renamed by migration 005), the class `LLMBackend` (still an
+    alias below), and the type field is still stored as `backend_type`.
+    API responses carry it as both `backend_type` and `server_type`; requests
+    may send either."""
+    __tablename__ = "model_server"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_server_type(cls, data):
+        if isinstance(data, dict) and "server_type" in data and "backend_type" not in data:
+            data = {**data, "backend_type": data["server_type"]}
+        return data
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def server_type(self) -> str:
+        bt = self.backend_type
+        return bt.value if hasattr(bt, "value") else str(bt)
+
     name: str = Field(primary_key=True, index=True, description="Unique name for the backend")
     base_url: str = Field(description="Base URL of the LLM server")
     backend_type: BackendType = Field(default=BackendType.OLLAMA)
@@ -149,7 +171,7 @@ class OwnerPermission(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     owner_id: str = Field(foreign_key="owner.id", index=True, description="Owner of this permission")
-    backend_name: str = Field(foreign_key="llmbackend.name", index=True, description="Allowed backend")
+    backend_name: str = Field(foreign_key="model_server.name", index=True, description="Allowed backend")
     allowed_models: List[str] = Field(default_factory=lambda: ["*"], sa_column=Column(JSON), description="List of allowed models, or ['*'] for all")
     allowed_endpoints: List[str] = Field(default_factory=lambda: ["*"], sa_column=Column(JSON), description="DEPRECATED: No longer enforced. Endpoint auth is handled by API key scopes.")
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
@@ -187,7 +209,7 @@ class LLMBot(SQLModel, table=True):
     name: str = Field(index=True, description="Name of the bot")
     platform: str = Field(default="telegram", description="Bot platform (telegram or discord)")
     encrypted_token: str = Field(description="Encrypted API token")
-    backend_name: str = Field(foreign_key="llmbackend.name", description="Target backend")
+    backend_name: str = Field(foreign_key="model_server.name", description="Target backend")
     model_name: Optional[str] = Field(default=None, description="Optional model override")
     system_prompt: Optional[str] = Field(default=None, description="Optional system prompt override")
     webhook_secret: Optional[str] = Field(default=None, description="Secret token for webhooks")
@@ -231,7 +253,7 @@ class FallbackChain(SQLModel, table=True):
 class ModelAlias(SQLModel, table=True):
     """Virtual model name that resolves to a real provider+model combo."""
     alias: str = Field(primary_key=True, description="Virtual model name, e.g. 'smart-model'")
-    backend_name: str = Field(foreign_key="llmbackend.name", description="Target backend")
+    backend_name: str = Field(foreign_key="model_server.name", description="Target backend")
     model_name: str = Field(description="Real model name on that backend")
     fallback_chain_id: Optional[int] = Field(default=None, foreign_key="fallbackchain.id",
         description="Optional fallback chain to use on failure")
@@ -265,3 +287,8 @@ class CachedResponse(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
     expires_at: datetime = Field(description="Expiry timestamp for TTL enforcement", sa_type=DateTime(timezone=False))
 
+
+
+# Pre-v0.13 names, kept so existing imports and plugins keep working.
+LLMBackend = ModelServer
+ServerType = BackendType
