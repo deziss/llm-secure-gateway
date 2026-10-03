@@ -1,3 +1,44 @@
+## [0.12.0] - 2026-10-03
+
+### ✨ New
+
+- **Dashboard summary cards.** Spend this month (with change against the same point last month), tokens today, a 14-day spend chart, top models, a "Needs attention" list (budgets at 80% or more and keys expiring within 7 days), response-cache hits and tokens saved, denied and failed audit events in the last 24h, and a backend health strip built from live circuit-breaker state. Served by one new endpoint, `GET /admin/dashboard/summary` (admin/manager), which does no network I/O, so an unreachable backend cannot slow it down.
+- **Audit history page** (`/admin/view/audit`, admin/manager). Filters by event type, decision, text and time window. Backed by `GET /admin/audit` and `GET /admin/audit/event-types`.
+- **API tester:** request history (last 20, one-click restore or re-run, never stores keys); a timing bar with time to first byte, time to first token, total time, tokens in and out, and tokens/s; Body (text or highlighted JSON), Headers (gateway headers first, with explanations), Stream (every event with its timestamp) and Code tabs; copy-as-code for cURL, Python and JavaScript; Ctrl+Enter to send. Streamed chat requests now ask for `include_usage`.
+- **Embedding Playground rebuilt.** PCA, t-SNE and UMAP layouts in a Web Worker, with animated transitions and explained variance; nearest/threshold similarity lines with optional scores; a detail panel with the top 10 neighbours; a similarity matrix with ordering and CSV export; meaning search and vector math (`dog - car + truck`); k-means clustering; cosine, dot and euclidean metrics; `text | label` input and .txt/.csv/.tsv upload; batched requests (64 texts per call); an IndexedDB embedding cache and saved session; JSON import and export; a demo provider that needs no backend. It now uses your sign-in when no API key is given. umap-js 1.4.0 (Apache-2.0) is vendored.
+- **Chat:** a "thinking" panel that streams reasoning and collapses smoothly 3 seconds after it starts; token, context and speed details per message plus conversation totals; Markdown rendering with code copy buttons and safe links, shared with the Model Arena.
+- **Model Arena:** an owner API key field, a dropdown that lists every model, and Raw/Rendered toggles.
+- **`ALLOW_INSECURE_HTTP` dev mode** (off by default). Lets you sign in over plain `http://<lan-ip>` by dropping the `Secure` flag on the session and CSRF cookies and suppressing HSTS. Logs a startup warning and shows a top-bar badge. Without it, the login page now explains why sign-in will not stick over plain HTTP.
+
+### 🎨 Admin panel
+
+- Settings is split into tabs (General, Access, Routing, Caching, Compliance, Scope policy, Bots), and the selected tab is kept in the URL hash. The scope-policy add-rule form moved above the table with a scope dropdown.
+- Bots moved into a Settings tab. `/admin/view/bots` now redirects to `/admin/view/settings#bots`.
+- The sidebar has a "System" group (Users, Audit history, Settings).
+- The theme switch moved to the top bar as a three-way toggle.
+- Tables pin their name and action columns when they overflow; DataTables' black borders are gone.
+- Modals are more compact; the "Created" column was added to API keys.
+- The API tester and Embedding Playground settings panels are narrow fixed-width columns.
+- Page headings and font sizes are consistent across pages.
+
+### 🐛 Fixes
+
+- **Embeddings returned corrupt JSON** with "normalize thinking" on: the stream rewriter split every network chunk on newlines and re-added them, putting a newline inside the JSON body and overrunning the upstream `Content-Length`. Plain JSON bodies now pass through unchanged, and SSE is line-buffered and UTF-8-safe. Upstream `Content-Length`/`Content-Encoding` are no longer copied onto rewritten responses.
+- **`GET /admin/metrics` returned 500 (`DetachedInstanceError`).** Cached backend rows stayed bound to an old session and expired after a rollback. They are now detached before caching.
+- **Direct-mode chat returned 500** (`NameError`: `fallback_chain_id`, `cache_key`).
+- **Owner API keys got 403 "endpoint not allowed"** because of a `/v1` prefix mismatch. Endpoint matching is now canonical and segment-aware.
+- **Audit log writes failed** with timezone-aware timestamps.
+- **Model sync** handled base URLs ending in `/v1` incorrectly, and reported success when it found no models.
+- **Admins could not edit settings.** Manager-only guards threw on admin-only fields.
+- **Popups were slow and the close button did nothing**, because of an icon re-render loop and a backdrop blur.
+- Chat send errors, the image-attach hit area, theme switching that only worked sometimes, and the "Back to API Tester" breadcrumbs were also fixed.
+
+### 🧪 Tests
+
+436 tests (up from 329), including real-SQLite dashboard aggregates, dev-mode cookie flags, stream rewriting with split chunks, endpoint whitelisting and a pyflakes undefined-name check.
+
+---
+
 ## [0.11.1] - 2026-10-03
 
 ### 🐛 Fixes from a code review of the v0.11.0 redesign

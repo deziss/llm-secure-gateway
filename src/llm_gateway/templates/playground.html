@@ -2,36 +2,67 @@
 endblock %} {% block content %}
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
   <div>
-    <h1 class="text-3xl font-extrabold text-ink tracking-tight flex items-center gap-3">
-      <i class="fas fa-terminal text-accent" aria-hidden="true"></i> API Playground
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="flask-conical" class="h-5 w-5 text-accent" aria-hidden="true"></i> API Playground
     </h1>
-    <p class="text-ink-muted text-sm mt-1">Raw endpoint testing interface</p>
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">Raw endpoint testing interface</p>
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<style>
+  /* Compact request column: a fixed narrow rail like the sidebar, with the
+     response taking the remaining width. Touch-size controls stay on phones. */
+  @media (min-width: 768px) {
+    #reqPanel select, #reqPanel input:not([type=checkbox]), #reqPanel textarea {
+      min-height: 32px !important; padding: 4px 8px !important; font-size: 0.8rem;
+    }
+    #reqPanel label { margin-bottom: 2px; }
+    #reqPanel .min-h-touch { min-height: 32px; }
+    #reqPanel #sendBtn, #reqPanel #clearBtn { min-height: 34px; padding-top: 4px; padding-bottom: 4px; font-size: 0.82rem; }
+  }
+  #reqPanel #apiForm > * + * { margin-top: 0.6rem; }
+  .rtab { min-height: 28px; padding: 0 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; color: rgb(var(--ink-muted)); }
+  .rtab:hover { color: rgb(var(--ink)); }
+  .rtab[aria-selected="true"] { background: rgb(var(--surface-inset)); color: rgb(var(--ink)); box-shadow: inset 0 -2px 0 rgb(var(--accent)); }
+  .rtab-count { font-size: 0.68rem; color: rgb(var(--ink-muted)); font-variant-numeric: tabular-nums; }
+  .seg-mini { display: inline-flex; gap: 2px; padding: 2px; border-radius: 6px; border: 1px solid rgb(var(--hairline)); background: rgb(var(--surface-inset)); }
+  .seg-mini.hidden { display: none; }
+  .seg-mini button { padding: 1px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; color: rgb(var(--ink-muted)); }
+  .seg-mini button[aria-pressed="true"] { background: rgb(var(--accent)); color: #fff; }
+  .hist-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; font-size: 0.75rem; }
+  .hist-row:hover { background: rgb(var(--surface-inset)); }
+  .hist-main { flex: 1; min-width: 0; text-align: left; }
+  .hist-hdr-gw td:first-child { color: rgb(var(--accent)); font-weight: 700; }
+  #responseJson .j-key { color: rgb(var(--accent)); }
+  #responseJson .j-str { color: rgb(var(--ok)); }
+  #responseJson .j-num { color: rgb(var(--warn)); }
+  #responseJson .j-lit { color: rgb(var(--down)); }
+  #reqPanel #toggleEditorBtn, #reqPanel [id*=Editor] > button { font-size: 0.8rem; }
+</style>
+<div class="grid grid-cols-1 md:grid-cols-[17rem_minmax(0,1fr)] gap-4">
+  <div class="min-w-0 space-y-3 self-start">
   <!-- Request Form -->
-  <div
-    class="min-w-0 rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6"
+  <div id="reqPanel"
+    class="min-w-0 rounded-panel border border-hairline bg-surface-raised shadow-rest p-3 sm:p-4 self-start"
   >
-    <h2 class="text-lg font-bold mb-5 text-accent flex items-center gap-2">
+    <h2 class="text-sm font-bold mb-3 text-accent flex items-center gap-2">
       <i class="fas fa-paper-plane text-sm" aria-hidden="true"></i>Request
     </h2>
 
-    <form id="apiForm" class="space-y-4">
+    <form id="apiForm">
       <!-- Routing Mode Toggle -->
-      <div role="group" aria-label="Routing mode" class="mb-4 p-1 bg-surface-inset border border-hairline rounded-control inline-flex">
+      <div role="group" aria-label="Routing mode" class="p-0.5 bg-surface-inset border border-hairline rounded-control flex w-full">
         <button
           type="button"
           id="modeStandard"
-          class="mode-btn min-h-touch sm:min-h-0 px-3 py-1 rounded-control text-sm font-medium transition-colors bg-accent text-white"
+          class="mode-btn flex-1 min-h-touch sm:min-h-0 px-2 py-1 rounded-control text-xs font-medium transition-colors bg-accent text-white"
         >
           <i class="fas fa-globe mr-2" aria-hidden="true"></i>Standard
         </button>
         <button
           type="button"
           id="modeDirect"
-          class="mode-btn min-h-touch sm:min-h-0 px-3 py-1 rounded-control text-sm font-medium transition-colors bg-transparent text-ink-muted"
+          class="mode-btn flex-1 min-h-touch sm:min-h-0 px-2 py-1 rounded-control text-xs font-medium transition-colors bg-transparent text-ink-muted"
         >
           <i class="fas fa-bullseye mr-2" aria-hidden="true"></i>Direct
         </button>
@@ -106,7 +137,7 @@ endblock %} {% block content %}
           <button
             type="button"
             id="fetchModelsBtn"
-            class="ml-2 text-caption bg-accent hover:opacity-90 text-white px-2 py-1 rounded-control transition"
+            class="ml-2 text-caption text-accent hover:underline px-1 transition"
             title="Fetch models from backend via api/tags"
           >
             <i class="fas fa-sync-alt mr-1" aria-hidden="true"></i>Fetch Models
@@ -131,9 +162,7 @@ endblock %} {% block content %}
           placeholder="sk-gateway-..."
           class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
         />
-        <p class="text-caption text-ink-muted mt-1">
-          Get your API key from the Owners page
-        </p>
+        <p class="text-caption text-ink-muted mt-1">From the Owners page.</p>
       </div>
 
       <div id="messageContainer">
@@ -152,7 +181,7 @@ Hello! How are you?</textarea
       </div>
 
       <div id="streamingContainer" class="flex items-center gap-4">
-        <label for="streaming" class="flex items-center gap-2 min-h-touch text-ink">
+        <label for="streaming" class="flex items-center gap-2 min-h-touch text-sm text-ink">
           <input
             type="checkbox"
             id="streaming"
@@ -170,7 +199,7 @@ Hello! How are you?</textarea
       >
         <i class="fas fa-info-circle text-accent mr-2" aria-hidden="true"></i>
         This is a <strong>GET</strong> endpoint — no request body, model, or
-        message needed. Just click <strong>Send Request</strong>.
+        message needed. Just click <strong>Send</strong>.
       </div>
 
       <!-- Request Editor Toggle -->
@@ -238,75 +267,104 @@ Hello! How are you?</textarea
         <button
           type="submit"
           id="sendBtn"
-          class="flex-1 min-h-touch bg-accent hover:opacity-90 text-white font-bold py-2 px-4 rounded-control transition disabled:opacity-60"
+          class="flex-1 min-h-touch whitespace-nowrap bg-accent hover:opacity-90 text-white font-bold py-2 px-3 rounded-control transition disabled:opacity-60"
         >
-          <i class="fas fa-paper-plane mr-2" aria-hidden="true"></i>Send Request
+          <i class="fas fa-paper-plane mr-1.5" aria-hidden="true"></i>Send
         </button>
         <button
           type="button"
           id="clearBtn"
-          class="min-h-touch border border-hairline bg-surface-inset hover:bg-surface-base text-ink font-bold py-2 px-4 rounded-control transition"
+          class="min-h-touch whitespace-nowrap border border-hairline bg-surface-inset hover:bg-surface-base text-ink font-bold py-2 px-3 rounded-control transition"
         >
-          <i class="fas fa-eraser mr-2" aria-hidden="true"></i>Clear
+          <i class="fas fa-eraser mr-1.5" aria-hidden="true"></i>Clear
         </button>
       </div>
     </form>
   </div>
 
+  <!-- History -->
+  <section id="historyPanel" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3" aria-labelledby="historyTitle">
+    <div class="flex items-center justify-between mb-2">
+      <h2 id="historyTitle" class="text-sm font-bold text-ink flex items-center gap-2">
+        <i data-lucide="history" class="h-4 w-4 text-accent" aria-hidden="true"></i>History
+      </h2>
+      <button type="button" id="historyClear" class="text-caption text-ink-muted hover:text-down">Clear</button>
+    </div>
+    <ul id="historyList" class="space-y-1 max-h-72 overflow-y-auto"></ul>
+    <p class="text-caption text-ink-muted mt-2">Last 20 requests, kept in this browser. API keys are never saved.</p>
+  </section>
+  </div>
+
   <!-- Response Panel -->
-  <div
-    class="min-w-0 rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6"
-  >
-    <div class="flex flex-wrap justify-between items-center gap-2 mb-5">
-      <h2 class="text-lg font-bold text-ok flex items-center gap-2">
+  <div id="resPanel" class="min-w-0 rounded-panel border border-hairline bg-surface-raised shadow-rest p-3 sm:p-4 flex flex-col">
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+      <h2 class="text-sm font-bold text-ok flex items-center gap-2">
         <i class="fas fa-satellite-dish text-sm" aria-hidden="true"></i>Response
       </h2>
-      <div
-        id="status"
-        class="text-caption font-bold px-2 py-1 rounded-control bg-surface-inset text-ink-muted border border-hairline"
-      >
-        WAITING
-      </div>
+      <div id="status" class="text-caption font-bold px-2 py-1 rounded-control bg-surface-inset text-ink-muted border border-hairline" role="status">WAITING</div>
     </div>
 
-    <div
-      id="responseContainer"
-      class="bg-surface-inset border border-hairline rounded-panel p-4 min-h-[300px] max-h-[60dvh] overflow-y-auto overflow-x-auto"
-    >
-      <!-- Loading Animation -->
-      <div
-        id="loadingIndicator"
-        class="hidden flex flex-col items-center justify-center py-12"
-      >
-        <div class="flex space-x-2 mb-4">
-          <div
-            class="w-3 h-3 bg-accent rounded-full animate-bounce"
-            style="animation-delay: 0s"
-          ></div>
-          <div
-            class="w-3 h-3 bg-accent rounded-full animate-bounce"
-            style="animation-delay: 0.15s"
-          ></div>
-          <div
-            class="w-3 h-3 bg-accent rounded-full animate-bounce"
-            style="animation-delay: 0.3s"
-          ></div>
+    <!-- Timing bar -->
+    <dl id="timing" class="hidden grid grid-cols-3 sm:grid-cols-6 gap-px mb-3 overflow-hidden rounded-control border border-hairline bg-hairline text-center">
+      <div class="bg-surface-inset px-2 py-1.5"><dt class="text-micro text-ink-muted">Status</dt><dd id="tStatus" class="text-sm font-bold tabular-nums text-ink">–</dd></div>
+      <div class="bg-surface-inset px-2 py-1.5"><dt class="text-micro text-ink-muted">First byte</dt><dd id="tTtfb" class="text-sm font-bold tabular-nums text-ink">–</dd></div>
+      <div class="bg-surface-inset px-2 py-1.5"><dt class="text-micro text-ink-muted">First token</dt><dd id="tFirst" class="text-sm font-bold tabular-nums text-ink">–</dd></div>
+      <div class="bg-surface-inset px-2 py-1.5"><dt class="text-micro text-ink-muted">Total</dt><dd id="tTotal" class="text-sm font-bold tabular-nums text-ink">–</dd></div>
+      <div class="bg-surface-inset px-2 py-1.5"><dt class="text-micro text-ink-muted">Tokens in / out</dt><dd id="tTokens" class="text-sm font-bold tabular-nums text-ink">–</dd></div>
+      <div class="bg-surface-inset px-2 py-1.5"><dt class="text-micro text-ink-muted">Speed</dt><dd id="tSpeed" class="text-sm font-bold tabular-nums text-ink">–</dd></div>
+    </dl>
+
+    <!-- Tabs -->
+    <div class="flex flex-wrap items-center gap-2 mb-2">
+      <div role="tablist" aria-label="Response view" class="flex gap-1">
+        <button type="button" role="tab" id="rtab-body" data-rtab="body" aria-controls="rpanel-body" aria-selected="true" class="rtab">Body</button>
+        <button type="button" role="tab" id="rtab-headers" data-rtab="headers" aria-controls="rpanel-headers" aria-selected="false" tabindex="-1" class="rtab">Headers <span id="headersCount" class="rtab-count"></span></button>
+        <button type="button" role="tab" id="rtab-stream" data-rtab="stream" aria-controls="rpanel-stream" aria-selected="false" tabindex="-1" class="rtab">Stream <span id="streamCount" class="rtab-count"></span></button>
+        <button type="button" role="tab" id="rtab-code" data-rtab="code" aria-controls="rpanel-code" aria-selected="false" tabindex="-1" class="rtab">Code</button>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <div id="bodyViewSeg" class="seg-mini" role="group" aria-label="Body view">
+          <button type="button" data-bodyview="text" aria-pressed="true">Text</button><button type="button" data-bodyview="json" aria-pressed="false">JSON</button>
         </div>
-        <p id="loadingText" class="text-ink-muted text-sm">
-          Sending request...
-        </p>
+        <div id="codeLangSeg" class="seg-mini hidden" role="group" aria-label="Code language">
+          <button type="button" data-lang="curl" aria-pressed="true">cURL</button><button type="button" data-lang="python" aria-pressed="false">Python</button><button type="button" data-lang="js" aria-pressed="false">JavaScript</button>
+        </div>
+        <button type="button" id="copyViewBtn" class="text-caption font-medium text-ink-muted hover:text-ink inline-flex items-center gap-1" title="Copy what this tab shows">
+          <i data-lucide="copy" class="h-3.5 w-3.5" aria-hidden="true"></i><span>Copy</span>
+        </button>
       </div>
-      <pre
-        id="response"
-        class="text-ink whitespace-pre-wrap break-words font-mono text-sm"
-      ></pre>
     </div>
 
-    <div id="metrics" class="mt-4 text-sm text-ink-muted hidden">
-      <span id="duration"></span> • <span id="tokens"></span>
+    <div id="responseContainer" class="relative flex-1 bg-surface-inset border border-hairline rounded-panel p-3 min-h-[300px] md:h-[calc(100dvh-19rem)] max-h-[75dvh] md:max-h-none overflow-auto">
+      <div id="loadingIndicator" class="hidden flex flex-col items-center justify-center py-12">
+        <div class="flex space-x-2 mb-4">
+          <div class="w-3 h-3 bg-accent rounded-full animate-bounce" style="animation-delay: 0s"></div>
+          <div class="w-3 h-3 bg-accent rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+          <div class="w-3 h-3 bg-accent rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+        </div>
+        <p id="loadingText" class="text-ink-muted text-sm">Sending request...</p>
+      </div>
+      <div id="rpanel-body" role="tabpanel" aria-labelledby="rtab-body">
+        <pre id="response" class="text-ink whitespace-pre-wrap break-words font-mono text-sm"></pre>
+        <pre id="responseJson" class="hidden text-ink whitespace-pre-wrap break-words font-mono text-xs"></pre>
+      </div>
+      <div id="rpanel-headers" role="tabpanel" aria-labelledby="rtab-headers" hidden>
+        <p id="headersEmpty" class="text-sm text-ink-muted">Send a request to see the response headers.</p>
+        <table id="headersTable" class="hidden w-full text-left text-xs font-mono">
+          <tbody id="headersBody"></tbody>
+        </table>
+      </div>
+      <div id="rpanel-stream" role="tabpanel" aria-labelledby="rtab-stream" hidden>
+        <p id="streamEmpty" class="text-sm text-ink-muted">Streamed events appear here, each with the time since the request was sent.</p>
+        <ol id="streamList" class="font-mono text-xs space-y-0.5"></ol>
+      </div>
+      <div id="rpanel-code" role="tabpanel" aria-labelledby="rtab-code" hidden>
+        <pre id="codeView" class="text-ink whitespace-pre font-mono text-xs"></pre>
+        <p class="text-caption text-ink-muted mt-3">Built from the form as it is now. The key is a placeholder; set <code>LLM_GATEWAY_KEY</code> or paste your own.</p>
+      </div>
     </div>
   </div>
 </div>
 
-<script src="/static/js/playground.js?v=4"></script>
+<script src="/static/js/playground.js?v={{ asset_v }}"></script>
 {% endblock %}

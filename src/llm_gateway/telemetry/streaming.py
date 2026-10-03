@@ -1,3 +1,4 @@
+import codecs
 import time
 import json
 import logging
@@ -58,8 +59,24 @@ async def stream_with_telemetry(
     time_to_first_token = None
     has_error = False
 
-    # Initialize thinking parser if enabled
-    parser = ThinkTagParser() if normalize_thinking else None
+    # Thinking normalization rewrites SSE lines, so it only applies to an
+    # event stream. A plain JSON body (embeddings, non-streaming chat) is
+    # passed through byte for byte: rewriting it line by line used to insert
+    # newlines mid-document and overrun the upstream Content-Length.
+    content_type = ""
+    try:
+        content_type = (response.headers.get("content-type") or "").lower()
+    except Exception:
+        pass
+    is_sse = "text/event-stream" in content_type
+    parser = ThinkTagParser() if (normalize_thinking and is_sse) else None
+
+    # Network chunks split lines (and multi-byte UTF-8 characters) at
+    # arbitrary points. Decode incrementally and only act on complete lines;
+    # the unfinished tail waits in a buffer for the next chunk.
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    line_buf = ""   # parser path: text not yet emitted
+    tele_buf = ""   # passthrough path: text not yet scanned for telemetry
 
     # Determine whether the client expects OpenAI or Anthropic format
     # If translation_mode is anthropic_to_openai, final format is Anthropic (client sent Anthropic)
@@ -77,12 +94,14 @@ async def stream_with_telemetry(
                 if span.is_recording():
                     span.set_attribute("llm.time_to_first_token", time_to_first_token)
 
-            decoded = chunk.decode('utf-8', errors='ignore')
+            decoded = decoder.decode(chunk)
 
             # If normalize_thinking is active, we parse and intercept standard/thinking blocks
             if parser:
                 parsed_chunks = []
-                for line in decoded.split('\n'):
+                lines = (line_buf + decoded).split('\n')
+                line_buf = lines.pop()
+                for line in lines:
                     if line.startswith('data: '):
                         json_str = line[6:].strip()
                         if json_str == '[DONE]':
@@ -173,7 +192,9 @@ async def stream_with_telemetry(
 
             # Try to parse SSE data to extract telemetry content and metadata
             try:
-                for line in decoded.split('\n'):
+                lines = (tele_buf + decoded).split('\n')
+                tele_buf = lines.pop()
+                for line in lines:
                     if line.startswith('data: '):
                         json_str = line[6:].strip()
 
@@ -213,6 +234,15 @@ async def stream_with_telemetry(
                 pass
 
             yield chunk
+
+        # Emit whatever the parser path still holds (a final line with no
+        # trailing newline) unchanged.
+        if parser:
+            line_buf += decoder.decode(b"", final=True)
+            if line_buf:
+                tail = line_buf.encode("utf-8")
+                accumulated_chunks.append(tail)
+                yield tail
 
         # Flush any remaining buffer from thinking tag parser
         if parser and parser.buffer:

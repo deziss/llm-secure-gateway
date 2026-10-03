@@ -15,6 +15,12 @@ async function patchSetting(key, value, toggleElem) {
   }
 }
 
+// Admin-only toggles aren't rendered for managers; skip what isn't on the page.
+function setChecked(id) {
+  const el = document.getElementById(id);
+  return el ? { set checked(v) { el.checked = v; } } : { set checked(v) {} };
+}
+
 async function loadSettings() {
   if (USER_ROLE !== "admin") return;
   try {
@@ -25,37 +31,37 @@ async function loadSettings() {
     const getVal = (key) =>
       settings.find((s) => s.key === key)?.value.toLowerCase() === "true";
 
-    document.getElementById("requireInviteToggle").checked =
+    setChecked("requireInviteToggle").checked =
       getVal("REQUIRE_INVITE");
-    document.getElementById("enableFederationToggle").checked = getVal(
+    setChecked("enableFederationToggle").checked = getVal(
       "ENABLE_MODEL_FEDERATION",
     );
-    document.getElementById("enableRoutingToggle").checked = getVal(
+    setChecked("enableRoutingToggle").checked = getVal(
       "ENABLE_EXPERIMENTAL_ROUTING",
     );
-    document.getElementById("enableRetryToggle").checked = getVal(
+    setChecked("enableRetryToggle").checked = getVal(
       "ENABLE_RETRY_BACKOFF",
     );
-    document.getElementById("enableMissionControlToggle").checked = getVal(
+    setChecked("enableMissionControlToggle").checked = getVal(
       "ENABLE_MISSION_CONTROL",
     );
-    document.getElementById("enableChatPlaygroundToggle").checked = getVal(
+    setChecked("enableChatPlaygroundToggle").checked = getVal(
       "ENABLE_CHAT_PLAYGROUND",
     );
-    document.getElementById("enableEmbedPlaygroundToggle").checked = getVal(
+    setChecked("enableEmbedPlaygroundToggle").checked = getVal(
       "ENABLE_EMBED_PLAYGROUND",
     );
 
     // Compliance & Audit settings
-    document.getElementById("enableAuditDbToggle").checked = getVal("ENABLE_AUDIT_DB");
+    setChecked("enableAuditDbToggle").checked = getVal("ENABLE_AUDIT_DB");
 
-    document.getElementById("enableFastPathToggle").checked = getVal(
+    setChecked("enableFastPathToggle").checked = getVal(
       "ENABLE_FAST_PATH_OPTIMIZATIONS",
     );
-    document.getElementById("enableTranslationToggle").checked = getVal(
+    setChecked("enableTranslationToggle").checked = getVal(
       "ENABLE_PROTOCOL_TRANSLATION",
     );
-    document.getElementById("enableThinkingToggle").checked = getVal(
+    setChecked("enableThinkingToggle").checked = getVal(
       "ENABLE_THINKING_NORMALIZATION",
     );
     const exactCacheEl = document.getElementById("enableExactCacheToggle");
@@ -94,8 +100,8 @@ async function loadInvites() {
           : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
         const statusText = i.is_used ? "EXHAUSTED" : "AVAILABLE";
         return `
-        <tr class="hover:bg-slate-800/30 transition-all group">
-          <td class="p-4 font-mono text-blue-400 select-all font-bold tracking-tighter">${escapeHtml(i.code)}</td>
+        <tr class="hover:bg-surface-inset transition-all group">
+          <td class="p-4 font-mono text-blue-600 dark:text-blue-400 select-all font-bold tracking-tighter">${escapeHtml(i.code)}</td>
           <td class="p-4 text-slate-500 text-xs font-medium">${escapeHtml(new Date(i.created_at).toLocaleString())}</td>
           <td class="p-4">
             <div class="flex items-center gap-3">
@@ -260,10 +266,10 @@ async function loadScopeRules() {
   const customHtml = _customScopeRules
     .map(
       (rule, idx) => `
-      <tr class="hover:bg-slate-800/20 transition-colors">
+      <tr class="hover:bg-surface-inset transition-colors">
         <td class="p-4 font-mono text-violet-400 font-bold">${escapeHtml(rule[0])}</td>
         <td class="p-4"><span class="px-2 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-micro font-bold">Custom</span></td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-amber-500/10 text-warn border border-amber-500/20 rounded text-micro font-bold">Custom</span></td>
         <td class="p-4 text-right">
           <button type="button" data-action="remove-rule" data-idx="${idx}" aria-label="Remove rule ${escapeHtml(rule[0])}" class="text-slate-500 hover:text-red-500 transition-colors p-2 min-h-touch min-w-touch inline-flex items-center justify-center" title="Remove rule">
             <i data-lucide="x-circle" class="w-4 h-4"></i>
@@ -275,11 +281,11 @@ async function loadScopeRules() {
 
   const builtinHtml = BUILTIN_RULES.map(
     (rule) => `
-      <tr class="hover:bg-slate-800/20 transition-colors opacity-60">
+      <tr class="hover:bg-surface-inset transition-colors ">
         <td class="p-4 font-mono text-slate-400">${escapeHtml(rule[0])}</td>
         <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
         <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded text-micro font-bold">Built-in</span></td>
-        <td class="p-4 text-right text-slate-600 text-micro">read-only</td>
+        <td class="p-4 text-right text-ink-muted text-micro">read-only</td>
       </tr>`,
   ).join("");
 

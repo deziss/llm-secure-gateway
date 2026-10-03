@@ -4,12 +4,10 @@ block content %}
   class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
 >
   <div>
-    <h1
-      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
-    >
-      <i data-lucide="shield" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> User Management
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="shield" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> User Management
     </h1>
-    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+    <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
       Manage system access, roles, and security permissions.
     </p>
   </div>
@@ -18,7 +16,7 @@ block content %}
       type="button"
       id="addUserBtn"
       onclick="openAddUserModal()"
-      class="min-h-touch px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
+      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
     >
       <i data-lucide="user-plus" class="w-4 h-4" aria-hidden="true"></i>
       <span>Add User</span>
@@ -69,11 +67,11 @@ block content %}
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
         <i class="fas fa-user-edit text-blue-500" aria-hidden="true"></i> Edit User
       </h2>
       <button
@@ -86,7 +84,7 @@ block content %}
       </button>
     </div>
 
-    <form id="editForm" action="javascript:void(0);" class="space-y-6">
+    <form id="editForm" action="javascript:void(0);" class="space-y-4">
       <input type="hidden" name="id" id="editId" />
 
       <div>
@@ -97,7 +95,7 @@ block content %}
         >
         <div class="relative">
           <i
-            class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-600"
+            class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted"
             aria-hidden="true"
           ></i>
           <input
@@ -109,7 +107,7 @@ block content %}
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label
             for="editRole"
@@ -138,14 +136,14 @@ block content %}
               class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0"
             />
             <span
-              class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-white transition"
+              class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-ink transition"
               >Active Account</span
             >
           </label>
         </div>
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeEditModal()"
@@ -155,7 +153,7 @@ block content %}
         </button>
         <button
           type="submit"
-          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20"
+          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition"
         >
           Save Changes
         </button>
@@ -166,12 +164,12 @@ block content %}
 
 <!-- Add User Modal -->
 <div id="addUserModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeAddUserModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all" onclick="event.stopPropagation()">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all" onclick="event.stopPropagation()">
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="user-plus" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> Register User</h2>
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="user-plus" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> Register User</h2>
       <button onclick="closeAddUserModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
-    <form id="addUserForm" action="javascript:void(0);" class="space-y-6">
+    <form id="addUserForm" action="javascript:void(0);" class="space-y-4">
       <div>
         <label for="addUserEmail" class="block text-caption font-medium text-ink-muted mb-2">User Email</label>
         <div class="relative">
@@ -186,7 +184,7 @@ block content %}
           <input type="password" id="addUserPassword" name="password" minlength="8" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="Min 8 characters" />
         </div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="addUserRole" class="block text-caption font-medium text-ink-muted mb-2">Role</label>
           <select id="addUserRole" name="role" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer">
@@ -199,13 +197,13 @@ block content %}
         <div class="flex flex-col justify-end">
           <label class="flex items-center gap-3 cursor-pointer group bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition">
             <input type="checkbox" id="addUserActive" name="is_active" checked class="w-5 h-5 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 focus:ring-0 focus:ring-offset-0" />
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-white transition">Active Account</span>
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-ink transition">Active Account</span>
           </label>
         </div>
       </div>
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button type="button" onclick="closeAddUserModal()" class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition">Cancel</button>
-        <button type="submit" class="min-h-touch px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-control transition shadow-lg shadow-indigo-500/20">Register</button>
+        <button type="submit" class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition">Register</button>
       </div>
     </form>
   </div>
@@ -220,12 +218,12 @@ block content %}
   onclick="if(event.target === this) closeResetPasswordModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="key" class="text-rose-500 w-6 h-6" aria-hidden="true"></i> Reset Password
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i data-lucide="key" class="text-rose-500 w-5 h-5" aria-hidden="true"></i> Reset Password
       </h2>
       <button
         onclick="
@@ -250,7 +248,7 @@ block content %}
       </p>
     </div>
 
-    <form id="resetPasswordForm" action="javascript:void(0);" class="space-y-6">
+    <form id="resetPasswordForm" action="javascript:void(0);" class="space-y-4">
       <input type="hidden" name="id" id="resetId" />
       <div>
         <label
@@ -272,7 +270,7 @@ block content %}
         </div>
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="
@@ -286,7 +284,7 @@ block content %}
         </button>
         <button
           type="submit"
-          class="min-h-touch px-8 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-control transition shadow-lg shadow-rose-500/20"
+          class="min-h-touch px-5 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-control transition"
         >
           Force Reset
         </button>
@@ -295,5 +293,5 @@ block content %}
   </div>
 </div>
 
-<script src="/static/js/users.js"></script>
+<script src="/static/js/users.js?v={{ asset_v }}"></script>
 {% endblock %}

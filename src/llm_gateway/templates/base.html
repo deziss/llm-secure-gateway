@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}LLM Gateway Admin{% endblock %}</title>
     <!-- Tailwind — compiled locally at build time, zero external requests -->
-    <link rel="stylesheet" href="/static/css/tailwind.min.css" />
+    <link rel="stylesheet" href="/static/css/tailwind.min.css?v={{ asset_v }}" />
     <!-- Core UI & DataTables Stylesheet -->
     <link rel="stylesheet" href="/static/css/jquery.dataTables.min.css" />
     <!-- Favicon & Brand Logo -->
     <link rel="icon" type="image/png" sizes="64x64" href="/static/img/favicon.png" />
     <!-- Lucide Vector Icons -->
     <script src="/static/js/lucide.min.js"></script>
-    <script src="/static/js/icons.js"></script>
+    <script src="/static/js/icons.js?v={{ asset_v }}"></script>
     <!-- Core Vendor Libraries (Served locally for maximum reliability & zero CSP/SRI issues) -->
     <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/jquery.dataTables.min.js"></script>
@@ -41,7 +41,7 @@
         const BASE_URL = "{{ base_url }}";
         const USER_ROLE = "{{ user_role }}";
     </script>
-    <script src="/static/js/globals.js"></script>
+    <script src="/static/js/globals.js?v={{ asset_v }}"></script>
     <script>
         // Apply theme before first paint to prevent a flash of the wrong theme.
         // localStorage throws in private windows / with site data blocked, so
@@ -84,18 +84,18 @@
 
     <!-- Global Confirmation Modal -->
     <div id="globalConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4" role="alertdialog" aria-modal="true" aria-labelledby="globalConfirmTitle" aria-describedby="globalConfirmMessage">
-      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="globalConfirmContent">
+      <div class="bg-surface-raised border border-hairline p-5 rounded-panel w-full max-w-md shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="globalConfirmContent">
         <div class="text-center">
-          <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-            <i data-lucide="alert-triangle" class="w-8 h-8" aria-hidden="true"></i>
+          <div class="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+            <i data-lucide="alert-triangle" class="w-6 h-6" aria-hidden="true"></i>
           </div>
-          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2" id="globalConfirmTitle">Confirm Action</h3>
-          <p class="text-slate-500 dark:text-slate-400 text-sm mb-8" id="globalConfirmMessage">Are you sure you want to proceed with this action?</p>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2" id="globalConfirmTitle">Confirm Action</h3>
+          <p class="text-slate-500 dark:text-slate-400 text-sm mb-5" id="globalConfirmMessage">Are you sure you want to proceed with this action?</p>
           <div class="flex gap-3">
-            <button id="globalConfirmCancel" class="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-bold text-sm transition-all border border-slate-200 dark:border-slate-700">
+            <button id="globalConfirmCancel" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-bold text-sm transition-all border border-slate-200 dark:border-slate-700">
               Cancel
             </button>
-            <button id="globalConfirmAction" class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-red-600/20">
+            <button id="globalConfirmAction" class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all">
               Confirm
             </button>
           </div>
@@ -114,7 +114,7 @@
         </div>
     </div>
 
-    <script src="/static/js/ui-components.js"></script>
-    {% if not hide_header %}<script src="/static/js/admin-modal.js"></script><script src="/static/js/admin-table.js"></script><script src="/static/js/shell.js"></script>{% endif %}
+    <script src="/static/js/ui-components.js?v={{ asset_v }}"></script>
+    {% if not hide_header %}<script src="/static/js/admin-modal.js?v={{ asset_v }}"></script><script src="/static/js/admin-table.js?v={{ asset_v }}"></script><script src="/static/js/shell.js?v={{ asset_v }}"></script>{% endif %}
   </body>
 </html>

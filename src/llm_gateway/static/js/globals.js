@@ -45,6 +45,16 @@ window.handleSessionExpiry = function () {
 if (window.jQuery && $.fn.dataTable) {
   $.fn.dataTable.ext.errMode = 'none';
 
+  // autoWidth makes DataTables measure the table once and write fixed pixel
+  // widths onto it and its columns. Those don't adapt to the sidebar or the
+  // window, so wide tables overflowed their card. Let the browser size them.
+  $.extend(true, $.fn.dataTable.defaults, {
+    autoWidth: false,
+    // The last column is always row actions: sorting it is meaningless and its
+    // sort arrows were clutter.
+    columnDefs: [{ targets: -1, orderable: false }],
+  });
+
   $(document).on('error.dt', function (e, settings, techNote, message) {
     const xhr = settings && settings.jqXHR;
     const status = xhr ? xhr.status : 0;
@@ -118,3 +128,29 @@ window.logout = async function () {
     window.location.href = '/auth/login';
   }
 };
+
+// Surface unexpected script errors instead of failing silently. Several
+// "button does nothing" reports had no visible symptom at all; this turns
+// them into a message the user can act on (and quote in a bug report).
+(function () {
+  var last = 0;
+  function report(msg) {
+    var now = Date.now();
+    if (now - last < 4000) return; // don't stack toasts for cascading errors
+    last = now;
+    if (typeof showToast === "function") {
+      showToast("Something went wrong", String(msg || "Unexpected error") +
+        ". Try reloading the page (Ctrl+Shift+R).", "error");
+    }
+  }
+  window.addEventListener("error", function (e) {
+    // Ignore failed resource loads (img/script 404s); only script errors.
+    if (e && e.message) report(e.message);
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    var r = e && e.reason;
+    // fetch() network failures are already reported by their callers.
+    if (r && r.name === "AbortError") return;
+    report(r && r.message ? r.message : r);
+  });
+})();

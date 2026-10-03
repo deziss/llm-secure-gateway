@@ -77,6 +77,7 @@ def test_vendored_libraries_present():
         "js/chart.umd.min.js",
         "js/lucide.min.js",
         "js/purify.min.js",
+        "js/umap-js.min.js",
         "js/marked.min.js",
         "js/highlight.min.js",
         "css/tailwind.min.css",

@@ -7,11 +7,16 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from .services import get_auth_service
 from .database import _async_session
+from . import config
 import logging
 
 logger = logging.getLogger("uvicorn")
 
-_IS_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() == "true"
+# ALLOW_INSECURE_HTTP (dev mode) overrides FORCE_HTTPS: no HSTS, no Secure cookie.
+_IS_HTTPS = (
+    os.getenv("FORCE_HTTPS", "false").lower() == "true"
+    and not config.ALLOW_INSECURE_HTTP
+)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

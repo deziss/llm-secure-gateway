@@ -7,9 +7,9 @@
 
   Role gating mirrors the old header.html exactly:
     Dashboard                                   everyone
-    Backends, Users, Bots, Spend, Aliases,
-      Settings                                  admin, manager
+    Backends, Spend, Aliases                    admin, manager
     Owners                                      admin, manager, developer
+    System: Users, Audit history, Settings      admin, manager (bots: Settings tab)
 
   The Playground group is rendered as a flat section rather than a dropdown.
   The old dropdown was driven by CSS :hover plus a conflicting JS .hidden
@@ -55,8 +55,6 @@
     {{ nav_link('/admin/view/owners', 'users', 'Owners') }}
     {% endif %}
     {% if user and user_role in ['admin', 'manager'] %}
-    {{ nav_link('/admin/view/users', 'user-check', 'Users') }}
-    {{ nav_link('/admin/view/bots', 'bot', 'Bots') }}
     {{ nav_link('/admin/view/spend', 'dollar-sign', 'Spend') }}
     {{ nav_link('/admin/view/aliases', 'git-branch', 'Aliases') }}
     {% endif %}
@@ -72,7 +70,12 @@
 
     {% if user and user_role in ['admin', 'manager'] %}
     <div class="my-3 border-t border-hairline" role="presentation"></div>
-    {{ nav_link('/admin/view/settings', 'settings', 'Settings') }}
+    <p class="px-3 pb-1 text-caption font-medium text-ink-muted md:max-lg:hidden" id="navSystem">System</p>
+    <div role="group" aria-labelledby="navSystem" class="space-y-1">
+      {{ nav_link('/admin/view/users', 'user-check', 'Users') }}
+      {{ nav_link('/admin/view/audit', 'history', 'Audit history') }}
+      {{ nav_link('/admin/view/settings', 'settings', 'Settings') }}
+    </div>
     {% endif %}
   </nav>
 </aside>

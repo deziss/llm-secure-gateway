@@ -25,7 +25,7 @@ CSS = (SRC / "static" / "css" / "tailwind.min.css").read_text()
 
 AUTH_PAGES = {"login", "register", "forgot_password", "reset_password"}
 ADMIN_PAGES = [
-    "dashboard", "backends", "owners", "users", "bots", "spend", "aliases",
+    "audit", "dashboard", "backends", "owners", "users", "spend", "aliases",
     "settings", "playground", "chat_playground", "embedding_playground",
     "playground_compare",
 ]
@@ -52,10 +52,10 @@ def _nav_links(html):
 @pytest.mark.parametrize(
     "role,expected_count,must_have,must_lack",
     [
-        ("admin", 12, ["/admin/view/settings", "/admin/view/backends"], []),
-        ("manager", 12, ["/admin/view/settings", "/admin/view/users"], []),
+        ("admin", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/backends"], []),
+        ("manager", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/users"], []),
         ("developer", 6, ["/admin/view/owners", "/admin/dashboard"],
-         ["/admin/view/backends", "/admin/view/users", "/admin/view/settings", "/admin/view/spend"]),
+         ["/admin/view/backends", "/admin/view/users", "/admin/view/settings", "/admin/view/spend", "/admin/view/audit"]),
         ("viewer", 5, ["/admin/dashboard", "/admin/view/playground"],
          ["/admin/view/owners", "/admin/view/backends", "/admin/view/settings"]),
     ],
@@ -156,7 +156,7 @@ def test_every_dialog_has_a_name(page):
 
 # ── Form labels ────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("page", ["bots", "aliases", "owners", "playground"])
+@pytest.mark.parametrize("page", ["settings", "aliases", "owners", "playground"])
 def test_label_for_targets_exist(page):
     html = _render(page)
     ids = set(re.findall(r'\bid="([^"]+)"', html))
@@ -184,3 +184,19 @@ def test_every_page_script_is_loaded_by_base():
     for js in ("admin-modal.js", "admin-table.js", "shell.js"):
         assert js in base, f"base.html does not load {js}"
         assert (JS / js).is_file()
+
+
+# ── Settings tabs ──────────────────────────────────────────────────────────
+
+def test_settings_tabs_follow_role():
+    """Admin-only sections stay out of the page for managers, and so do their tabs."""
+    admin = _render("settings", "admin")
+    manager = _render("settings", "manager")
+    assert re.findall(r'data-tab="(\w+)"', admin) == ["general", "access", "routing", "performance", "compliance", "scope", "bots"]
+    assert re.findall(r'data-tab="(\w+)"', manager) == ["general", "access", "bots"]
+    # every tab has at least one section, and every section belongs to a tab
+    for html in (admin, manager):
+        tabs = set(re.findall(r'data-tab="(\w+)"', html))
+        panels = set(re.findall(r'data-settings-tab="(\w+)"', html))
+        assert tabs == panels, (tabs, panels)
+    assert 'id="settingsScope"' in admin and 'id="settingsScope"' not in manager

@@ -73,7 +73,11 @@ class AuditLogger:
                     return
 
                 record = AuditLog(
-                    timestamp=datetime.fromisoformat(entry["timestamp"]),
+                    # The column is TIMESTAMP WITHOUT TIME ZONE (naive UTC, like
+                    # every other table). Passing the tz-aware value failed every
+                    # insert with "can't subtract offset-naive and offset-aware
+                    # datetimes", so the audit trail was never actually saved.
+                    timestamp=datetime.fromisoformat(entry["timestamp"]).astimezone(timezone.utc).replace(tzinfo=None),
                     event_type=entry["event"],
                     identity=entry["identity"],
                     resource=entry["resource"],

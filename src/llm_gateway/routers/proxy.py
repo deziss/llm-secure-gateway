@@ -7,6 +7,7 @@ from ..services import ConfigService, get_config_service
 from ..database import get_session
 from ..telemetry import record_request_metrics, stream_with_telemetry, flatten_attributes, PhoenixTraceManager
 from ..proxy_helpers import (
+    passthrough_response_headers,
     get_owner_id_from_request,
     apply_rate_limit,
     check_owner_permissions,
@@ -73,7 +74,7 @@ async def aggregate_ollama_tags(
 async def ollama_version(request: Request) -> dict:
     """Return an Ollama-compatible version payload for CLI and client handshakes."""
     apply_rate_limit(request)
-    return {"version": "0.11.1"}
+    return {"version": "0.12.0"}
 
 @router.get("/v1/models")
 async def aggregate_openai_models(
@@ -541,7 +542,7 @@ async def proxy_request(
                     on_complete=on_stream_complete,
                 ),
                 status_code=r.status_code,
-                headers=dict(r.headers)
+                headers=passthrough_response_headers(r.headers)
             )
 
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:

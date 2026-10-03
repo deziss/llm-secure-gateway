@@ -12,7 +12,7 @@ from .telemetry import setup_telemetry
 
 logging.basicConfig(level=logging.INFO)
 
-_VERSION = "0.11.1"
+_VERSION = "0.12.0"
 
 
 
@@ -56,6 +56,14 @@ async def create_default_admin() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from .config import ALLOW_INSECURE_HTTP
+    if ALLOW_INSECURE_HTTP:
+        logging.getLogger(__name__).warning(
+            "ALLOW_INSECURE_HTTP=true (dev mode): cookies are sent without the "
+            "Secure flag and HSTS is off, so session cookies and passwords travel "
+            "UNENCRYPTED over plain HTTP. Do NOT use this in production -- put a "
+            "TLS reverse proxy in front of the gateway instead."
+        )
     await init_db()
     await create_default_admin()
 
@@ -123,6 +131,8 @@ from .routers import (
     owners_router,
     users_router,
     settings_router,
+    audit_router,
+    dashboard_router,
     bots_router,
     aliases_router,
     spend_router,
@@ -137,6 +147,8 @@ app.include_router(backends_router)
 app.include_router(owners_router)
 app.include_router(users_router)
 app.include_router(settings_router)
+app.include_router(audit_router)
+app.include_router(dashboard_router)
 app.include_router(bots_router)
 app.include_router(aliases_router)
 app.include_router(spend_router)

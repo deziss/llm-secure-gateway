@@ -46,7 +46,7 @@ async function loadMetrics() {
 
         const tdStatus = document.createElement("td");
         tdStatus.className = "p-4 text-right";
-        tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
+        tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-ok border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
 
         tr.append(tdIp, tdTime, tdStatus);
         fragment.appendChild(tr);
@@ -54,7 +54,10 @@ async function loadMetrics() {
       ipBody.appendChild(fragment);
     }
   } catch (e) {
-    // metrics load failed silently
+    // Without this, a failed load left the tiles at 0 and the table on
+    // "Syncing edge data..." indefinitely.
+    const ipBody = document.getElementById("ipTableBody");
+    if (ipBody) ipBody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-down text-sm">Couldn't load live metrics. Check the gateway is running, then reload.</td></tr>`;
   }
 }
 
@@ -83,7 +86,7 @@ function updateFromSSE(data) {
       tdTime.textContent = entry.last_seen_seconds_ago + "s ago";
       const tdStatus = document.createElement("td");
       tdStatus.className = "p-4 text-right";
-      tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
+      tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-ok border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
       tr.append(tdIp, tdTime, tdStatus);
       fragment.appendChild(tr);
     });
