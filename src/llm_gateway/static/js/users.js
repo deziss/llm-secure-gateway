@@ -236,13 +236,9 @@ $(document).ready(function () {
     }
   });
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeAddUserModal();
-      closeEditModal();
-      closeResetPasswordModal();
-    }
-  });
+  // Escape is handled by admin-modal.js: it closes only the top-most dialog
+  // (via its Close button, so page cleanup still runs) and leaves anything
+  // beneath it open. A page-level listener here closed every modal at once.
 });
 
 function openAddUserModal() {
