@@ -42,7 +42,7 @@
       <thead class="bg-surface-inset text-ink-muted text-micro font-semibold uppercase tracking-wider">
         <tr>
           <th class="p-4">Virtual Alias</th>
-          <th class="p-4">Target Backend</th>
+          <th class="p-4">Target server</th>
           <th class="p-4">Real Model Name</th>
           <th class="p-4">Fallback Chain</th>
           <th class="p-4 text-right">Actions</th>
@@ -100,9 +100,9 @@
         <input id="aliasInput" required placeholder="e.g. smart-model" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
       </div>
       <div>
-        <label for="backendSelectInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Backend</label>
+        <label for="backendSelectInput" class="mb-1.5 block text-caption font-medium text-ink-muted">Server</label>
         <select id="backendSelectInput" required class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" onchange="onAliasBackendChange(this)">
-          <option value="">Select Backend...</option>
+          <option value="">Select server…</option>
         </select>
       </div>
       <div>
@@ -172,7 +172,7 @@ async function loadAliasesAndChains() {
     const [resAliases, resChains, resBackends] = await Promise.all([
       fetchWithCsrf('/admin/aliases'),
       fetchWithCsrf('/admin/fallback-chains'),
-      fetchWithCsrf('/admin/backends').catch(() => ({ json: () => [] }))
+      fetchWithCsrf('/admin/servers').catch(() => ({ json: () => [] }))
     ]);
     const aliases = await resAliases.json().catch(() => []);
     cachedChains = await resChains.json().catch(() => []);
@@ -183,7 +183,7 @@ async function loadAliasesAndChains() {
     const delBtn = 'min-h-touch min-w-touch inline-flex items-center justify-center rounded-control text-down hover:bg-down/10 cursor-pointer';
     if (aliasTbody) {
       if (!aliases || aliases.length === 0) {
-        aliasTbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-ink-muted">No aliases yet &mdash; create one to route a friendly model name to a backend model.</td></tr>';
+        aliasTbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-ink-muted">No aliases yet &mdash; create one to route a friendly model name to a model on a server.</td></tr>';
       } else {
         aliasTbody.innerHTML = aliases.map(a => `
           <tr class="hover:bg-surface-inset/50 transition-colors">
@@ -205,7 +205,7 @@ async function loadAliasesAndChains() {
     const chainsTbody = document.getElementById('chainsTbody');
     if (chainsTbody) {
       if (!cachedChains || cachedChains.length === 0) {
-        chainsTbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-ink-muted">No fallback chains yet &mdash; create one to fail over between backends on 429/5xx errors.</td></tr>';
+        chainsTbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-ink-muted">No fallback chains yet &mdash; create one to fail over between servers on 429/5xx errors.</td></tr>';
       } else {
         chainsTbody.innerHTML = cachedChains.map(c => `
           <tr class="hover:bg-surface-inset/50 transition-colors">
@@ -251,7 +251,7 @@ function populateModalDropdowns() {
   const backendSelect = document.getElementById('backendSelectInput');
   if (backendSelect && cachedBackends) {
     const currentVal = backendSelect.value;
-    backendSelect.innerHTML = '<option value="">Select Backend...</option>' + 
+    backendSelect.innerHTML = '<option value="">Select server…</option>' + 
       cachedBackends.map(b => `<option value="${escapeHtml(b.name)}" ${b.name === currentVal ? 'selected' : ''}>${escapeHtml(b.name)} (${escapeHtml(b.backend_type || 'LLM')})</option>`).join('');
   }
 
@@ -306,7 +306,7 @@ function addChainTargetRow(backend = '', model = '', translate = false) {
   row.className = 'target-row p-3 rounded-control bg-surface-inset border border-hairline flex flex-col gap-2';
   const uid = 'tgt' + (++targetRowSeq);
   
-  let backendOptions = '<option value="">Select Backend...</option>';
+  let backendOptions = '<option value="">Select server…</option>';
   if (cachedBackends && cachedBackends.length > 0) {
     backendOptions += cachedBackends.map(b => `<option value="${escapeHtml(b.name)}" ${b.name === backend ? 'selected' : ''}>${escapeHtml(b.name)}</option>`).join('');
   }
@@ -320,7 +320,7 @@ function addChainTargetRow(backend = '', model = '', translate = false) {
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
-        <label for="${uid}-backend" class="mb-1 block text-caption font-medium text-ink-muted">Target Backend</label>
+        <label for="${uid}-backend" class="mb-1 block text-caption font-medium text-ink-muted">Target server</label>
         <select id="${uid}-backend" class="target-backend w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" required onchange="onTargetBackendSelect(this)">
           ${backendOptions}
         </select>
@@ -386,7 +386,7 @@ async function submitCreateChain(e) {
   });
 
   if (targets.length === 0) {
-    showToast('Validation Error', 'Please specify at least one backend and model target.', 'warning');
+    showToast('Validation Error', 'Specify at least one server and model.', 'warning');
     if (btn) { btn.disabled = false; btn.innerHTML = originalText; if (window.lucide) window.lucide.createIcons(); }
     return;
   }

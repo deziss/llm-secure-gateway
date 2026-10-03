@@ -3,6 +3,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.routing import APIRoute
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from pydantic import BaseModel
@@ -100,7 +101,7 @@ async def update_backend(
     update: BackendUpdate,
     service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin)
+    user = Depends(require_manager)
 ) -> LLMBackend:
     updates = update.dict(exclude_unset=True)
     backend = await service.update_backend(session, name, updates)
@@ -115,7 +116,7 @@ async def delete_backend(
     name: str,
     service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin)
+    user = Depends(require_manager)
 ) -> dict:
     success = await service.delete_backend(session, name)
     if not success:
@@ -164,7 +165,7 @@ async def backend_health(
     name: str,
     service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin)
+    user = Depends(require_manager)
 ) -> dict:
     backend = await service.get_backend(session, name)
     if not backend:
@@ -206,7 +207,7 @@ async def sync_backend_models(
     name: str,
     service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin)
+    user = Depends(require_manager)
 ) -> dict:
     import httpx
     backend = await service.get_backend(session, name)
@@ -327,3 +328,20 @@ async def delete_backend_model(
         await session.commit()
 
     return {"status": "deleted", "model": model_name}
+
+
+# "Backends" are presented as "model servers". The same handlers (and guards)
+# are served under /admin/servers; /admin/backends stays for existing clients
+# and is marked deprecated in the OpenAPI schema.
+servers_router = APIRouter(prefix="/admin/servers", tags=["admin-servers"])
+for _route in list(router.routes):
+    if isinstance(_route, APIRoute):
+        servers_router.add_api_route(
+            _route.path[len(router.prefix):],
+            _route.endpoint,
+            methods=sorted(_route.methods),
+            response_model=_route.response_model,
+            status_code=_route.status_code,
+            name=f"{_route.name}__server",
+        )
+        _route.deprecated = True

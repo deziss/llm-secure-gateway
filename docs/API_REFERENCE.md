@@ -146,7 +146,16 @@ System metrics snapshot.
 
 ---
 
-## Backends
+## Model servers (formerly Backends)
+
+A **model server** is an upstream the gateway routes to: an Ollama host, a vLLM cluster, an OpenAI account and so on.
+
+Every route below is served at `/admin/servers/...` (canonical since v0.13.0) and at the original `/admin/backends/...`, which is kept for existing clients and marked **deprecated** in the OpenAPI schema.
+
+Responses include the server type as both `backend_type` and `server_type`. Requests may send either; `backend_type` wins if both are present.
+
+The proxy routes `/provider/{type}/...` and `/direct/{server}/...` are unchanged.
+
 
 ### `GET /admin/backends`
 List all registered LLM backends.
@@ -203,7 +212,11 @@ Delete a backend and its associated permissions.
 
 ---
 
-## Owners
+## Projects (formerly Owners)
+
+A **project** is an API consumer: it holds API keys, a monthly budget and backend permissions, and is what spend is billed to. It is not a login. **Users** are the people who sign in to the admin panel; a project can be linked to one user (`type: "user"`, shown as *Personal*) or to none (`type: "project"`, shown as *Team or service*).
+
+Every route below is served at `/admin/projects/...` (canonical since v0.13.0) and at the original `/admin/owners/...` path, which is kept for existing clients and marked **deprecated** in the OpenAPI schema. Request and response bodies are identical; field names such as `owner_id` are unchanged.
 
 ### `GET /admin/owners`
 List all owners.
@@ -416,7 +429,7 @@ Ollama-compatible version endpoint for CLI, OpenWebUI, and client handshakes.
 **Response `200`**
 ```json
 {
-  "version": "0.12.0"
+  "version": "0.13.0"
 }
 ```
 

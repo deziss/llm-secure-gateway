@@ -1,6 +1,6 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.12.0-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.13.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -92,6 +92,17 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Prometheus & Metrics**: Native `/metrics` endpoint tracking request latency, token throughput, cache hits, error rates, and active connections.
 - **Token-Level Streaming Telemetry**: High-frequency async parser computing real-time prompt, completion, and total token usage on chunked responses.
 - **Spend & Quota Governance**: Per-tenant budget ceilings, token limits, and spend tracking with configurable webhooks and email notifications.
+
+---
+
+## Key Concepts
+
+| Term | What it is |
+|---|---|
+| **User** | A person who signs in to the admin panel. Has an email, a password and a role: Admin, Manager, Developer or Viewer. |
+| **Project** | An API consumer: owns API keys, a monthly budget, backend permissions and rate limits, and is what spend is billed to. *Personal* projects are linked to one user; *Team or service* projects stand alone (CI jobs, apps). Called "Owner" before v0.13.0; the API accepts both `/admin/projects` and the deprecated `/admin/owners`. |
+| **API key** | A `sk-gateway-…` token issued to a project, with scopes, an optional expiry and an optional budget. |
+| **Model server** | An upstream the gateway routes to: an Ollama host, a vLLM cluster, an OpenAI account… Its **server type** (`vllm`, `ollama`, `openai`…) is what `/provider/{type}` routes by; `/direct/{server}` targets one server by name. Called "backend" before v0.13.0: `/admin/backends` and the `backend_type` field still work. |
 
 ---
 
@@ -209,7 +220,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.12.0"}
+# Output: {"version": "0.13.0"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -240,7 +251,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.12.0` | Gateway release version emitted in logs & telemetry |
+| `APP_VERSION` | No | `0.13.0` | Gateway release version emitted in logs & telemetry |
 
 ### Performance & Scaling Options
 
@@ -338,7 +349,7 @@ docker run --rm \
   -e AUTH_SECRET=test-auth-secret \
   -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
   -e REDIS_URL="" \
-  llm-gateway:v0.12.0-py314 pytest tests/ -v
+  llm-gateway:v0.13.0-py314 pytest tests/ -v
 ```
 
 ### Performance & Benchmarking Scripts

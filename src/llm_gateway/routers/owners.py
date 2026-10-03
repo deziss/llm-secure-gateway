@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.routing import APIRoute
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin-owners"])
 
+
+def require_writer(user=Depends(current_active_user)):
+    """Any signed-in user except VIEWER. Viewers can read their own owners and
+    keys but not create, change or delete them (the Owners page is hidden from
+    them, yet the API used to accept writes)."""
+    role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
+    if not user.is_superuser and str(role_val).upper() == "VIEWER":
+        raise HTTPException(status_code=403, detail="Viewers have read-only access")
+    return user
+
 class APIKeyResponse(BaseModel):
     api_key: str
     prefix: str
@@ -28,7 +39,7 @@ async def create_api_key(
     key_data: APIKeyCreate,
     service: AuthService = Depends(get_auth_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(current_active_user)
+    user = Depends(require_writer)
 ) -> APIKeyResponse:
     if not is_admin_or_manager(user):
         from sqlalchemy import select
@@ -86,7 +97,7 @@ async def revoke_api_key(
     prefix: str,
     service: AuthService = Depends(get_auth_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(current_active_user)
+    user = Depends(require_writer)
 ) -> dict:
     from sqlalchemy import select
     if not is_admin_or_manager(user):
@@ -141,7 +152,7 @@ async def create_owner(
     owner: Owner,
     service: OwnerService = Depends(get_owner_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(current_active_user)
+    user = Depends(require_writer)
 ) -> Owner:
     try:
         new_owner = await service.create_owner(
@@ -182,7 +193,7 @@ async def update_owner(
     update: OwnerUpdate,
     service: OwnerService = Depends(get_owner_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(current_active_user)
+    user = Depends(require_writer)
 ) -> Owner:
     if not is_admin_or_manager(user):
         from sqlalchemy import select
@@ -204,7 +215,7 @@ async def set_provider_key(
     req: ProviderKeyRequest,
     service: OwnerService = Depends(get_owner_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(current_active_user)
+    user = Depends(require_writer)
 ) -> ProviderKey:
     if not is_admin_or_manager(user):
         from sqlalchemy import select
@@ -238,7 +249,7 @@ async def delete_owner(
     owner_id: str,
     service: OwnerService = Depends(get_owner_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(current_active_user)
+    user = Depends(require_writer)
 ) -> dict:
     if not is_admin_or_manager(user):
         from sqlalchemy import select
@@ -321,3 +332,23 @@ async def delete_owner_permission(
     await session.delete(perm)
     await session.commit()
     return {"status": "deleted"}
+
+
+# "Owners" are presented as "Projects" (a project holds API keys, a budget and
+# backend access; users are the people who sign in). Every /admin/owners route
+# is also served at /admin/projects with the same handler and guards.
+# /admin/owners stays for existing API clients and is marked deprecated in
+# the OpenAPI schema.
+for _route in list(router.routes):
+    if isinstance(_route, APIRoute) and _route.path.startswith("/admin/owners"):
+        # route.path already includes the router prefix; add_api_route adds it again.
+        router.add_api_route(
+            _route.path[len(router.prefix):].replace("/owners", "/projects", 1),
+            _route.endpoint,
+            methods=sorted(_route.methods),
+            response_model=_route.response_model,
+            status_code=_route.status_code,
+            name=f"{_route.name}__project",
+            tags=["admin-projects"],
+        )
+        _route.deprecated = True

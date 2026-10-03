@@ -12,7 +12,7 @@ from .telemetry import setup_telemetry
 
 logging.basicConfig(level=logging.INFO)
 
-_VERSION = "0.12.0"
+_VERSION = "0.13.0"
 
 
 
@@ -128,6 +128,7 @@ from .routers import (
     proxy_router,
     v2_proxy_router,
     backends_router,
+    servers_router,
     owners_router,
     users_router,
     settings_router,
@@ -144,6 +145,7 @@ app.include_router(ui_router)
 app.include_router(auth_aux_router)
 app.include_router(admin_router)
 app.include_router(backends_router)
+app.include_router(servers_router)
 app.include_router(owners_router)
 app.include_router(users_router)
 app.include_router(settings_router)

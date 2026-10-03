@@ -98,7 +98,7 @@ async def dashboard_page(request: Request, user=Depends(optional_current_user)):
         return RedirectResponse("/auth/login")
     return templates.TemplateResponse(request, "dashboard.html", context=get_template_context(user))
 
-@router.get("/admin/view/backends")
+@router.get("/admin/view/servers")
 async def backends_page(request: Request, user=Depends(optional_current_user)):
     if not user:
          return RedirectResponse("/auth/login")
@@ -107,7 +107,12 @@ async def backends_page(request: Request, user=Depends(optional_current_user)):
          return RedirectResponse("/admin/dashboard")
     return templates.TemplateResponse(request, "backends.html", context=get_template_context(user))
 
-@router.get("/admin/view/owners")
+@router.get("/admin/view/backends")
+async def backends_page_redirect():
+    # Backends were renamed to model servers; keep old bookmarks working.
+    return RedirectResponse("/admin/view/servers")
+
+@router.get("/admin/view/projects")
 async def owners_page(request: Request, user=Depends(optional_current_user)):
     if not user:
          return RedirectResponse("/auth/login")
@@ -115,6 +120,11 @@ async def owners_page(request: Request, user=Depends(optional_current_user)):
     if role_val not in [Role.ADMIN.value, Role.MANAGER.value, Role.DEVELOPER.value]:
          return RedirectResponse("/admin/dashboard")
     return templates.TemplateResponse(request, "owners.html", context=get_template_context(user))
+
+@router.get("/admin/view/owners")
+async def owners_page_redirect():
+    # Owners were renamed to Projects; keep old bookmarks working.
+    return RedirectResponse("/admin/view/projects")
 
 @router.get("/admin/view/users")
 async def users_page(request: Request, user=Depends(optional_current_user)):

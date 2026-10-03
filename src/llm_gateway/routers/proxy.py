@@ -74,7 +74,7 @@ async def aggregate_ollama_tags(
 async def ollama_version(request: Request) -> dict:
     """Return an Ollama-compatible version payload for CLI and client handshakes."""
     apply_rate_limit(request)
-    return {"version": "0.12.0"}
+    return {"version": "0.13.0"}
 
 @router.get("/v1/models")
 async def aggregate_openai_models(

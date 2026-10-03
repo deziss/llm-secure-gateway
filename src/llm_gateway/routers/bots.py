@@ -11,7 +11,7 @@ from ..models import LLMBot, LLMBotMessage, LLMBotResponse, LLMBackend
 from ..services import get_bot_service, get_config_service, BotService, ConfigService
 from ..database import get_session
 from ..pagination import pagination_params
-from .admin import require_admin
+from .admin import require_manager
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def get_base_url(request: Request) -> str:
 async def list_bots(
     service: BotService = Depends(get_bot_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin),
+    user = Depends(require_manager),
     pagination: tuple = Depends(pagination_params),
 ) -> list:
     skip, limit = pagination
@@ -83,7 +83,7 @@ async def create_bot(
     service: BotService = Depends(get_bot_service),
     config_service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin),
+    user = Depends(require_manager),
 ) -> LLMBotResponse:
     # Verify backend exists
     backend = await config_service.get_backend(session, req.backend_name)
@@ -133,7 +133,7 @@ async def update_bot(
     service: BotService = Depends(get_bot_service),
     config_service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin),
+    user = Depends(require_manager),
 ) -> LLMBotResponse:
     bot = await service.get_bot(session, bot_id)
     if not bot:
@@ -178,7 +178,7 @@ async def delete_bot(
     bot_id: int,
     service: BotService = Depends(get_bot_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin),
+    user = Depends(require_manager),
 ) -> dict:
     bot = await service.get_bot(session, bot_id)
     if not bot:
@@ -199,7 +199,7 @@ async def sync_webhook(
     request: Request,
     service: BotService = Depends(get_bot_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin),
+    user = Depends(require_manager),
 ) -> dict:
     bot = await service.get_bot(session, bot_id)
     if not bot:

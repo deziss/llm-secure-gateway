@@ -39,7 +39,7 @@ router = APIRouter(
 async def get_system_metrics(
     service: ConfigService = Depends(get_config_service),
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin)
+    user = Depends(require_manager)
 ) -> dict:
     from ..tracking import get_active_ips, get_traffic_history
     from sqlalchemy import func, select
@@ -100,7 +100,7 @@ async def get_system_metrics(
 async def stream_metrics(
     request: Request,
     session: AsyncSession = Depends(get_session),
-    user = Depends(require_admin),
+    user = Depends(require_manager),
 ) -> StreamingResponse:
     """Server-Sent Events stream for dashboard metrics.
 

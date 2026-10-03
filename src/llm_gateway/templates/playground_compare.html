@@ -27,8 +27,8 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2 flex-1 sm:justify-end min-w-0">
-        <select id="backendFilterA" aria-label="Filter model A by backend" onchange="onBackendFilterChange('A')" class="w-full sm:w-auto sm:max-w-[140px] min-h-touch sm:min-h-0 px-2.5 py-1.5 text-caption rounded-control border border-hairline bg-surface-inset text-ink cursor-pointer truncate focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" title="Filter by Backend">
-          <option value="">All Backends</option>
+        <select id="backendFilterA" aria-label="Filter model A by server" onchange="onBackendFilterChange('A')" class="w-full sm:w-auto sm:max-w-[140px] min-h-touch sm:min-h-0 px-2.5 py-1.5 text-caption rounded-control border border-hairline bg-surface-inset text-ink cursor-pointer truncate focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" title="Filter by server">
+          <option value="">All servers</option>
         </select>
 
         <div class="relative w-full sm:w-64" id="comboContainerA">
@@ -89,8 +89,8 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2 flex-1 sm:justify-end min-w-0">
-        <select id="backendFilterB" aria-label="Filter model B by backend" onchange="onBackendFilterChange('B')" class="w-full sm:w-auto sm:max-w-[140px] min-h-touch sm:min-h-0 px-2.5 py-1.5 text-caption rounded-control border border-hairline bg-surface-inset text-ink cursor-pointer truncate focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" title="Filter by Backend">
-          <option value="">All Backends</option>
+        <select id="backendFilterB" aria-label="Filter model B by server" onchange="onBackendFilterChange('B')" class="w-full sm:w-auto sm:max-w-[140px] min-h-touch sm:min-h-0 px-2.5 py-1.5 text-caption rounded-control border border-hairline bg-surface-inset text-ink cursor-pointer truncate focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" title="Filter by server">
+          <option value="">All servers</option>
         </select>
 
         <div class="relative w-full sm:w-64" id="comboContainerB">
@@ -146,13 +146,13 @@
 <!-- Shared Prompt Box -->
 <div class="sticky bottom-2 sm:static z-30 rounded-panel border border-hairline bg-surface-raised shadow-overlay sm:shadow-rest p-3 sm:p-4">
   <div class="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-    <label for="arenaApiKey" class="text-caption font-medium text-ink-muted whitespace-nowrap">Owner API key</label>
+    <label for="arenaApiKey" class="text-caption font-medium text-ink-muted whitespace-nowrap">Project API key</label>
     <input id="arenaApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-gateway-… (required to call models)"
       aria-describedby="arenaApiKeyHint"
       class="w-full sm:max-w-md min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink text-sm font-mono placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
     <p id="arenaApiKeyHint" class="text-caption text-ink-muted">
       Runs as that owner, using their backend permissions. Kept for this tab only.
-      <a href="/admin/view/owners" class="text-accent hover:underline">Get a key from Owners</a>
+      <a href="/admin/view/projects" class="text-accent hover:underline">Get a key from Projects</a>
     </p>
   </div>
   <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function fetchBackendsAndModels() {
   try {
     // 1. Fetch backends
-    const bRes = await fetch("/admin/backends?limit=100", { credentials: "include" });
+    const bRes = await fetch("/admin/servers?limit=100", { credentials: "include" });
     if (bRes.ok) {
       allBackends = await bRes.json();
     }
@@ -280,7 +280,7 @@ function populateBackendFilters() {
   const filterA = document.getElementById("backendFilterA");
   const filterB = document.getElementById("backendFilterB");
 
-  const optionsHtml = ['<option value="">All Backends (' + allModels.length + ')</option>'];
+  const optionsHtml = ['<option value="">All servers (' + allModels.length + ')</option>'];
 
   if (allBackends.length > 0) {
     allBackends.forEach(b => {
@@ -565,9 +565,9 @@ async function queryModel(modelName, prompt, outputElem, latencyElem, tokenElem)
       // Without a key the request runs as the signed-in admin, who usually
       // isn't an owner with backend permissions -- say what to do about it.
       const hint = (res.status === 401 || res.status === 403) && !key
-        ? "\n\nEnter an owner's API key above: requests without one run as your admin login, which has no backend permissions."
+        ? "\n\nEnter an owner's API key above: requests without one run as your admin login, which has no server access."
         : (res.status === 403 && /no permissions for backend/.test(err))
-          ? "\n\nThis owner has no permission for that backend. Grant it on the Owners page (shield icon), or use another owner's key."
+          ? "\n\nThis project has no permission for that backend. Grant it on the Projects page (shield icon), or use another project's key."
           : "";
       outputElem.textContent = `Error (${res.status}): ${err}${hint}`;
       return;
