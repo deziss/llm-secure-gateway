@@ -34,6 +34,17 @@ endblock %} {% set hide_header = true %} {% block content %}
       </p>
     </div>
 
+    {% if not allow_insecure_http %}
+    {# Shown by the script below only on plain HTTP from a non-localhost host,
+       where the browser drops the Secure session cookie and login won't stick. #}
+    <div id="insecureHttpNotice" class="hidden mb-6 rounded-control border border-warn/30 bg-warn/10 p-3 text-caption text-warn" role="alert">
+      This page is served over plain HTTP, so your browser will discard the
+      secure login cookie and sign-in will not stick. Open the gateway over
+      HTTPS (e.g. behind a TLS reverse proxy) or via localhost. For a trusted
+      dev LAN only, set <code>ALLOW_INSECURE_HTTP=true</code> and restart.
+    </div>
+    {% endif %}
+
     <form id="loginForm" class="space-y-6">
       <div class="space-y-2">
         <label
@@ -93,7 +104,7 @@ endblock %} {% set hide_header = true %} {% block content %}
       <button
         type="submit"
         id="submitBtn"
-        class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-3 overflow-hidden"
+        class="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 overflow-hidden"
       >
         <span id="btnText">INITIATE SESSION</span>
       </button>
@@ -123,7 +134,7 @@ endblock %} {% set hide_header = true %} {% block content %}
   </div>
 
   <p
-    class="mt-8 text-slate-600 text-[10px] font-medium tracking-[0.2em] uppercase"
+    class="mt-8 text-ink-muted text-[10px] font-medium tracking-[0.2em] uppercase"
   >
     Secure Layer 7 Proxy
   </p>
@@ -162,6 +173,12 @@ endblock %} {% set hide_header = true %} {% block content %}
 </style>
 
 <script>
+  (() => {
+    const notice = document.getElementById("insecureHttpNotice");
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    if (notice && location.protocol === "http:" && !local) notice.classList.remove("hidden");
+  })();
+
   document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const submitBtn = document.getElementById("submitBtn");

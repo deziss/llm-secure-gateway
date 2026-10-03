@@ -154,6 +154,29 @@ def apply_rate_limit(request: Request) -> None:
             )
 
 
+def _canonical_endpoint(path: str) -> str:
+    """Normalise an endpoint path for allowed_endpoints matching.
+
+    allowed_endpoints names API operations, not URL versions, and entries are
+    stored both ways: relative to a base URL that already ends in /v1
+    ("/chat/completions") and with the prefix ("/v1/chat/completions"). The
+    request path always arrives as "v1/chat/completions". Comparing them
+    literally rejected every request to backends registered the first way, so
+    strip the leading slash and a leading "v1/" from both sides.
+    """
+    p = (path or "").strip().lstrip("/")
+    if p == "v1":
+        return ""
+    return p[3:] if p.startswith("v1/") else p
+
+
+def _endpoint_matches(path: str, entry: str) -> bool:
+    """True if `path` is `entry` or nested under it (on a segment boundary)."""
+    if not entry:
+        return True
+    return path == entry or path.startswith(entry.rstrip("/") + "/")
+
+
 async def check_owner_permissions(
     session: AsyncSession,
     owner_id: str,
@@ -178,8 +201,10 @@ async def check_owner_permissions(
                 status_code=403,
                 detail="No endpoints are allowed for this backend. Please configure allowed_endpoints.",
             )
-        norm_path = path.lstrip("/")
-        if "*" not in backend.allowed_endpoints and not any(norm_path.startswith(ep.lstrip("/")) for ep in backend.allowed_endpoints):
+        norm_path = _canonical_endpoint(path)
+        if "*" not in backend.allowed_endpoints and not any(
+            _endpoint_matches(norm_path, _canonical_endpoint(ep)) for ep in backend.allowed_endpoints
+        ):
             raise HTTPException(
                 status_code=403,
                 detail=f"Endpoint '{path}' is not allowed for this backend",
@@ -224,6 +249,10 @@ async def build_backend_auth_headers(
     headers = dict(request.headers)
     headers.pop("host", None)
     headers.pop("content-length", None)
+    # Ask for an uncompressed body: thinking normalization and protocol
+    # translation read it as text. (Raw passthrough would otherwise forward
+    # gzip bytes under a header we may have to drop.)
+    headers["accept-encoding"] = "identity"
     headers.pop("x-api-key", None)
     headers.pop("authorization", None)
 
@@ -622,3 +651,16 @@ async def try_with_cross_provider_fallback(
     if last_exc:
         raise last_exc
     raise HTTPException(status_code=502, detail="All targets in fallback chain failed")
+
+
+# Hop-by-hop and length/encoding headers that must not be copied from an
+# upstream response onto a StreamingResponse: the body may be rewritten
+# (thinking normalization, protocol translation), and Starlette streams it
+# chunked anyway.
+_DROP_RESPONSE_HEADERS = {
+    "content-length", "content-encoding", "transfer-encoding", "connection", "keep-alive",
+}
+
+
+def passthrough_response_headers(upstream_headers) -> dict:
+    return {k: v for k, v in upstream_headers.items() if k.lower() not in _DROP_RESPONSE_HEADERS}

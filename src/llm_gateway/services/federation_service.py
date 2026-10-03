@@ -9,6 +9,18 @@ from ..models import BackendType
 
 logger = logging.getLogger(__name__)
 
+
+def openai_models_url(base_url: str) -> str:
+    """URL of an OpenAI-compatible model list for a backend's base URL.
+
+    Backends are registered both with and without a trailing `/v1`
+    (`http://host:13313` and `http://host:13313/v1` are both common). Blindly
+    appending `/v1/models` to the latter yields `/v1/v1/models`, which 404s, so
+    model sync silently found nothing for those backends.
+    """
+    base = base_url.rstrip("/")
+    return f"{base}/models" if base.endswith("/v1") else f"{base}/v1/models"
+
 async def fetch_models_from_backend(client: httpx.AsyncClient, base_url: str, backend_type: BackendType, api_key: Optional[str] = None) -> List[str]:
     """Fetch the list of available models from a specific backend."""
     headers = {}
@@ -28,7 +40,7 @@ async def fetch_models_from_backend(client: httpx.AsyncClient, base_url: str, ba
             return []
             
     elif backend_type in [BackendType.VLLM, BackendType.OPENAI, BackendType.GROQ, BackendType.CUSTOM]:
-        url = f"{base_url.rstrip('/')}/v1/models"
+        url = openai_models_url(base_url)
         try:
             response = await client.get(url, headers=headers, timeout=10.0)
             response.raise_for_status()
@@ -40,7 +52,7 @@ async def fetch_models_from_backend(client: httpx.AsyncClient, base_url: str, ba
 
     elif backend_type == BackendType.LLAMACPP:
         base = base_url.rstrip("/")
-        models_url = f"{base}/models" if base.endswith("/v1") else f"{base}/v1/models"
+        models_url = openai_models_url(base)
         try:
             response = await client.get(models_url, headers=headers, timeout=10.0)
             if response.status_code == 200:
@@ -77,7 +89,7 @@ async def fetch_models_from_backend(client: httpx.AsyncClient, base_url: str, ba
             
     elif backend_type == BackendType.ANTHROPIC:
         # Anthropic has a /v1/models endpoint as of recently, but if not, we can default to empty or static
-        url = f"{base_url.rstrip('/')}/v1/models"
+        url = openai_models_url(base_url)
         headers["x-api-key"] = api_key or ""
         headers["anthropic-version"] = "2023-06-01"
         try:
@@ -134,7 +146,9 @@ async def poll_all_backends() -> None:
                     if current_models != new_models:
                         logger.info(f"Updating models for backend '{backend.name}': {fetched_models}")
                         backend.models = fetched_models
-                        session.add(backend)
+                        # merge, not add: `backend` is a shared cached row and
+                        # must stay detached (see ConfigService.list_backends).
+                        await session.merge(backend)
         
         await session.commit()
 

@@ -4,12 +4,10 @@
   class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
 >
   <div>
-    <h1
-      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
-    >
-      <i data-lucide="server" class="text-blue-500 w-8 h-8" aria-hidden="true"></i> LLM Backends
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="server" class="h-5 w-5 shrink-0 text-blue-500" aria-hidden="true"></i> LLM Backends
     </h1>
-    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+    <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
       Manage and monitor your model providers in real-time.
     </p>
   </div>
@@ -23,7 +21,7 @@
     >
       <i
         data-lucide="refresh-cw"
-        class="w-4 h-4 text-blue-400 group-hover:rotate-180 transition-transform duration-500"
+        class="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:rotate-180 transition-transform duration-500"
         aria-hidden="true"
       ></i>
       <span>Sync All Models</span>
@@ -32,7 +30,7 @@
       type="button"
       id="addBackendBtn"
       onclick="openAddModal()"
-      class="min-h-touch px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer"
+      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
     >
       <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
       <span>Add Backend</span>
@@ -76,12 +74,12 @@
   onclick="if(event.target === this) closeAddModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-xl shadow-overlay transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-xl shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="plus-circle" class="text-blue-500 w-6 h-6" aria-hidden="true"></i> Register Backend
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i data-lucide="plus-circle" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Register Backend
       </h2>
       <button
         type="button"
@@ -215,7 +213,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeAddModal()"
@@ -225,7 +223,7 @@
         </button>
         <button
           type="submit"
-          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Save Backend</span>
@@ -244,12 +242,12 @@
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-xl shadow-overlay transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-xl shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="edit-3" class="text-blue-500 w-6 h-6" aria-hidden="true"></i> Edit Backend
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit Backend
       </h2>
       <button
         type="button"
@@ -350,7 +348,7 @@
           for="editAllowedEndpoints"
           class="block text-caption font-medium text-ink-muted mb-2"
           >Allowed Endpoints
-          <span class="normal-case tracking-normal font-normal text-slate-600 ml-1">(one per line, or * for all)</span>
+          <span class="normal-case tracking-normal font-normal text-ink-muted ml-1">(one per line, or * for all)</span>
         </label>
         <textarea
           id="editAllowedEndpoints"
@@ -360,12 +358,12 @@
           placeholder="/api/chat&#10;/api/embeddings&#10;/v1/chat/completions"
           aria-describedby="editAllowedEndpointsHint"
         ></textarea>
-        <p id="editAllowedEndpointsHint" class="text-micro text-slate-600 mt-1">
+        <p id="editAllowedEndpointsHint" class="text-micro text-ink-muted mt-1">
           Controls which proxy paths this backend accepts. Use <code class="text-slate-500">*</code> to allow everything.
         </p>
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeEditModal()"
@@ -375,7 +373,7 @@
         </button>
         <button
           type="submit"
-          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20 cursor-pointer flex items-center justify-center gap-2"
+          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition cursor-pointer flex items-center justify-center gap-2"
         >
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Update Backend</span>
@@ -398,11 +396,11 @@
     onclick="event.stopPropagation()"
   >
     <div
-      class="p-5 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+      class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
     >
       <div>
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <i data-lucide="boxes" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> Manage Models
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+          <i data-lucide="boxes" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> Manage Models
         </h2>
         <p
           class="text-indigo-400 text-sm font-bold mt-1"
@@ -420,17 +418,17 @@
       </button>
     </div>
 
-    <div class="p-5 sm:p-8 flex-1 overflow-y-auto space-y-8">
+    <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-5">
       <!-- Pull Section -->
       <div class="relative group">
         <div
           class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition"
         ></div>
         <div
-          class="relative bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-6 rounded-2xl"
+          class="relative bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl"
         >
           <h3 class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2">
-            <i data-lucide="download-cloud" class="text-blue-400 w-5 h-5" aria-hidden="true"></i> Pull New
+            <i data-lucide="download-cloud" class="text-blue-600 dark:text-blue-400 w-5 h-5" aria-hidden="true"></i> Pull New
             Model
           </h3>
           <div class="flex gap-2">
@@ -445,14 +443,14 @@
               type="button"
               onclick="pullModel()"
               id="pullBtn"
-              class="min-h-touch px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+              class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
             >
               <i data-lucide="download" class="w-4 h-4" aria-hidden="true"></i> Start Pull
             </button>
           </div>
           <pre
             id="pullOutput"
-            class="mt-4 text-caption font-mono text-emerald-400 bg-slate-200 dark:bg-black/60 p-4 rounded-xl hidden h-40 overflow-y-auto border border-slate-200 dark:border-slate-800 shadow-inner custom-scrollbar"
+            class="mt-4 text-caption font-mono text-ok bg-slate-200 dark:bg-black/60 p-4 rounded-xl hidden h-40 overflow-y-auto border border-slate-200 dark:border-slate-800 shadow-inner custom-scrollbar"
           ></pre>
         </div>
       </div>
@@ -476,5 +474,5 @@
   </div>
 </div>
 
-<script src="/static/js/backends.js"></script>
+<script src="/static/js/backends.js?v={{ asset_v }}"></script>
 {% endblock %}

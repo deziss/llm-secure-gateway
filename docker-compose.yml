@@ -45,6 +45,8 @@ services:
     - AUTH_SECRET=${AUTH_SECRET}
     - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     - BASE_URL=${BASE_URL}
+    # Dev only: lets login work over plain http://<lan-ip>. Unencrypted -- see README.
+    - ALLOW_INSECURE_HTTP=${ALLOW_INSECURE_HTTP:-false}
     - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@example.com}
     - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-admin123}
       # SMTP Settings (Configure these in .env)

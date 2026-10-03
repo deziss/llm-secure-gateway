@@ -49,6 +49,10 @@
     if (wrap && !wrap.classList.contains("overflow-x-auto")) {
       wrap.classList.add("overflow-x-auto", "custom-scrollbar");
     }
+    // The wrappers carried `p-1`, leaving a 4px gutter between the card's
+    // border and the table's header/rows. Let the table run edge to edge;
+    // the card's overflow-hidden + radius clips the corners.
+    if (wrap) wrap.classList.remove("p-1");
 
     // On phones each row is its own card, so the page-level card around the
     // table would draw a second border and waste ~24px of width. Drop its
@@ -65,6 +69,19 @@
     }
 
     labelCells(table);
+
+    // Pin the first/last columns only while the table is wider than its
+    // scroll container (see .is-overflowing in input.css).
+    if (wrap && typeof ResizeObserver !== "undefined") {
+      var check = function () {
+        table.classList.toggle("is-overflowing", wrap.scrollWidth > wrap.clientWidth + 1);
+      };
+      var ro = new ResizeObserver(check);
+      ro.observe(wrap);
+      ro.observe(table);
+      check();
+    }
+
     var tbody = table.querySelector("tbody");
     if (tbody) {
       // Mutations we cause (setAttribute) are attribute changes, which this

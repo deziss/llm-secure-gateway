@@ -3,6 +3,32 @@
  * Replaces FontAwesome dependency with modern, lightweight Lucide vector SVG icons.
  */
 (function () {
+    // ── Stop lucide re-rendering icons it already drew ──────────────────
+    // lucide copies `data-lucide` onto the <svg> it produces, and
+    // createIcons() selects every [data-lucide] element -- including those
+    // SVGs. So each call replaced every icon on the page with a fresh node.
+    // Combined with the MutationObserver below (which reacts to inserted
+    // nodes, including those replacement SVGs) this looped forever, redrawing
+    // every icon ~20x a second. A click whose mousedown and mouseup straddled
+    // a redraw was dropped, which is why clicking ON an icon often did nothing.
+    //
+    // Fix: once rendered, rename the attribute so createIcons() skips it.
+    // Wrapping the function covers the many direct createIcons() calls in the
+    // page scripts, not only the ones made here.
+    if (window.lucide && typeof window.lucide.createIcons === 'function' && !window.lucide.__idempotent) {
+        const original = window.lucide.createIcons.bind(window.lucide);
+        window.lucide.createIcons = function (opts) {
+            if (!document.querySelector('i[data-lucide]')) return; // nothing new to draw
+            const result = original(opts);
+            document.querySelectorAll('svg[data-lucide]').forEach(function (svg) {
+                svg.setAttribute('data-lucide-icon', svg.getAttribute('data-lucide'));
+                svg.removeAttribute('data-lucide');
+            });
+            return result;
+        };
+        window.lucide.__idempotent = true;
+    }
+
     const faToLucideMap = {
         'fa-shield-alt': 'shield',
         'fa-shield': 'shield',
@@ -50,6 +76,7 @@
         'fa-download': 'download',
         'fa-cloud-download-alt': 'cloud-download',
         'fa-eye': 'eye',
+        'fa-sliders-h': 'sliders-horizontal',
         'fa-eye-slash': 'eye-off',
         'fa-lock': 'lock',
         'fa-network-wired': 'network',
@@ -138,11 +165,17 @@
     if (typeof MutationObserver !== 'undefined') {
         let timer = null;
         const observer = new MutationObserver((mutations) => {
+            // Only react to inserted *unrendered* icons. Reacting to any
+            // inserted node (including the SVGs lucide itself inserts) is what
+            // made this loop.
+            const needsIcons = (n) => n.nodeType === 1 && (
+                (n.tagName === 'I' && (n.hasAttribute('data-lucide') || /\bfa-/.test(n.className))) ||
+                (n.querySelector && n.querySelector('i[data-lucide], i[class*="fa-"]'))
+            );
             let shouldRefresh = false;
-            for (const m of mutations) {
-                if (m.addedNodes && m.addedNodes.length > 0) {
-                    shouldRefresh = true;
-                    break;
+            outer: for (const m of mutations) {
+                for (const n of m.addedNodes || []) {
+                    if (needsIcons(n)) { shouldRefresh = true; break outer; }
                 }
             }
             if (shouldRefresh) {

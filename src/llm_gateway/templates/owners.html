@@ -4,12 +4,10 @@ block content %}
   class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
 >
   <div>
-    <h1
-      class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3"
-    >
-      <i data-lucide="users" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> API Owners
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="users" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> API Owners
     </h1>
-    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+    <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
       Manage API consumers and their granular access permissions.
     </p>
   </div>
@@ -18,7 +16,7 @@ block content %}
     type="button"
     id="addOwnerBtn"
     onclick="openAddModal()"
-    class="min-h-touch px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 rounded-xl transition-all font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
+    class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
   >
     <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
     <span>Register Owner</span>
@@ -64,12 +62,12 @@ block content %}
   onclick="if(event.target === this) closeAddModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="user-plus" class="text-indigo-500 w-6 h-6" aria-hidden="true"></i> New API Owner
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i data-lucide="user-plus" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> New API Owner
       </h2>
       <button
         onclick="closeAddModal()"
@@ -212,7 +210,7 @@ block content %}
         </div>
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeAddModal()"
@@ -222,7 +220,7 @@ block content %}
         </button>
         <button
           type="submit"
-          class="min-h-touch px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 to-blue-500 text-white font-bold rounded-control transition shadow-lg shadow-indigo-500/20"
+          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition"
         >
           Create Owner
         </button>
@@ -240,12 +238,12 @@ block content %}
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
     onclick="event.stopPropagation()"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="edit-3" class="text-blue-500 w-6 h-6" aria-hidden="true"></i> Edit API Owner
+      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit API Owner
       </h2>
       <button
         onclick="closeEditModal()"
@@ -337,7 +335,7 @@ block content %}
         class="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-5 rounded-2xl flex items-start gap-4"
       >
         <div class="bg-emerald-500/20 p-2.5 rounded-xl">
-          <i class="fas fa-toggle-on text-emerald-400" aria-hidden="true"></i>
+          <i class="fas fa-toggle-on text-ok" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
           <div class="flex justify-between items-center mb-1">
@@ -392,7 +390,7 @@ block content %}
         />
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onclick="closeEditModal()"
@@ -402,7 +400,7 @@ block content %}
         </button>
         <button
           type="submit"
-          class="min-h-touch px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 to-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-blue-500/20"
+          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition"
         >
           Sync Changes
         </button>
@@ -424,14 +422,14 @@ block content %}
     onclick="event.stopPropagation()"
   >
     <div
-      class="p-5 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+      class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
     >
       <div>
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <i data-lucide="shield-check" class="text-emerald-500 w-6 h-6" aria-hidden="true"></i> Manage Permissions
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+          <i data-lucide="shield-check" class="text-emerald-500 w-5 h-5" aria-hidden="true"></i> Manage Permissions
         </h2>
         <p
-          class="text-emerald-400 text-sm font-mono font-bold mt-1"
+          class="text-ok text-sm font-mono font-bold mt-1"
           id="permOwnerIdDisplay"
         ></p>
       </div>
@@ -447,7 +445,7 @@ block content %}
       </button>
     </div>
 
-    <div class="p-5 sm:p-8 flex-1 overflow-y-auto space-y-8">
+    <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-5">
       <!-- Active Permissions -->
       <div>
         <h3
@@ -478,16 +476,16 @@ block content %}
       </div>
 
       <div id="addPermissionContainer">
-        <hr class="border-slate-200 dark:border-slate-800 mb-8" id="addPermissionDivider" />
+        <hr class="border-slate-200 dark:border-slate-800 mb-5" id="addPermissionDivider" />
         <h3
           class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2"
           id="addPermissionHeader"
         >
-          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-400" aria-hidden="true"></i> Grant New Permission
+          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i> Grant New Permission
         </h3>
         <form
           id="addPermissionForm" action="javascript:void(0);"
-          class="space-y-4 bg-slate-100/50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50"
+          class="space-y-4 bg-slate-100/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50"
         >
           <input type="hidden" id="permFormOwnerId" />
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -507,7 +505,7 @@ block content %}
               <div id="permEndpointsLabel" class="block text-caption font-medium text-ink-muted mb-2">
                 Endpoint Authorization
               </div>
-              <div role="group" aria-labelledby="permEndpointsLabel" class="w-full bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+              <div role="group" aria-labelledby="permEndpointsLabel" class="w-full bg-surface-inset border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
                 <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
                 Controlled by API Key Scopes (configured per key)
               </div>
@@ -531,7 +529,7 @@ block content %}
           <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
             <button
               type="submit"
-              class="min-h-touch px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-control transition shadow-lg shadow-indigo-500/20"
+              class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-control transition"
             >
               Add Permission Grant
             </button>
@@ -545,14 +543,14 @@ block content %}
 <!-- Manage Keys Modal -->
 <div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeKeysModal()">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all" onclick="event.stopPropagation()">
-    <div class="p-5 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
+    <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
       <div>
-        <h2 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-6 h-6" aria-hidden="true"></i> Manage API Keys</h2>
-        <p class="text-amber-400 text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-5 h-5" aria-hidden="true"></i> Manage API Keys</h2>
+        <p class="text-warn text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
       </div>
       <button type="button" onclick="closeKeysModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
-    <div class="p-5 sm:p-8 flex-1 overflow-y-auto space-y-8">
+    <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-5">
       <div>
         <h3 class="text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4" aria-hidden="true"></i> Active Keys</h3>
         <div class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden">
@@ -573,7 +571,7 @@ block content %}
         </div>
       </div>
       <!-- Scope selector for new keys -->
-      <div class="bg-slate-100/50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-4">
+      <div class="bg-slate-100/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-4">
         <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 text-sm">
           <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i> New Key Scopes
         </h3>
@@ -605,7 +603,7 @@ block content %}
           </label>
         </div>
         <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
-          <button type="button" onclick="createKeyFromModal()" class="min-h-touch w-full sm:w-auto justify-center inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 to-orange-500 text-white font-bold rounded-control transition shadow-lg shadow-amber-500/20">
+          <button type="button" onclick="createKeyFromModal()" class="min-h-touch w-full sm:w-auto justify-center inline-flex items-center px-6 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition">
             <i data-lucide="plus" class="w-4 h-4 mr-2" aria-hidden="true"></i> Issue New Key
           </button>
         </div>
@@ -614,5 +612,5 @@ block content %}
   </div>
 </div>
 
-<script src="/static/js/owners.js"></script>
+<script src="/static/js/owners.js?v={{ asset_v }}"></script>
 {% endblock %}

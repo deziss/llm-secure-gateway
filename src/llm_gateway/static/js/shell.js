@@ -130,9 +130,6 @@
   // ── Theme ──────────────────────────────────────────────────────────────
   // Same storage contract as settings.js: "light" | "dark" stored, absence
   // means follow the OS.
-  var THEMES = ["system", "light", "dark"];
-  var LABELS = { system: "System theme", light: "Light theme", dark: "Dark theme" };
-  var ICONS = { system: "monitor", light: "sun", dark: "moon" };
   var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   function currentTheme() {
@@ -145,43 +142,44 @@
     document.documentElement.classList.toggle("dark", dark);
   }
 
-  function paintThemeButton(theme) {
-    var btn = document.getElementById("themeCycle");
-    if (!btn) return;
-    var next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
-    btn.setAttribute("aria-label", LABELS[theme] + ". Switch to " + LABELS[next].toLowerCase());
-    btn.setAttribute("title", LABELS[theme]);
-    var icon = btn.querySelector("[data-lucide], svg");
-    if (icon && icon.getAttribute("data-lucide") !== ICONS[theme]) {
-      // lucide replaces <i data-lucide> with an <svg>; swap in a fresh <i>.
-      // No createIcons() here: icons.js observes inserted nodes and renders
-      // it (a full-page createIcons on every click ran twice per toggle).
-      var fresh = document.createElement("i");
-      fresh.setAttribute("data-lucide", ICONS[theme]);
-      fresh.setAttribute("class", "h-5 w-5");
-      fresh.setAttribute("aria-hidden", "true");
-      icon.replaceWith(fresh);
+  var themeSwitch = document.getElementById("themeSwitch");
+
+  function paintThemeSwitch(theme) {
+    if (!themeSwitch) return;
+    themeSwitch.querySelectorAll("[data-theme]").forEach(function (btn) {
+      btn.setAttribute("aria-pressed", String(btn.dataset.theme === theme));
+    });
+    // "System" and the OS's own theme look identical, so switching between
+    // them changes nothing on screen and reads as a dead click. Say what
+    // System currently resolves to.
+    var sys = themeSwitch.querySelector('[data-theme="system"]');
+    if (sys) {
+      var label = "System (" + (darkQuery.matches ? "dark" : "light") + ")";
+      sys.title = label;
+      sys.setAttribute("aria-label", "Use system theme, currently " + (darkQuery.matches ? "dark" : "light"));
     }
   }
 
-  // Keep the top-bar button and Settings' 3-way toggle in step: both write
+  if (themeSwitch) {
+    themeSwitch.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-theme]");
+      if (!btn) return;
+      var theme = btn.dataset.theme;
+      writeStore("theme", theme === "system" ? null : theme);
+      applyTheme(theme);
+      paintThemeSwitch(theme);
+      document.dispatchEvent(new CustomEvent("admin:themechange", { detail: { theme: theme, source: "topbar" } }));
+    });
+    paintThemeSwitch(currentTheme());
+  }
+
+  // Keep the top-bar toggle and Settings' 3-way toggle in step: both write
   // the same storage key, and each announces changes on this event.
   document.addEventListener("admin:themechange", function (e) {
-    if (e.detail && e.detail.source !== "topbar") paintThemeButton(currentTheme());
+    if (e.detail && e.detail.source !== "topbar") paintThemeSwitch(currentTheme());
   });
-
-  var themeBtn = document.getElementById("themeCycle");
-  if (themeBtn) {
-    themeBtn.addEventListener("click", function () {
-      var next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
-      writeStore("theme", next === "system" ? null : next);
-      applyTheme(next);
-      paintThemeButton(next);
-      document.dispatchEvent(new CustomEvent("admin:themechange", { detail: { theme: next, source: "topbar" } }));
-    });
-    paintThemeButton(currentTheme());
-  }
   darkQuery.addEventListener("change", function () {
+    paintThemeSwitch(currentTheme());
     if (currentTheme() === "system") applyTheme("system");
   });
 

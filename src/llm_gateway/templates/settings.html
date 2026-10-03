@@ -4,20 +4,47 @@
   class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
 >
   <div>
-    <h1
-      class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight flex items-center gap-3"
-    >
-      <i data-lucide="cpu" class="text-indigo-500 w-8 h-8" aria-hidden="true"></i> Core Orchestration
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="cpu" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> Core Orchestration
     </h1>
-    <p class="text-ink-muted text-sm mt-1">
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       Configure global gateway behavior, experimental features, and access
       controls.
     </p>
   </div>
 </div>
 
+
+{#
+  Tabs. Each section card carries data-settings-tab; settings-tabs.js shows the
+  cards for the selected tab. The selected tab is kept in the URL hash
+  (#scope etc.) so it survives reload and can be linked to directly.
+  Admin-only sections are already excluded server-side, so their tabs are too.
+#}
+{% set is_admin = user and user_role == 'admin' %}
+<div class="mb-6 overflow-x-auto custom-scrollbar">
+  <div id="settingsTabs" role="tablist" aria-label="Settings sections"
+       class="inline-flex min-w-full gap-1 border-b border-hairline">
+    {% for key, label, icon, admin_only in [
+         ('general', 'General', 'sliders-horizontal', False),
+         ('access', 'Access', 'fingerprint', False),
+         ('routing', 'Routing', 'route', True),
+         ('performance', 'Caching', 'database', True),
+         ('compliance', 'Compliance', 'clipboard-check', True),
+         ('scope', 'Scope policy', 'network', True),
+         ('bots', 'Bots', 'bot', False),
+       ] if is_admin or not admin_only %}
+    <button type="button" role="tab" id="tab-{{ key }}" data-tab="{{ key }}"
+            aria-selected="false" tabindex="-1"
+            class="-mb-px inline-flex min-h-touch shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-sm font-medium text-ink-muted transition-colors hover:text-ink aria-selected:border-accent aria-selected:text-accent">
+      <i data-lucide="{{ icon }}" class="h-4 w-4" aria-hidden="true"></i>{{ label }}
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
 <!-- User Preferences (available to all users) -->
-<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
+<div id="settingsPreferences" data-settings-tab="general" role="tabpanel" aria-labelledby="tab-general" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
     <div class="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-500 border border-sky-500/20">
       <i data-lucide="palette" class="w-5 h-5" aria-hidden="true"></i>
@@ -45,9 +72,9 @@
 </div>
 
 {% if user and user_role == 'admin' %}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+<div class="grid grid-cols-1 gap-8 mb-8">
   <!-- Access Control Card -->
-  <div
+  <div id="settingsIdentity" data-settings-tab="access" role="tabpanel" aria-labelledby="tab-access"
     class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
@@ -85,7 +112,7 @@
   </div>
 
   <!-- Gateway Intelligence Card -->
-  <div
+  <div id="settingsRouting" data-settings-tab="routing" role="tabpanel" aria-labelledby="tab-routing"
     class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
@@ -219,7 +246,7 @@
   </div>
 
   <!-- Performance & Response Caching Card -->
-  <div
+  <div id="settingsCaching" data-settings-tab="performance" role="tabpanel" aria-labelledby="tab-performance"
     class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
@@ -283,7 +310,7 @@
   </div>
 
   <!-- Resilience Card -->
-  <div
+  <div id="settingsResilience" data-settings-tab="routing" role="tabpanel" aria-labelledby="tab-routing"
     class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
@@ -321,7 +348,7 @@
   </div>
 
   <!-- Observation & Testing Card -->
-  <div
+  <div id="settingsLab" data-settings-tab="general" role="tabpanel" aria-labelledby="tab-general"
     class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8"
   >
     <div class="flex items-center gap-3 mb-6">
@@ -413,9 +440,9 @@
   </div>
 </div>
 <!-- Compliance & Audit -->
-<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
+<div id="settingsCompliance" data-settings-tab="compliance" role="tabpanel" aria-labelledby="tab-compliance" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
-    <div class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-400 border border-cyan-500/20">
+    <div class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
       <i data-lucide="clipboard-check" class="w-5 h-5" aria-hidden="true"></i>
     </div>
     <h2 class="text-xl font-bold text-ink">Compliance & Audit</h2>
@@ -470,7 +497,7 @@
 </div>
 
 <!-- Scope Policy Rules -->
-<div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
+<div id="settingsScope" data-settings-tab="scope" role="tabpanel" aria-labelledby="tab-scope" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
     <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400 border border-violet-500/20">
       <i data-lucide="network" class="w-5 h-5" aria-hidden="true"></i>
@@ -481,8 +508,34 @@
     </div>
   </div>
 
+  <!-- Add custom rule form -->
+  <div class="bg-surface-inset p-4 sm:p-6 rounded-2xl border border-hairline mb-6">
+    <h3 class="text-ink font-bold text-sm flex items-center gap-2 mb-4">
+      <i data-lucide="plus-circle" class="text-violet-400 w-4 h-4" aria-hidden="true"></i> Add Custom Rule
+    </h3>
+    <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+      <div class="flex-1 min-w-0">
+        <label for="newRulePrefix" class="block text-caption font-medium text-ink-muted mb-2">Endpoint Prefix</label>
+        <input type="text" id="newRulePrefix" placeholder="/v2/custom/endpoint"
+          class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <label for="newRuleScope" class="block text-caption font-medium text-ink-muted mb-2">Required Scope</label>
+        <select id="newRuleScope"
+          class="w-full min-h-touch bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition">
+          <option value="" disabled selected>Select a scope…</option>
+          {% for value, help in scope_options %}
+          <option value="{{ value }}">{{ value }}{% if help %} — {{ help }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button onclick="addScopeRule()" class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl transition whitespace-nowrap">
+        <i data-lucide="plus" class="w-4 h-4 mr-1" aria-hidden="true"></i> Add
+      </button>
+    </div>
+  </div>
   <!-- Active rules table -->
-  <div class="bg-surface-inset rounded-2xl border border-hairline overflow-hidden mb-6">
+  <div class="bg-surface-inset rounded-2xl border border-hairline overflow-hidden">
     <table class="w-full text-left text-xs">
       <thead class="bg-surface-inset text-ink-muted text-micro font-medium">
         <tr>
@@ -498,33 +551,12 @@
     </table>
   </div>
 
-  <!-- Add custom rule form -->
-  <div class="bg-surface-inset p-4 sm:p-6 rounded-2xl border border-hairline">
-    <h3 class="text-ink font-bold text-sm flex items-center gap-2 mb-4">
-      <i data-lucide="plus-circle" class="text-violet-400 w-4 h-4" aria-hidden="true"></i> Add Custom Rule
-    </h3>
-    <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
-      <div class="flex-1 min-w-0">
-        <label for="newRulePrefix" class="block text-caption font-medium text-ink-muted mb-2">Endpoint Prefix</label>
-        <input type="text" id="newRulePrefix" placeholder="/v2/custom/endpoint"
-          class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
-      </div>
-      <div class="flex-1 min-w-0">
-        <label for="newRuleScope" class="block text-caption font-medium text-ink-muted mb-2">Required Scope</label>
-        <input type="text" id="newRuleScope" placeholder="llm:chat"
-          class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
-      </div>
-      <button onclick="addScopeRule()" class="min-h-touch px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition shadow-lg shadow-violet-500/20 whitespace-nowrap">
-        <i data-lucide="plus" class="w-4 h-4 mr-1" aria-hidden="true"></i> Add
-      </button>
-    </div>
-  </div>
 </div>
 {% endif %}
 
 <!-- Tokens Management Section -->
-<div
-  class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden"
+<div id="settingsInvites" data-settings-tab="access" role="tabpanel" aria-labelledby="tab-access"
+  class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden mb-8"
 >
   <div
     class="p-5 sm:p-8 border-b border-hairline flex flex-wrap gap-3 justify-between items-center bg-surface-inset"
@@ -534,7 +566,7 @@
     </h2>
     <button
       onclick="generateInvite()"
-      class="min-h-touch px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl transition-all font-bold text-white text-xs flex items-center gap-2 shadow-lg shadow-blue-500/20"
+      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-white text-xs flex items-center gap-2"
     >
       <i data-lucide="sparkles" class="w-4 h-4" aria-hidden="true"></i>
       Generate Single Token
@@ -563,5 +595,12 @@
   </div>
 </div>
 
-<script src="/static/js/settings.js"></script>
+{% if user and user_role in ['admin', 'manager'] %}
+<div id="settingsBots" data-settings-tab="bots" role="tabpanel" aria-labelledby="tab-bots" class="mb-8">
+  {% include "_bots_panel.html" %}
+</div>
+{% endif %}
+
+<script src="/static/js/settings.js?v={{ asset_v }}"></script>
+<script src="/static/js/settings-tabs.js?v={{ asset_v }}"></script>
 {% endblock %}

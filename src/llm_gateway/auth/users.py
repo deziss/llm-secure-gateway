@@ -8,13 +8,26 @@ from fastapi_users.authentication import (
     CookieTransport,
     JWTStrategy,
 )
+from .. import config
 from .models import User
 from .manager import get_user_manager
 from .manager import SECRET
 
 # Transports
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
-cookie_transport = CookieTransport(cookie_max_age=3600, cookie_samesite="lax")
+
+
+def build_cookie_transport() -> CookieTransport:
+    # fastapi-users defaults cookie_secure=True, which browsers drop on plain
+    # HTTP from any host but localhost. Only dev mode turns it off.
+    return CookieTransport(
+        cookie_max_age=3600,
+        cookie_samesite="lax",
+        cookie_secure=not config.ALLOW_INSECURE_HTTP,
+    )
+
+
+cookie_transport = build_cookie_transport()
 
 # Strategy
 def get_jwt_strategy() -> JWTStrategy:

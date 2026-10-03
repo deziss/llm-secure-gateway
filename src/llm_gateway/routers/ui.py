@@ -9,6 +9,48 @@ router = APIRouter(include_in_schema=False)
 _TEMPLATE_DIR = pathlib.Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATE_DIR))
 
+# Version token appended to project asset URLs (`/static/js/x.js?v=...`).
+# Static files are served with an ETag but no Cache-Control, so browsers apply
+# heuristic caching and can keep running JS/CSS from a previous release against
+# freshly rendered (no-store) pages -- buttons and modals then silently break.
+# Derived from the newest asset mtime at startup, so it changes on every deploy
+# or restart without needing a manual bump.
+def _asset_version() -> str:
+    static = _TEMPLATE_DIR.parent / "static"
+    try:
+        newest = max(p.stat().st_mtime for p in static.rglob("*") if p.is_file())
+    except ValueError:
+        return "0"
+    return format(int(newest), "x")
+
+
+templates.env.globals["asset_v"] = _asset_version()
+
+# Dev mode flag: drives the top-bar "insecure HTTP" badge and hides the
+# login page's plain-HTTP warning (cookies already work without Secure).
+from ..config import ALLOW_INSECURE_HTTP as _ALLOW_INSECURE_HTTP
+
+templates.env.globals["allow_insecure_http"] = _ALLOW_INSECURE_HTTP
+
+# Scopes offered in the Settings "Add custom rule" dropdown. Taken from the
+# APIKeyScope enum so the list can't drift from what the policy engine accepts.
+# Legacy flat aliases (chat, embeddings, ...) and the bare "*" are left out:
+# new rules should use the hierarchical names.
+from ..models import APIKeyScope as _APIKeyScope
+
+_SCOPE_HELP = {
+    "llm:chat": "Chat and text completions",
+    "llm:embed": "Embeddings",
+    "llm:read": "List models and running models",
+    "llm:*": "Any LLM endpoint",
+    "admin:*": "Admin API",
+}
+templates.env.globals["scope_options"] = [
+    (s.value, _SCOPE_HELP.get(s.value, ""))
+    for s in _APIKeyScope
+    if ":" in s.value
+]
+
 # Base URL for API calls - defaults to empty string (relative URLs)
 BASE_URL = os.getenv("BASE_URL", "")
 
@@ -102,13 +144,9 @@ async def embed_playground_page(request: Request, user=Depends(optional_current_
     return templates.TemplateResponse(request, "embedding_playground.html", context=get_template_context(user))
 
 @router.get("/admin/view/bots")
-async def bots_page(request: Request, user=Depends(optional_current_user)):
-    if not user:
-        return RedirectResponse("/auth/login")
-    role_val = user.role.value if hasattr(user.role, "value") else user.role
-    if role_val not in [Role.ADMIN.value, Role.MANAGER.value]:
-         return RedirectResponse("/admin/dashboard")
-    return templates.TemplateResponse(request, "bots.html", context=get_template_context(user))
+async def bots_page():
+    # Bots moved to a tab on the Settings page; keep old links working.
+    return RedirectResponse("/admin/view/settings#bots")
 
 @router.get("/admin/view/spend")
 async def spend_page(request: Request, user=Depends(optional_current_user)):
@@ -145,6 +183,16 @@ async def settings_page(request: Request, user=Depends(optional_current_user)):
     if role_val not in [Role.ADMIN.value, Role.MANAGER.value]:
          return RedirectResponse("/admin/dashboard")
     return templates.TemplateResponse(request, "settings.html", context=get_template_context(user))
+
+
+@router.get("/admin/view/audit")
+async def audit_page(request: Request, user=Depends(optional_current_user)):
+    if not user:
+        return RedirectResponse("/auth/login")
+    role_val = user.role.value if hasattr(user.role, "value") else user.role
+    if role_val not in [Role.ADMIN.value, Role.MANAGER.value]:
+        return RedirectResponse("/admin/dashboard")
+    return templates.TemplateResponse(request, "audit.html", context=get_template_context(user))
 
 
 @router.get("/")

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Audit history - LLM Gateway{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="history" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Audit history
+    </h1>
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">Who did what, when: key and owner changes, denied requests and policy decisions.</p>
+  </div>
+  <button type="button" id="auditRefresh"
+          class="inline-flex min-h-touch items-center justify-center gap-2 rounded-control border border-hairline bg-surface-raised px-4 text-sm font-medium text-ink hover:bg-surface-inset">
+    <i data-lucide="refresh-cw" class="h-4 w-4" aria-hidden="true"></i> Refresh
+  </button>
+</div>
+
+<div id="auditDisabled" class="hidden mb-4 rounded-panel border border-warn/40 bg-warn/10 p-4 text-sm text-ink">
+  <b>Persistent audit trail is off.</b> Events are only written to the server log, so nothing new will appear here.
+  Turn on <a href="/admin/view/settings#compliance" class="text-accent hover:underline">Settings → Compliance → Persistent Audit Trail</a>.
+</div>
+
+<form id="auditFilters" class="mb-4 grid grid-cols-1 gap-3 rounded-panel border border-hairline bg-surface-raised p-4 sm:grid-cols-2 lg:grid-cols-5" onsubmit="return false">
+  <div class="lg:col-span-2">
+    <label for="auditSearch" class="mb-1.5 block text-caption font-medium text-ink-muted">Search</label>
+    <input id="auditSearch" type="search" placeholder="Identity, resource or IP"
+           class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
+  </div>
+  <div>
+    <label for="auditEvent" class="mb-1.5 block text-caption font-medium text-ink-muted">Event</label>
+    <select id="auditEvent" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40">
+      <option value="">All events</option>
+    </select>
+  </div>
+  <div>
+    <label for="auditDecision" class="mb-1.5 block text-caption font-medium text-ink-muted">Decision</label>
+    <select id="auditDecision" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40">
+      <option value="">Any</option><option value="allow">Allowed</option><option value="deny">Denied</option><option value="error">Error</option>
+    </select>
+  </div>
+  <div>
+    <label for="auditRange" class="mb-1.5 block text-caption font-medium text-ink-muted">Time</label>
+    <select id="auditRange" class="w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40">
+      <option value="1">Last hour</option><option value="24" selected>Last 24 hours</option><option value="168">Last 7 days</option><option value="720">Last 30 days</option><option value="">All time</option>
+    </select>
+  </div>
+  <label class="flex items-center gap-2 text-sm text-ink-muted sm:col-span-2 lg:col-span-5">
+    <input id="auditShowRequests" type="checkbox" class="h-4 w-4 accent-[rgb(var(--accent))]" />
+    Include routine allowed requests (one row per API call — noisy)
+  </label>
+</form>
+
+<div class="overflow-hidden rounded-panel border border-hairline bg-surface-raised shadow-rest">
+  <div>
+    <table id="auditTable" class="w-full text-left text-sm">
+      <thead class="bg-surface-inset text-caption font-medium text-ink-muted">
+        <tr>
+          <th class="p-3 border-b border-hairline whitespace-nowrap">When</th>
+          <th class="p-3 border-b border-hairline">Event</th>
+          <th class="p-3 border-b border-hairline">Identity</th>
+          <th class="p-3 border-b border-hairline">Resource</th>
+          <th class="p-3 border-b border-hairline">Decision</th>
+          <th class="p-3 border-b border-hairline">Details</th>
+        </tr>
+      </thead>
+      <tbody id="auditBody" class="divide-y divide-hairline text-ink">
+        <tr><td colspan="6" class="p-8 text-center text-ink-muted">Loading audit events…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="flex flex-wrap items-center justify-between gap-3 border-t border-hairline p-3 text-sm text-ink-muted">
+    <span id="auditCount" aria-live="polite"></span>
+    <div class="flex gap-2">
+      <button type="button" id="auditPrev" class="min-h-touch rounded-control border border-hairline px-3 hover:bg-surface-inset disabled:opacity-40" disabled>Newer</button>
+      <button type="button" id="auditNext" class="min-h-touch rounded-control border border-hairline px-3 hover:bg-surface-inset disabled:opacity-40" disabled>Older</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/audit.js?v={{ asset_v }}"></script>
+{% endblock %}

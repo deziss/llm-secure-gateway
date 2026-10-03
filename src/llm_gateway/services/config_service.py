@@ -35,6 +35,12 @@ class ConfigService:
         query = select(LLMBackend).offset(skip).limit(limit)
         result = await session.execute(query)
         backends = list(result.scalars().all())
+        # These rows outlive this request's session in the cache and are read
+        # by later requests. Left attached, a rollback in this session expires
+        # them, and every later attribute read raises DetachedInstanceError
+        # (GET /admin/metrics 500s). Detach them while fully loaded.
+        for b in backends:
+            session.expunge(b)
         _backends_cache.set(cache_key, backends)
         return backends
 

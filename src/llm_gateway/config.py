@@ -14,3 +14,10 @@ EMAILS_FROM_NAME = os.getenv("EMAILS_FROM_NAME", "LLM Gateway Admin")
 
 # Admin Alert Email
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "superadmin@example.com")
+
+# Dev mode: serve the admin UI over plain HTTP on a non-localhost address
+# (e.g. http://<lan-ip>:6130). Browsers silently drop `Secure` cookies on such
+# origins, so login never sticks. When true, cookies lose the Secure flag and
+# HSTS is not sent -- session cookies and passwords then travel unencrypted.
+# Never enable in production; put a TLS reverse proxy in front instead.
+ALLOW_INSECURE_HTTP = os.getenv("ALLOW_INSECURE_HTTP", "false").lower() == "true"

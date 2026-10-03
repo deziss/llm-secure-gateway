@@ -3,10 +3,10 @@
 {% block content %}
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
   <div>
-    <h1 class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight flex items-center gap-3">
-      <i data-lucide="coins" class="text-warn w-7 h-7 shrink-0" aria-hidden="true"></i> Financial Governance & Spend
+    <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="coins" class="h-5 w-5 shrink-0 text-warn" aria-hidden="true"></i> Financial Governance & Spend
     </h1>
-    <p class="text-ink-muted text-sm mt-1">
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       Track real-time LLM token spend, budget thresholds, and cost distributions by model and owner.
     </p>
   </div>
@@ -184,6 +184,11 @@ async function loadSpendData() {
 
   } catch (err) {
     console.error("Failed to load spend data", err);
+    // Replace the "Loading..." rows so the page doesn't look stuck.
+    document.querySelectorAll("main table tbody").forEach((tb) => {
+      const cols = tb.closest("table").querySelectorAll("thead th").length || 1;
+      tb.innerHTML = `<tr><td colspan="${cols}" class="p-8 text-center text-down text-sm">Couldn't load spend data. Reload the page, or sign in again if your session expired.</td></tr>`;
+    });
   }
 }
 
