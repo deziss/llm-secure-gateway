@@ -1,3 +1,16 @@
+## [0.11.1] - 2026-10-03
+
+### 🐛 Fixes from a code review of the v0.11.0 redesign
+
+- **Focus escaped stacked dialogs.** With the "New API Key Issued" dialog or the confirm dialog open on top of another modal, Tab moved focus back to the modal underneath, so keyboard users could not reach "Acknowledged" and could activate hidden controls. Focus now stays in the top-most dialog.
+- **Escape closed every modal at once.** `backends.js`, `owners.js` and `users.js` each had a page-level Escape listener that closed all of that page's modals, including the one beneath an open dialog. Removed; `admin-modal.js` now closes only the top-most dialog, through its own Close button so page cleanup still runs.
+- **Rotating a phone released a modal's scroll lock.** Crossing the 768px breakpoint ran the drawer's close routine even if the drawer had never opened, removing the page scroll lock an open modal relied on. The drawer now only undoes its own lock, and keeps it while a modal is open.
+- **The closed mobile drawer stayed in the Tab order.** It was only translated off-screen, so ~14 hidden links preceded the page content and were announced by screen readers. It is now `inert` while closed below 768px.
+- **Theme controls drifted apart.** The top-bar button and the Settings toggle now keep each other in sync.
+- **Icons were re-rendered twice per theme click.** Now at most once, and not at all when the icon is unchanged.
+
+---
+
 ## [0.11.0] - 2026-10-01
 
 ### 🎨 Admin panel redesign: responsive, themeable, accessible

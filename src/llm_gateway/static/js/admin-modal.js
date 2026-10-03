@@ -106,8 +106,33 @@
   }
 
   // ── Keyboard: Escape closes the top dialog, Tab stays inside it ────────
+  // The visually top-most open overlay. Overlays later in the DOM paint above
+  // earlier ones here (the confirm dialog lives at the end of <body>; the
+  // new-API-key dialog is appended to <body>), so the last visible one wins.
+  function topmostOverlay() {
+    var open = Array.prototype.filter.call(
+      document.querySelectorAll('[role="dialog"], [role="alertdialog"]'),
+      function (el) { return !el.classList.contains("hidden") && el.getClientRects().length > 0; }
+    );
+    return open[open.length - 1] || null;
+  }
+
   document.addEventListener("keydown", function (e) {
+    var overlay = topmostOverlay();
+    // A tracked dialog registers itself from a MutationObserver callback, which
+    // runs after the current task. Sync it now so a keypress in that window
+    // isn't mistaken for one aimed at an untracked overlay.
+    if (overlay && observed.has(overlay)) sync(overlay);
     var top = stack[stack.length - 1];
+    // The global confirm dialog runs its own focus trap in showConfirm().
+    if (overlay && overlay.id === "globalConfirmModal") return;
+    // An untracked overlay (e.g. the new-API-key dialog) sits above every
+    // tracked modal: trap Tab inside it instead of dragging focus back to the
+    // modal underneath, and leave Escape alone so the modal below isn't closed.
+    if (overlay && stack.indexOf(overlay) === -1) {
+      if (e.key === "Tab") top = overlay;
+      else return;
+    }
     if (!top) return;
 
     if (e.key === "Escape") {
@@ -155,6 +180,9 @@
       var el = document.getElementById(id);
       if (el) el.classList.add("hidden");
     },
+    // Number of tracked modals currently open; shell.js checks this before
+    // releasing the page scroll lock it shares with them.
+    openCount: function () { return stack.length; },
   };
 
   if (document.readyState === "loading") {

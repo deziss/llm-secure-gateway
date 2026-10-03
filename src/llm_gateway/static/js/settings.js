@@ -391,6 +391,12 @@ function initThemeToggle() {
     storeTheme(theme);
     applyTheme(theme);
     updateThemeButtons(theme);
+    document.dispatchEvent(new CustomEvent("admin:themechange", { detail: { theme: theme, source: "settings" } }));
+  });
+
+  // The top-bar theme button (shell.js) writes the same setting.
+  document.addEventListener("admin:themechange", (e) => {
+    if (e.detail && e.detail.source !== "settings") updateThemeButtons(readStoredTheme());
   });
 
   // Listen for OS theme changes when set to "system"

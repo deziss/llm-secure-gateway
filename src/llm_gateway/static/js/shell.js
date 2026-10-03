@@ -54,10 +54,18 @@
     return sidebar && !sidebar.classList.contains("-translate-x-full");
   }
 
+  // Below md the closed drawer is only translated off-screen, so without this
+  // its ~14 links stay in the Tab order and are read by screen readers.
+  function syncDrawerInert() {
+    if (!sidebar) return;
+    sidebar.inert = !mdQuery.matches && !isDrawerOpen();
+  }
+
   function openDrawer() {
     if (!sidebar || mdQuery.matches) return;
     lastFocus = document.activeElement;
     sidebar.classList.remove("-translate-x-full");
+    syncDrawerInert();
     if (backdrop) backdrop.classList.remove("hidden");
     if (openBtn) openBtn.setAttribute("aria-expanded", "true");
     document.documentElement.classList.add("overflow-hidden");
@@ -67,10 +75,17 @@
 
   function closeDrawer(restoreFocus) {
     if (!sidebar) return;
+    var wasOpen = isDrawerOpen();
     sidebar.classList.add("-translate-x-full");
+    syncDrawerInert();
+    // Called on every resize past md too, when the drawer may never have been
+    // open: only release the scroll lock the drawer itself took, and keep it if
+    // a modal (which shares the same lock) is still open.
+    if (!wasOpen) return;
     if (backdrop) backdrop.classList.add("hidden");
     if (openBtn) openBtn.setAttribute("aria-expanded", "false");
-    document.documentElement.classList.remove("overflow-hidden");
+    var modalsOpen = window.AdminModal && window.AdminModal.openCount() > 0;
+    if (!modalsOpen) document.documentElement.classList.remove("overflow-hidden");
     if (restoreFocus !== false) {
       var target = lastFocus && document.contains(lastFocus) ? lastFocus : openBtn;
       if (target && target.focus) target.focus();
@@ -108,7 +123,9 @@
   // it static. In both cases make sure scroll lock and backdrop don't linger.
   mdQuery.addEventListener("change", function (e) {
     if (e.matches) closeDrawer(false);
+    syncDrawerInert();
   });
+  syncDrawerInert();
 
   // ── Theme ──────────────────────────────────────────────────────────────
   // Same storage contract as settings.js: "light" | "dark" stored, absence
@@ -135,19 +152,23 @@
     btn.setAttribute("aria-label", LABELS[theme] + ". Switch to " + LABELS[next].toLowerCase());
     btn.setAttribute("title", LABELS[theme]);
     var icon = btn.querySelector("[data-lucide], svg");
-    if (icon) {
-      // lucide replaces <i data-lucide> with an <svg>; rebuild a fresh <i> so
-      // the icon can change.
+    if (icon && icon.getAttribute("data-lucide") !== ICONS[theme]) {
+      // lucide replaces <i data-lucide> with an <svg>; swap in a fresh <i>.
+      // No createIcons() here: icons.js observes inserted nodes and renders
+      // it (a full-page createIcons on every click ran twice per toggle).
       var fresh = document.createElement("i");
       fresh.setAttribute("data-lucide", ICONS[theme]);
       fresh.setAttribute("class", "h-5 w-5");
       fresh.setAttribute("aria-hidden", "true");
       icon.replaceWith(fresh);
-      if (window.lucide && typeof window.lucide.createIcons === "function") {
-        window.lucide.createIcons();
-      }
     }
   }
+
+  // Keep the top-bar button and Settings' 3-way toggle in step: both write
+  // the same storage key, and each announces changes on this event.
+  document.addEventListener("admin:themechange", function (e) {
+    if (e.detail && e.detail.source !== "topbar") paintThemeButton(currentTheme());
+  });
 
   var themeBtn = document.getElementById("themeCycle");
   if (themeBtn) {
@@ -156,6 +177,7 @@
       writeStore("theme", next === "system" ? null : next);
       applyTheme(next);
       paintThemeButton(next);
+      document.dispatchEvent(new CustomEvent("admin:themechange", { detail: { theme: next, source: "topbar" } }));
     });
     paintThemeButton(currentTheme());
   }
