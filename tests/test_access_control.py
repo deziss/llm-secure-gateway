@@ -1,5 +1,6 @@
 """Role-based access: the user-edit privilege escalation, read-only viewers,
 and which guard each admin route uses."""
+import re
 import uuid
 from types import SimpleNamespace
 
@@ -79,9 +80,27 @@ def test_viewer_is_read_only_on_owners():
 
 # ── Route guards ──────────────────────────────────────────────────────────
 
-def _guards():
+def _flat_routes():
+    """(path, methods, dependant) for every route. FastAPI >= 0.162 keeps include_router()
+    results as lazy _IncludedRouter objects; older versions flatten them into app.routes."""
     from llm_gateway.main import app
 
+    for r in app.routes:
+        if hasattr(r, "effective_route_contexts"):
+            for c in r.effective_route_contexts():
+                yield c.path_format, c.methods, c.dependant
+        elif getattr(r, "dependant", None) is not None:
+            yield r.path, r.methods, r.dependant
+        elif hasattr(r, "path"):
+            yield r.path, getattr(r, "methods", None), None
+
+
+def _norm(path):
+    """Path converters ({x:path}) are dropped from path_format on newer FastAPI."""
+    return re.sub(r"\{(\w+):\w+\}", r"{\1}", path)
+
+
+def _guards():
     def names(dep):
         out = set()
         for d in dep.dependencies:
@@ -90,11 +109,11 @@ def _guards():
         return out
 
     table = {}
-    for r in app.routes:
-        if getattr(r, "dependant", None) is None:
+    for path, methods, dependant in _flat_routes():
+        if dependant is None:
             continue
-        for m in r.methods or ():
-            table[(m, r.path)] = names(r.dependant)
+        for m in methods or ():
+            table[(m, _norm(path))] = names(dependant)
     return table
 
 
@@ -121,6 +140,7 @@ def _guards():
 ])
 def test_route_guard(method, path, guard):
     g = _guards()
+    path = _norm(path)
     assert (method, path) in g, f"route {method} {path} not found"
     assert guard in g[(method, path)], f"{method} {path}: {sorted(g[(method, path)])}"
 
@@ -145,8 +165,7 @@ def test_owners_routes_are_deprecated_in_openapi():
 
 
 def test_owners_page_redirects_to_projects():
-    from llm_gateway.main import app
-    paths = {r.path for r in app.routes}
+    paths = {p for p, _, _ in _flat_routes()}
     assert "/admin/view/projects" in paths and "/admin/view/owners" in paths
 
 

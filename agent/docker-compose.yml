@@ -1,0 +1,29 @@
+# One agent per GPU host. Set GPU_AGENT_TOKEN to the same value as the gateway's.
+#   GPU_AGENT_TOKEN=$(openssl rand -hex 32) docker compose up -d --build
+services:
+  llm-gpu-agent:
+    build: .
+    image: llm-gpu-agent:0.14.0
+    restart: unless-stopped
+    # Required so the agent can read the process list of GPU workloads (cmdline, parent pids).
+    pid: host
+    environment:
+      GPU_AGENT_TOKEN: ${GPU_AGENT_TOKEN:?set GPU_AGENT_TOKEN}
+      GPU_AGENT_PORT: "9400"
+    ports:
+      - "9400:9400"
+    # NVIDIA: expose all GPUs through the nvidia container runtime.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # AMD (ROCm): use these instead of the deploy block above, and install amdsmi in the image
+    # or let the agent fall back to rocm-smi.
+    # devices:
+    #   - /dev/kfd
+    #   - /dev/dri
+    # group_add:
+    #   - video

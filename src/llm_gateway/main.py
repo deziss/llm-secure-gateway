@@ -12,7 +12,7 @@ from .telemetry import setup_telemetry
 
 logging.basicConfig(level=logging.INFO)
 
-_VERSION = "0.13.0"
+from .observability import VERSION as _VERSION  # noqa: E402  (single source for the version)
 
 
 
@@ -71,10 +71,20 @@ async def lifespan(app: FastAPI):
     import asyncio
     from .services.federation_service import federation_loop
     fed_task = asyncio.create_task(federation_loop())
+
+    # Live model-server / GPU poller (observability). Optional: the app boots without it.
+    poll_task = None
+    try:
+        from .observability.collect.poller import poller_loop
+        poll_task = asyncio.create_task(poller_loop())
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("observability poller unavailable: %s", exc)
     try:
         yield
     finally:
         fed_task.cancel()
+        if poll_task is not None:
+            poll_task.cancel()
         from .proxy_helpers import close_all_clients
         await close_all_clients()
 
@@ -190,6 +200,16 @@ async def favicon_ico() -> Response:
     if os.path.exists(logo_path):
         return FileResponse(logo_path, media_type="image/png")
     return Response(status_code=204)
+
+# Observability: /metrics (Prometheus pull) and the admin live/GPU API. Both optional at import
+# so a missing optional package never stops the gateway from booting.
+from .observability.export.prometheus import router as metrics_router
+app.include_router(metrics_router)
+try:
+    from .observability.api import router as observability_router
+    app.include_router(observability_router)
+except ImportError as exc:
+    logging.getLogger(__name__).warning("observability admin API unavailable: %s", exc)
 
 # Proxy catch-all routes last — they match /{path:path}
 app.include_router(v2_proxy_router)

@@ -1,0 +1,239 @@
+{% extends "base.html" %} {% block title %}Observability - LLM Gateway{% endblock %}
+{% block content %}
+{% set is_admin = user_role == 'admin' %}
+<div id="obsRoot" data-admin="{{ 'true' if is_admin else 'false' }}" class="space-y-6">
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
+        <i data-lucide="activity" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Observability
+      </h1>
+      <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
+        Live model traffic, GPU utilisation, gateway process health and telemetry sinks.
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 text-caption">
+      <span id="obsScope" class="rounded-control border border-hairline px-2 py-1 text-ink-muted">scope: —</span>
+      <span id="obsInstance" class="rounded-control border border-hairline px-2 py-1 text-ink-muted">instance: —</span>
+      <span id="obsReplicas" class="rounded-control border border-hairline px-2 py-1 text-ink-muted hidden"></span>
+      <span id="obsLive" class="rounded-control px-2 py-1 font-medium text-ink-muted" role="status">connecting…</span>
+    </div>
+  </div>
+
+  <div role="tablist" aria-label="Observability sections" class="flex flex-wrap gap-1 border-b border-hairline">
+    <button type="button" role="tab" id="tab-models" aria-controls="panel-models" aria-selected="true" data-action="tab" data-tab="models"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted bg-accent/10 text-accent">Models</button>
+    <button type="button" role="tab" id="tab-groups" aria-controls="panel-groups" aria-selected="false" data-action="tab" data-tab="groups"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Groups</button>
+    <button type="button" role="tab" id="tab-gpus" aria-controls="panel-gpus" aria-selected="false" data-action="tab" data-tab="gpus"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">GPUs</button>
+    <button type="button" role="tab" id="tab-gateway" aria-controls="panel-gateway" aria-selected="false" data-action="tab" data-tab="gateway"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Gateway</button>
+    <button type="button" role="tab" id="tab-integrations" aria-controls="panel-integrations" aria-selected="false" data-action="tab" data-tab="integrations"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Integrations</button>
+  </div>
+
+  <!-- ── Models ─────────────────────────────────────────────── -->
+  <section id="panel-models" role="tabpanel" aria-labelledby="tab-models" data-panel="models">
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Per-model live statistics">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Server</th>
+            <th scope="col" class="p-3 border-b border-hairline">Model</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">RPS 10s</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">RPS 60s</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Waiting</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Generating</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">tok/s decode</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">tok/s total</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">TTFT p50</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Server run / wait</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">KV cache</th>
+            <th scope="col" class="p-3 border-b border-hairline">Trend (RPS 10s)</th>
+          </tr>
+        </thead>
+        <tbody id="obsModelsBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsModelsEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No model traffic seen by this replica yet.</p>
+    </div>
+  </section>
+
+  <!-- ── Groups (collage) ───────────────────────────────────── -->
+  <section id="panel-groups" role="tabpanel" aria-labelledby="tab-groups" data-panel="groups" class="hidden">
+    <div id="obsGroups" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+    <p id="obsGroupsEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No model groups yet.</p>
+  </section>
+
+  <!-- ── GPUs ───────────────────────────────────────────────── -->
+  <section id="panel-gpus" role="tabpanel" aria-labelledby="tab-gpus" data-panel="gpus" class="hidden space-y-6">
+    <div id="obsGpuHosts" class="space-y-4"></div>
+
+    {% if is_admin %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
+        <h2 class="text-sm font-bold text-ink">GPU hosts</h2>
+        <ul id="obsHostList" class="divide-y divide-hairline text-sm"></ul>
+        <form id="obsHostForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" autocomplete="off">
+          <input type="hidden" name="original_name" value="" />
+          <label class="block">
+            <span class="block text-caption font-medium text-ink-muted mb-1">Name</span>
+            <input type="text" name="name" required maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+          </label>
+          <label class="block">
+            <span class="block text-caption font-medium text-ink-muted mb-1">Source</span>
+            <select name="source" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
+              <option value="agent">GPU agent (this project)</option>
+              <option value="dcgm">DCGM exporter</option>
+              <option value="nvidia_smi_exporter">nvidia_gpu_exporter</option>
+              <option value="amd_exporter">AMD exporter</option>
+            </select>
+          </label>
+          <label class="block md:col-span-2">
+            <span class="block text-caption font-medium text-ink-muted mb-1">Metrics URL</span>
+            <input type="url" name="url" required maxlength="512" placeholder="http://gpu-host:9835/metrics" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+          </label>
+          <label class="flex items-center gap-2 md:col-span-2 text-ink-muted">
+            <input type="checkbox" name="enabled" checked class="h-4 w-4" />
+            <span>Enabled</span>
+          </label>
+          <div class="md:col-span-2 flex gap-2">
+            <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save host</button>
+            <button type="button" data-action="host-reset" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
+        <h2 class="text-sm font-bold text-ink">Link a model server to GPUs</h2>
+        <p class="text-caption text-ink-muted">Pins a server to a GPU host (and optional GPU indices) so its VRAM is attributed exactly. Leave the host empty to clear the link.</p>
+        <form id="obsLinkForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" autocomplete="off">
+          <label class="block">
+            <span class="block text-caption font-medium text-ink-muted mb-1">Model server</span>
+            <select id="obsLinkServer" name="server" required class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink"></select>
+          </label>
+          <label class="block">
+            <span class="block text-caption font-medium text-ink-muted mb-1">GPU host</span>
+            <select id="obsLinkHost" name="gpu_host" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink"></select>
+          </label>
+          <label class="block md:col-span-2">
+            <span class="block text-caption font-medium text-ink-muted mb-1">GPU indices (comma-separated, empty = all on host)</span>
+            <input type="text" name="gpu_indices" placeholder="0,1" maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+          </label>
+          <div class="md:col-span-2">
+            <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save link</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ── Gateway ────────────────────────────────────────────── -->
+  <section id="panel-gateway" role="tabpanel" aria-labelledby="tab-gateway" data-panel="gateway" class="hidden space-y-6">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4">
+        <h2 class="text-sm font-bold text-ink mb-3">Process</h2>
+        <dl id="obsProcess" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm"></dl>
+        <p class="mt-3 text-caption text-ink-muted">Per-thread memory is not measurable from Python; the per-thread table shows CPU time instead.</p>
+      </div>
+      <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 md:col-span-2">
+        <h2 class="text-sm font-bold text-ink mb-3">Memory history (this replica)</h2>
+        <div class="relative h-40"><canvas id="obsMemChart" aria-label="Gateway RSS and in-flight buffer history"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+        <h2 class="text-sm font-bold text-ink p-4 pb-1">Threads (CPU time)</h2>
+        <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Per-thread CPU time">
+          <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+            <tr>
+              <th scope="col" class="p-3 border-b border-hairline">Thread</th>
+              <th scope="col" class="p-3 border-b border-hairline text-right">User s</th>
+              <th scope="col" class="p-3 border-b border-hairline text-right">System s</th>
+            </tr>
+          </thead>
+          <tbody id="obsThreadsBody" class="divide-y divide-hairline text-ink"></tbody>
+        </table>
+      </div>
+      <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+        <h2 class="text-sm font-bold text-ink p-4 pb-1">In-flight buffer per model</h2>
+        <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="In-flight bytes per model">
+          <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+            <tr>
+              <th scope="col" class="p-3 border-b border-hairline">Server</th>
+              <th scope="col" class="p-3 border-b border-hairline">Model</th>
+              <th scope="col" class="p-3 border-b border-hairline text-right">In-flight</th>
+            </tr>
+          </thead>
+          <tbody id="obsInflightBody" class="divide-y divide-hairline text-ink"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-3">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-bold text-ink">Python allocation hotspots (tracemalloc)</h2>
+          <p class="text-caption text-ink-muted">Warning: tracemalloc adds roughly 10-30% CPU overhead while enabled. Turn it on briefly to investigate, then turn it off.</p>
+        </div>
+        {% if is_admin %}
+        <button type="button" id="obsTraceBtn" data-action="tracemalloc" aria-pressed="false"
+                class="min-h-touch rounded-control border border-hairline px-4 py-2 text-sm font-medium text-ink">Enable tracemalloc</button>
+        {% endif %}
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="tracemalloc top allocation sites">
+          <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+            <tr>
+              <th scope="col" class="p-3 border-b border-hairline">Allocation site</th>
+              <th scope="col" class="p-3 border-b border-hairline text-right">Size</th>
+              <th scope="col" class="p-3 border-b border-hairline text-right">Blocks</th>
+            </tr>
+          </thead>
+          <tbody id="obsTraceBody" class="divide-y divide-hairline text-ink"></tbody>
+        </table>
+        <p id="obsTraceEmpty" class="p-4 text-sm text-ink-muted">tracemalloc is off.</p>
+      </div>
+    </div>
+
+    {% if is_admin %}
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-3">
+      <div>
+        <h2 class="text-sm font-bold text-ink">Model group overrides</h2>
+        <p class="text-caption text-ink-muted">One group per line: <code>group name: glob, glob</code>. Models matching a glob are placed in that group; everything else uses automatic normalisation.</p>
+      </div>
+      <textarea id="obsOverrides" rows="6" maxlength="20000" spellcheck="false"
+                class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 font-mono text-sm text-ink"
+                aria-label="Group overrides, one group per line"></textarea>
+      <div>
+        <button type="button" data-action="save-overrides" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save overrides</button>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ── Integrations ───────────────────────────────────────── -->
+  <section id="panel-integrations" role="tabpanel" aria-labelledby="tab-integrations" data-panel="integrations" class="hidden">
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Telemetry sinks">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Sink</th>
+            <th scope="col" class="p-3 border-b border-hairline">Signals</th>
+            <th scope="col" class="p-3 border-b border-hairline">Endpoint</th>
+            <th scope="col" class="p-3 border-b border-hairline">Last OK</th>
+            <th scope="col" class="p-3 border-b border-hairline">Last error</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Exported</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Failed</th>
+          </tr>
+        </thead>
+        <tbody id="obsSinksBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsSinksEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No telemetry sinks are enabled.</p>
+    </div>
+  </section>
+</div>
+
+<script src="/static/js/observability.js?v={{ asset_v }}"></script>
+{% endblock %}

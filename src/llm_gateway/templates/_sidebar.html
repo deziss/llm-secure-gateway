@@ -9,7 +9,7 @@
     Dashboard                                   everyone
     Model servers, Spend, Aliases               admin, manager
     Projects (API consumers)                    admin, manager, developer
-    System: Users, Audit history, Settings      admin, manager (bots: Settings tab)
+    System: Observability, Users, Audit history, Settings   admin, manager (bots: Settings tab)
 
   The Playground group is rendered as a flat section rather than a dropdown.
   The old dropdown was driven by CSS :hover plus a conflicting JS .hidden
@@ -72,6 +72,7 @@
     <div class="my-3 border-t border-hairline" role="presentation"></div>
     <p class="px-3 pb-1 text-caption font-medium text-ink-muted md:max-lg:hidden" id="navSystem">System</p>
     <div role="group" aria-labelledby="navSystem" class="space-y-1">
+      {{ nav_link('/admin/observability', 'activity', 'Observability') }}
       {{ nav_link('/admin/view/users', 'user-check', 'Users') }}
       {{ nav_link('/admin/view/audit', 'history', 'Audit history') }}
       {{ nav_link('/admin/view/settings', 'settings', 'Settings') }}

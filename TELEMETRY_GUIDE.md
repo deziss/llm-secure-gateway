@@ -41,6 +41,29 @@ docker compose logs gateway | grep -i telemetry
 
 ---
 
+## 0a. Observability and export presets (v0.14.0)
+
+Since v0.14.0 the gateway collects live model, GPU and process statistics and can export them to
+several tools. The full guide is **[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)**. Short version:
+
+| Variable | Purpose |
+| :--- | :--- |
+| `OBS_EXPORTERS` | Comma-separated presets, e.g. `phoenix,langfuse,grafana`. Each preset reads its own vendor variables (see the doc). |
+| `OBS_PROMETHEUS` | `true` (default) serves `/metrics`. |
+| `OBS_METRICS_TOKEN` | Bearer token required on `/metrics`. Unset: 403 unless `OBS_METRICS_ALLOW_ANONYMOUS=true`. |
+| `OBS_METRICS_ALLOW_ANONYMOUS` | `true` serves `/metrics` without a token (startup warning). Default `false`. |
+| `OBS_METRICS_INTERVAL_S` | OTLP metric export interval (default 60). |
+| `OBS_POLL_INTERVAL` | Model server and GPU poll interval (default 5 s). |
+| `OBS_INSTANCE_ID` | Replica name shown in the UI and as `service.instance.id`. |
+| `OBS_FORCE_STREAM_USAGE` | Opt-in: request usage in vLLM and llama.cpp streams. |
+| `REDIS_URL` | Merge live stats across replicas (scope `cluster`). |
+| `GPU_AGENT_TOKEN` | Bearer token for GPU agents. |
+
+`ENABLE_TELEMETRY=true` keeps working as before (Phoenix traces plus the OTLP metrics collector).
+`OBS_EXPORTERS` is the way to select other tools.
+
+---
+
 ## 1. Phoenix Authentication & Configuration
 
 ### Environment Configuration

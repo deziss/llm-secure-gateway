@@ -1,0 +1,21 @@
+# systemd unit for bare-metal hosts (no container).
+#   sudo pip install ./agent[nvidia]
+#   sudo install -m 600 /dev/null /etc/llm-gpu-agent.env   # then add GPU_AGENT_TOKEN=...
+#   sudo cp llm-gpu-agent.service /etc/systemd/system/ && sudo systemctl enable --now llm-gpu-agent
+[Unit]
+Description=llm-secure-gateway GPU agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/llm-gpu-agent.env
+ExecStart=/usr/local/bin/llm-gpu-agent --port 9400 --interval 2
+# Needs root (or the video group) to read /proc of GPU workloads and NVML.
+User=root
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

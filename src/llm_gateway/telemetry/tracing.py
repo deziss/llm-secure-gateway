@@ -25,6 +25,21 @@ class PhoenixTraceManager:
         logging.info("PhoenixTraceManager: no PHOENIX_API_KEY set; exporting unauthenticated.")
 
     @classmethod
+    def _resolve_target(cls) -> tuple[str, Optional[Dict[str, str]]]:
+        """Endpoint and headers from the phoenix preset (self-hosted, Phoenix Cloud or Arize AX)."""
+        from ..observability.export.presets import resolve, PresetError
+        try:
+            target = resolve("phoenix").traces
+            if target is not None:
+                return target.endpoint, dict(target.headers) or None
+        except PresetError as exc:
+            logging.warning("PhoenixTraceManager: %s; using PHOENIX_COLLECTOR_ENDPOINT", exc)
+        endpoint = cls._phoenix_endpoint
+        if not endpoint.endswith("/v1/traces"):
+            endpoint = f"{endpoint}/v1/traces"
+        return endpoint, cls._get_headers()
+
+    @classmethod
     def _get_headers(cls) -> Optional[Dict[str, str]]:
         """Get authentication headers for Phoenix if API key is configured."""
         if cls._phoenix_api_key:
@@ -55,19 +70,19 @@ class PhoenixTraceManager:
 
         if project_name not in cls._tracers:
             try:
-                # Use register() as requested, with corrected endpoint
-                endpoint = cls._phoenix_endpoint
-                if not endpoint.endswith("/v1/traces"):
-                    endpoint = f"{endpoint}/v1/traces"
-
+                endpoint, headers = cls._resolve_target()
                 tracer_provider = register(
                     project_name=project_name,
                     endpoint=endpoint,
-                    headers=cls._get_headers(),
+                    headers=headers,
                     batch=True,
                     auto_instrument=False,
                     set_global_tracer_provider=False
                 )
+                # Non-Phoenix sinks (OTLP, Langfuse, ...) also see tenant spans.
+                from ..observability.export.sinks import shared_span_processors
+                for proc in shared_span_processors():
+                    tracer_provider.add_span_processor(proc)
                 cls._tracers[project_name] = tracer_provider
                 logging.info(f"Created Phoenix tracer for project: {project_name}")
             except Exception as e:

@@ -67,8 +67,21 @@ class ModelServer(SQLModel, table=True):
     translation_mode: str = Field(default="none", description="Protocol Translation Mode (none, anthropic_to_openai, openai_to_anthropic)")
     normalize_thinking: bool = Field(default=False, description="Whether to extract and normalize thinking blocks (<think>...</think>)")
     weight: int = Field(default=100, description="Load balancing weight (higher = more traffic)")
+    gpu_host: Optional[str] = Field(default=None, description="Name of the gpu_host row whose GPUs back this server (null = none)")
+    gpu_indices: Optional[List[int]] = Field(default=None, sa_column=Column(JSON), description="Pinned GPU indices on gpu_host (null = attribute automatically)")
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
     updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+
+
+class GpuHost(SQLModel, table=True):
+    """A machine whose GPUs are read by the gateway poller (one row per host, scraped once)."""
+    __tablename__ = "gpu_host"
+
+    name: str = Field(primary_key=True, index=True, description="Unique host name")
+    url: str = Field(description="Base URL of the agent or exporter")
+    source: str = Field(default="agent", description="agent | dcgm | nvidia_smi_exporter | amd_exporter")
+    enabled: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 class APIKeyScope(str, Enum):
     """Hierarchical scopes for API key access control.

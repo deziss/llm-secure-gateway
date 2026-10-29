@@ -1,12 +1,18 @@
 import httpx
 from fastapi import APIRouter, Request, Depends, HTTPException
+from starlette.background import BackgroundTask
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from opentelemetry import trace
 from ..services import ConfigService, get_config_service
 from ..database import get_session
 from ..telemetry import record_request_metrics, stream_with_telemetry, flatten_attributes, PhoenixTraceManager
+from ..observability.collect.requests import finish_open_tracker, track_dispatch, track_done
+from ..observability.collect.usage import inject_stream_usage
+from ..observability.export.semconv import set_llm_attributes
 from ..proxy_helpers import (
+    backend_type_name,
+    served_model_of,
     passthrough_response_headers,
     get_owner_id_from_request,
     apply_rate_limit,
@@ -435,6 +441,7 @@ async def proxy_request(
     tenant_tracer = PhoenixTraceManager.get_tracer(owner_id, provider_id)
 
     # Manual Span Management - llm_request as root
+    tracker = None  # live-stats handle, set once the request is dispatched
     span = tenant_tracer.start_span("llm_request")
     
     try:
@@ -477,12 +484,21 @@ async def proxy_request(
         
         is_retry = await config_service.get_setting(session, "ENABLE_RETRY_BACKOFF", "false")
         enable_retry = str(is_retry).lower() == "true"
-        
+
+        body = inject_stream_usage(body, backend_type_name(backend))
+        set_llm_attributes(
+            span, model=model or "unknown", provider=provider_id, operation="chat",
+            server_name=backend.name, server_type=backend_type_name(backend), user_id=owner_id,
+        )
+        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown")
+
         try:
             r, used_url, backend, client = await try_with_cross_provider_fallback(
                 backend, path, request.method, headers, body, raw_body, session, config_service,
                 fallback_chain_id=fallback_chain_id, enable_retry=enable_retry
             )
+            served_model = served_model_of(r, model or "unknown")
+            tracker.retarget(backend.name, backend_type_name(backend), served_model)
             target_url = clean_target_url(used_url, path)
             span.set_attribute("http.url", target_url)
             span.set_attribute("backend.used_url", used_url)
@@ -491,7 +507,7 @@ async def proxy_request(
             enable_spend = await config_service.get_setting(session, "ENABLE_SPEND_TRACKING", "true")
             is_streaming = isinstance(body, dict) and body.get("stream", False)
 
-            async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes]):
+            async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes], cancelled: bool = False):
                 if str(enable_spend).lower() == "true":
                     try:
                         from ..database import get_session_context
@@ -510,7 +526,7 @@ async def proxy_request(
                     except Exception as e:
                         logger.warning("Failed to record spend: %s", e)
 
-                if not is_streaming and (cache_key or str(enable_semantic_cache).lower() == "true"):
+                if not cancelled and not is_streaming and (cache_key or str(enable_semantic_cache).lower() == "true"):
                     try:
                         from ..services.cache_service import store_cached, extract_prompt, compute_cache_key
                         full_body_str = b"".join(chunks).decode("utf-8", errors="ignore")
@@ -538,11 +554,13 @@ async def proxy_request(
             # 3. Pass span to streaming generator which handles ending it
             return StreamingResponse(
                 stream_with_telemetry(
-                    r, start_time, used_url, model, path, owner_id, span, client,
+                    r, start_time, used_url, served_model, path, owner_id, span, client,
                     on_complete=on_stream_complete,
+                    server_name=backend.name, server_type=backend_type_name(backend), tracker=tracker,
                 ),
                 status_code=r.status_code,
-                headers=passthrough_response_headers(r.headers)
+                headers=passthrough_response_headers(r.headers),
+                background=BackgroundTask(finish_open_tracker, tracker),
             )
 
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:
@@ -551,9 +569,11 @@ async def proxy_request(
             span.record_exception(exc)
             
             duration = time.time() - start_time
+            track_done(tracker, success=False)
             record_request_metrics(
-                 backend_url=backend.base_url, model=model, endpoint_uri=path, user_name=owner_id,
-                 success=False, request_duration=duration
+                 backend_url=backend.base_url, model=model or "unknown", endpoint_uri=path, user_name=owner_id,
+                 success=False, request_duration=duration,
+                 server=backend.name, server_type=backend_type_name(backend),
             )
             span.end()
             all_urls = _get_all_urls(backend)
@@ -566,6 +586,15 @@ async def proxy_request(
             )
                 
     except Exception as e:
+        # Dispatched but failed without reaching the stream (e.g. fallback chain exhausted):
+        # record it, otherwise the failure is invisible to metrics.
+        if tracker is not None and not tracker.finished:
+            track_done(tracker, success=False)
+            record_request_metrics(
+                backend_url=backend.base_url, model=model or "unknown", endpoint_uri=path,
+                user_name=owner_id, success=False, request_duration=time.time() - start_time,
+                server=backend.name, server_type=backend_type_name(backend),
+            )
         # Catch-all for other errors (e.g. during span setup)
         if span.is_recording():
              span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))

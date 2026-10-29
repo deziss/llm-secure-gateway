@@ -559,6 +559,34 @@ def clear_model_quarantine(backend_name: str, model_name: str) -> None:
     _model_quarantines.pop((backend_name, model_name), None)
 
 
+SERVED_MODEL_EXTENSION = "llm_gateway.served_model"
+
+
+def _mark_served_model(r, model: Optional[str]) -> None:
+    """Record which model actually served a response on ``r.extensions`` (fallback targets differ)."""
+    if not model:
+        return
+    try:
+        r.extensions[SERVED_MODEL_EXTENSION] = model
+    except Exception:
+        pass
+
+
+def backend_type_name(backend) -> str:
+    """Backend type as a plain string (the enum value), for labels and spans."""
+    bt = getattr(backend, "backend_type", None)
+    return str(getattr(bt, "value", bt) or "unknown")
+
+
+def served_model_of(r, default: str) -> str:
+    """Model that served ``r``: the fallback target's model, else ``default`` (the requested model)."""
+    try:
+        value = (getattr(r, "extensions", None) or {}).get(SERVED_MODEL_EXTENSION)
+    except Exception:
+        value = None
+    return value if isinstance(value, str) and value else default
+
+
 async def try_with_cross_provider_fallback(
     backend: LLMBackend,
     path: str,
@@ -636,6 +664,7 @@ async def try_with_cross_provider_fallback(
                 fb_backend, path, method, headers, fb_body, raw_body, timeout=timeout, enable_retry=enable_retry
             )
             if r.status_code < 400 or r.status_code not in (429, 500, 502, 503, 504):
+                _mark_served_model(r, target_model or req_model)
                 return r, used_url, fb_backend, client
             
             dur = (QUARANTINE_RATE_LIMIT if r.status_code == 429 

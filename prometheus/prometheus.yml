@@ -1,7 +1,51 @@
+# Prometheus scrape config for the LLM Gateway stack (v0.14.0).
+#
+# Edit the example targets for your hosts. Bearer tokens are read from files
+# so they stay out of this repo: create the files next to this config
+# (mounted at /etc/prometheus/secrets/ in the compose file) and keep them mode 600.
+#
+# Gateway: /metrics is served on the gateway port (8000 inside the compose
+# network; the host port mapping is 6130). A bearer token is now required
+# (OBS_METRICS_TOKEN) unless OBS_METRICS_ALLOW_ANONYMOUS=true; see docs/OBSERVABILITY.md.
+#
+# GPU agents: run on each GPU host (port 9835 by default). Each agent requires
+# its own token (GPU_AGENT_TOKEN on the host).
+
 global:
-  scrape_interval: 5s
+  scrape_interval: 15s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
 
 scrape_configs:
+  # Gateway metrics: llm_gateway_* (requests, tokens, TTFT, tok/s, queue, process memory)
+  - job_name: "llm-gateway"
+    metrics_path: /metrics
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["gateway:8000"]
+        labels:
+          site: "example"
+    # Required unless the gateway sets OBS_METRICS_ALLOW_ANONYMOUS=true.
+    # authorization:
+    #   type: Bearer
+    #   credentials_file: /etc/prometheus/secrets/gateway_metrics_token
+
+  # GPU agents: llm_gpu_* (utilisation, VRAM, temperature, power, per-process memory)
+  - job_name: "gpu-agents"
+    metrics_path: /metrics
+    scrape_interval: 10s
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/gpu_agent_token
+    static_configs:
+      - targets: ["gpu-host-a:9835"]
+        labels:
+          site: "example"
+      # - targets: ["gpu-host-b:9835"]
+
+  # Existing collectors kept from the previous config.
   - job_name: "otel-collector"
     static_configs:
       - targets: ["otel-collector:9464"]
