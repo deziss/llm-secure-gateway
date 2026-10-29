@@ -1,3 +1,21 @@
+## [0.14.1] - 2026-10-29
+
+### ✨ New
+
+- **Show/hide password** button (eye icon) on the login, register and reset-password pages. It is keyboard-accessible and announces its state to screen readers.
+
+### 🐛 Fixed
+
+- **`agent/docker-compose.yml` is pull-only.** A failed GHCR pull used to fall back to `build: .` and fail with "open Dockerfile: no such file" on hosts that only had the compose file.
+
+### ⬆️ Dependencies
+
+- alembic >= 1.20.0, pydantic-settings >= 2.15.0, uvicorn[standard] >= 0.53.0, pyjwt >= 2.14.0, asyncpg >= 0.31.0.
+- `docker/build-push-action` v5 → v7.
+- These supersede dependabot PRs #12–#17.
+
+---
+
 ## [0.14.0] - 2026-10-29
 
 ### ✨ New

@@ -95,9 +95,20 @@ endblock %} {% set hide_header = true %} {% block content %}
             name="password"
             autocomplete="current-password"
             placeholder="••••••••"
-            class="w-full bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+            class="w-full bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl py-4 pl-12 pr-12 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
             required
           />
+          <button
+            type="button"
+            data-action="toggle-password"
+            data-target="login-password"
+            aria-label="Show password"
+            aria-pressed="false"
+            class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-500 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+          >
+            <span data-icon="show"><i class="fas fa-eye" aria-hidden="true"></i></span>
+            <span data-icon="hide" class="hidden"><i class="fas fa-eye-slash" aria-hidden="true"></i></span>
+          </button>
         </div>
       </div>
 
