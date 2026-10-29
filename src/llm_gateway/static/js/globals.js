@@ -154,3 +154,21 @@ window.logout = async function () {
     report(r && r.message ? r.message : r);
   });
 })();
+
+// Show/hide toggle for password fields: <button data-action="toggle-password" data-target="<input id>">
+// with two child spans [data-icon="show"] / [data-icon="hide"]. Delegated so it needs no inline handlers.
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest && e.target.closest('[data-action="toggle-password"]');
+  if (!btn) return;
+  var input = document.getElementById(btn.getAttribute("data-target"));
+  if (!input) return;
+  var reveal = input.type === "password";
+  input.type = reveal ? "text" : "password";
+  btn.setAttribute("aria-pressed", reveal ? "true" : "false");
+  btn.setAttribute("aria-label", reveal ? "Hide password" : "Show password");
+  var show = btn.querySelector('[data-icon="show"]');
+  var hide = btn.querySelector('[data-icon="hide"]');
+  if (show) show.classList.toggle("hidden", reveal);
+  if (hide) hide.classList.toggle("hidden", !reveal);
+  input.focus();
+});
