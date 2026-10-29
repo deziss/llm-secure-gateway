@@ -146,6 +146,10 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 
 ## Quick Start
 
+### Run the prebuilt images (no checkout)
+
+Images are published to GHCR for linux/amd64 and arm64: `ghcr.io/deziss/llm-secure-gateway` and the optional `ghcr.io/deziss/llm-secure-gateway-gpu-agent`. To pull and run them anywhere, see [deploy/README.md](deploy/README.md).
+
 ### Prerequisites
 - **Docker Engine** 24.0+ and **Docker Compose** v2+
 - *(Optional for local development)*: **Python 3.14+**

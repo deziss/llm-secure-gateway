@@ -86,7 +86,7 @@ def validate_overrides(data: dict) -> dict[str, list[str]]:
 
 async def load_overrides(session) -> dict[str, list[str]]:
     """Read OBS_MODEL_GROUPS through the shared (30 s cached) settings accessor."""
-    from ..services.config_service import config_service
+    from ...services.config_service import config_service
 
     raw = await config_service.get_setting(session, OVERRIDES_KEY, "")
     return parse_overrides(raw)

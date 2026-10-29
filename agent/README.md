@@ -32,7 +32,7 @@ Bare metal:
 
 ```bash
 pip install "./agent[nvidia]"          # AMD: install amdsmi from ROCm, or keep rocm-smi
-GPU_AGENT_TOKEN=... llm-gpu-agent --port 9400 --interval 2
+GPU_AGENT_TOKEN=... llm-gpu-agent --port 9835 --interval 2
 ```
 
 See `llm-gpu-agent.service` for a systemd unit.
@@ -44,7 +44,7 @@ On the Observability page (GPUs tab), or with the API:
 ```bash
 curl -X POST https://gateway/admin/observability/gpu-hosts \
   -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"gpu-a","url":"http://gpu-a.internal:9400","source":"agent","enabled":true}'
+  -d '{"name":"gpu-a","url":"http://gpu-a.internal:9835","source":"agent","enabled":true}'
 ```
 
 Then bind a model server to the host: `PUT /admin/observability/servers/{name}/gpu` with

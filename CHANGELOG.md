@@ -20,6 +20,8 @@
 
 - `ENABLE_TELEMETRY=true` still works as before. Other tools are selected with `OBS_EXPORTERS`.
 - The gateway version is now 0.14.0.
+- Release images on GHCR: `ghcr.io/deziss/llm-secure-gateway` and the new `ghcr.io/deziss/llm-secure-gateway-gpu-agent` (both linux/amd64 + arm64). `deploy/` holds a pull-and-run compose file and `.env.example`.
+- The GPU agent now listens on port 9835, so it no longer clashes with dcgm-exporter on 9400.
 
 ---
 

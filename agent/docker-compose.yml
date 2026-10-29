@@ -1,17 +1,17 @@
 # One agent per GPU host. Set GPU_AGENT_TOKEN to the same value as the gateway's.
-#   GPU_AGENT_TOKEN=$(openssl rand -hex 32) docker compose up -d --build
+#   GPU_AGENT_TOKEN=... docker compose up -d   (pulls from GHCR; add --build to build locally)
 services:
   llm-gpu-agent:
     build: .
-    image: llm-gpu-agent:0.14.0
+    image: ghcr.io/deziss/llm-secure-gateway-gpu-agent:${AGENT_TAG:-latest}
     restart: unless-stopped
     # Required so the agent can read the process list of GPU workloads (cmdline, parent pids).
     pid: host
     environment:
       GPU_AGENT_TOKEN: ${GPU_AGENT_TOKEN:?set GPU_AGENT_TOKEN}
-      GPU_AGENT_PORT: "9400"
+      GPU_AGENT_PORT: "9835"
     ports:
-      - "9400:9400"
+      - "9835:9835"
     # NVIDIA: expose all GPUs through the nvidia container runtime.
     deploy:
       resources:
