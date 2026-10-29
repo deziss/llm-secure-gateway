@@ -1,8 +1,8 @@
 # One agent per GPU host. Set GPU_AGENT_TOKEN to the same value as the gateway's.
-#   GPU_AGENT_TOKEN=... docker compose up -d   (pulls from GHCR; add --build to build locally)
+#   GPU_AGENT_TOKEN=... docker compose up -d      # pulls the image from GHCR
+# To build locally instead (needs this directory): docker build -t ghcr.io/deziss/llm-secure-gateway-gpu-agent:latest .
 services:
   llm-gpu-agent:
-    build: .
     image: ghcr.io/deziss/llm-secure-gateway-gpu-agent:${AGENT_TAG:-latest}
     restart: unless-stopped
     # Required so the agent can read the process list of GPU workloads (cmdline, parent pids).
