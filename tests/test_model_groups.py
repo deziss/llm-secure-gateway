@@ -51,3 +51,19 @@ def test_validate_overrides_rejects_bad_shapes():
     for bad in ({"": ["a"]}, {"g": "a"}, {"g": []}, {"g": [1]}, {"x" * 65: ["a"]}):
         with pytest.raises(ValueError):
             validate_overrides(bad)
+
+
+async def test_load_overrides_imports_real_config_service(monkeypatch):
+    """Regression: a wrong relative import here broke the poller in production
+    (ModuleNotFoundError: llm_gateway.observability.services) while tests that
+    patched the poller's config read stayed green."""
+    from llm_gateway.observability.collect import groups
+    import importlib
+    cs_mod = importlib.import_module("llm_gateway.services.config_service")
+
+    async def fake_get_setting(session, key, default=""):
+        assert key == groups.OVERRIDES_KEY
+        return '{"qwen": ["qwen*"]}'
+
+    monkeypatch.setattr(cs_mod.config_service, "get_setting", fake_get_setting)
+    assert await groups.load_overrides(None) == {"qwen": ["qwen*"]}

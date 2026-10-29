@@ -211,7 +211,7 @@ def build_collectors(enable_nvidia: bool = True, enable_amd: bool = True):
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(prog="llm-gpu-agent", description=__doc__.splitlines()[0])
     p.add_argument("--host", default=os.getenv("GPU_AGENT_BIND", "0.0.0.0"))
-    p.add_argument("--port", type=int, default=int(os.getenv("GPU_AGENT_PORT", "9400")))
+    p.add_argument("--port", type=int, default=int(os.getenv("GPU_AGENT_PORT", "9835")))
     p.add_argument("--interval", type=float, default=2.0, help="seconds between GPU polls")
     p.add_argument("--host-label", default=os.getenv("GPU_AGENT_HOST_LABEL") or socket.gethostname())
     p.add_argument("--no-nvidia", action="store_true")

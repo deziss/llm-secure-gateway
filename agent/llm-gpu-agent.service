@@ -9,7 +9,7 @@ Wants=network-online.target
 
 [Service]
 EnvironmentFile=/etc/llm-gpu-agent.env
-ExecStart=/usr/local/bin/llm-gpu-agent --port 9400 --interval 2
+ExecStart=/usr/local/bin/llm-gpu-agent --port 9835 --interval 2
 # Needs root (or the video group) to read /proc of GPU workloads and NVML.
 User=root
 Restart=on-failure
