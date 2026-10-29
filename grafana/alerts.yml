@@ -1,75 +1,115 @@
-# Prometheus alert rules for LLM Gateway
-# Import into Prometheus/Grafana alerting
+# Prometheus alert rules for the LLM Gateway (v0.14.0).
+# Every expression uses only metrics the gateway (/metrics) and the GPU agents emit.
+# Thresholds are starting points: tune them per deployment.
+# Job names must match prometheus/prometheus.yml (llm-gateway, gpu-agents).
 
 groups:
   - name: llm-gateway
     rules:
-      # Error rate exceeds 5% for 5 minutes
+      # Gateway target not scrapeable (process down, network, or bad metrics token)
+      - alert: GatewayDown
+        expr: up{job="llm-gateway"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM Gateway /metrics is not reachable"
+          runbook: "Check the container, the port mapping and the Prometheus bearer token"
+
+      # More than 5% of requests failing
       - alert: HighErrorRate
         expr: >
-          sum(rate(http_requests_total{service="llm-gateway",status=~"5.."}[5m]))
-          / sum(rate(http_requests_total{service="llm-gateway"}[5m]))
+          sum(rate(llm_gateway_requests_failed_total[5m]))
+          / sum(rate(llm_gateway_requests_total[5m]))
           > 0.05
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "LLM Gateway error rate above 5%"
-          runbook: "Check backend health, circuit breaker status, and recent deployments"
+          summary: "LLM Gateway failure rate above 5%"
+          runbook: "Check model server health and recent deployments (see the Observability page, Models tab)"
 
-      # Any circuit breaker is open
-      - alert: CircuitBreakerOpen
-        expr: llm_gateway_circuit_breakers_open > 0
-        for: 1m
+      # Requests queued behind one model for a long time
+      - alert: ModelQueueBacklog
+        expr: sum by (server, model) (llm_gateway_model_requests{state="waiting"}) > 10
+        for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "One or more backend circuit breakers are open"
-          runbook: "Check /admin/metrics for backend health. Circuit recovers automatically after 30s."
+          summary: "More than 10 requests waiting for {{ $labels.server }} / {{ $labels.model }}"
+          runbook: "Add capacity, or check whether the server is saturated (KV cache, running count)"
 
-      # Latency p95 above 5 seconds
-      - alert: HighLatency
+      # Time to first token too slow
+      - alert: HighTimeToFirstToken
         expr: >
           histogram_quantile(0.95,
-            rate(http_request_duration_seconds_bucket{service="llm-gateway"}[5m])
+            sum by (le, server, model) (rate(llm_gateway_time_to_first_token_seconds_bucket[5m]))
           ) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TTFT p95 above 5s for {{ $labels.server }} / {{ $labels.model }}"
+          runbook: "Long prompts, prefill saturation or a cold model load; check the server queue"
+
+      # Upstream model server unreachable (llm_server_up is emitted by the poller)
+      - alert: ModelServerDown
+        expr: llm_server_up == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model server {{ $labels.server }} is unreachable"
+          runbook: "Check the Model servers page and the server's own logs"
+
+      # KV cache nearly full on the upstream server
+      - alert: KvCacheSaturated
+        expr: llm_server_kv_cache_usage_ratio > 0.95
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "LLM Gateway p95 latency above 5s"
-          runbook: "Check backend response times and connection pool saturation"
+          summary: "KV cache above 95% on {{ $labels.server }}"
+          runbook: "Lower max context or concurrency, or add a replica"
 
-      # Rate limiting triggered frequently
-      - alert: HighRateLimitRate
-        expr: >
-          sum(rate(http_requests_total{service="llm-gateway",status="429"}[5m])) * 60
-          > 10
-        for: 5m
+      # Gateway resident memory high (adjust the 4 GiB threshold to your host)
+      - alert: GatewayMemoryHigh
+        expr: llm_gateway_process_memory_bytes{type="rss"} > 4 * 1024 * 1024 * 1024
+        for: 10m
         labels:
-          severity: info
+          severity: warning
         annotations:
-          summary: "More than 10 rate-limited requests per minute"
-          runbook: "Review API key RPM limits or check for abuse patterns"
+          summary: "LLM Gateway RSS above 4 GiB on {{ $labels.instance }}"
+          runbook: "Check in-flight buffers per model; enable tracemalloc briefly from the Observability page if it keeps growing"
 
-      # DB connection pool near saturation
-      - alert: DBPoolSaturation
-        expr: >
-          sqlalchemy_pool_checked_out{service="llm-gateway"}
-          / sqlalchemy_pool_size{service="llm-gateway"}
-          > 0.8
+  - name: llm-gpu
+    rules:
+      # GPU agent / exporter not scrapeable
+      - alert: GpuAgentDown
+        expr: up{job="gpu-agents"} == 0
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "DB connection pool >80% utilized"
-          runbook: "Consider increasing pool_size or adding PgBouncer"
+          summary: "GPU metrics endpoint {{ $labels.instance }} is down"
+          runbook: "Check the GPU agent container or service (needs --pid=host and GPU device access)"
 
-      # Gateway process restarted
-      - alert: GatewayRestarted
-        expr: changes(process_start_time_seconds{service="llm-gateway"}[5m]) > 0
+      # VRAM nearly full (value and percent both appear in the summary)
+      - alert: GpuVramNearlyFull
+        expr: llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes > 0.95
+        for: 5m
         labels:
-          severity: info
+          severity: warning
         annotations:
-          summary: "LLM Gateway process restarted"
-          runbook: "Check container logs for crash cause"
+          summary: "VRAM above 95% on {{ $labels.host }} GPU{{ $labels.gpu }}"
+          runbook: "Reduce loaded models or context length on that GPU"
+
+      # Thermal
+      - alert: GpuTooHot
+        expr: llm_gpu_temperature_celsius > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU temperature above 85 C on {{ $labels.host }} GPU{{ $labels.gpu }}"
+          runbook: "Check cooling and power limits"

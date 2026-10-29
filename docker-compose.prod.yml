@@ -29,11 +29,24 @@ services:
   gateway-1:
     build: .
     container_name: llm-gateway-1
+    env_file:
+    - path: .env
+      required: false
     environment: &gw-env
     - ENABLE_TELEMETRY=${ENABLE_TELEMETRY:-false}
     - PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT:-http://host.docker.internal:6006}
     - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+    # Observability v0.14.0 (docs/OBSERVABILITY.md). Per-tool keys for
+    # OBS_EXPORTERS presets (LANGFUSE_*, ZO_*, SIGNOZ_*, ...) come from .env via env_file.
+    - OBS_EXPORTERS=${OBS_EXPORTERS:-}
+    - OBS_PROMETHEUS=${OBS_PROMETHEUS:-true}
+    - OBS_METRICS_TOKEN=${OBS_METRICS_TOKEN:-}
+    - OBS_METRICS_ALLOW_ANONYMOUS=${OBS_METRICS_ALLOW_ANONYMOUS:-false}
+    - OBS_POLL_INTERVAL=${OBS_POLL_INTERVAL:-5}
+    - OBS_FORCE_STREAM_USAGE=${OBS_FORCE_STREAM_USAGE:-false}
+    - OBS_TRACEMALLOC=${OBS_TRACEMALLOC:-false}
+    - GPU_AGENT_TOKEN=${GPU_AGENT_TOKEN:-}
     - LOG_LEVEL=${LOG_LEVEL:-info}
     - UVICORN_LOOP=asyncio
     - DATABASE_URL=postgresql+asyncpg://gateway:${POSTGRES_PASSWORD:-password}@postgres:5432/gateway_db
@@ -65,6 +78,9 @@ services:
   gateway-2:
     build: .
     container_name: llm-gateway-2
+    env_file:
+    - path: .env
+      required: false
     environment: *gw-env
     depends_on:
       postgres:

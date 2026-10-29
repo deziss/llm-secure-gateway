@@ -126,6 +126,15 @@ async def owners_page_redirect():
     # Owners were renamed to Projects; keep old bookmarks working.
     return RedirectResponse("/admin/view/projects")
 
+@router.get("/admin/observability")
+async def observability_page(request: Request, user=Depends(optional_current_user)):
+    if not user:
+         return RedirectResponse("/auth/login")
+    role_val = user.role.value if hasattr(user.role, "value") else user.role
+    if role_val not in [Role.ADMIN.value, Role.MANAGER.value]:
+         return RedirectResponse("/admin/dashboard")
+    return templates.TemplateResponse(request, "observability.html", context=get_template_context(user))
+
 @router.get("/admin/view/users")
 async def users_page(request: Request, user=Depends(optional_current_user)):
     if not user:

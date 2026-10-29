@@ -1,3 +1,28 @@
+## [0.14.0] - 2026-10-29
+
+### ✨ New
+
+- **Observability page** at `/admin/observability` (admins and managers). Tabs:
+  - **Models:** per server and model, RPS over 10 s and 60 s, waiting and generating, tok/s (decode and throughput), TTFT p50, server queue and KV cache, with a sparkline.
+  - **Groups:** one card per model group, with VRAM, GPU utilisation, and totals for RPS, tok/s and queue.
+  - **GPUs:** per host, with utilisation, VRAM, temperature, power and per-process memory. Admins can manage GPU hosts and link servers to GPUs here.
+  - **Gateway:** process RSS, USS, threads, tasks and CPU; per-thread CPU time; in-flight bytes per model; tracemalloc top 20 (admin toggle); admins can edit model group overrides.
+  - **Integrations:** each telemetry sink's signals, last success, last error and counts.
+  - Live updates over SSE every 3 s, falling back to polling. Both pause when the tab is hidden.
+- **Prometheus `/metrics`** on the gateway, with an optional bearer token (`OBS_METRICS_TOKEN`). It exports per-model traffic, tokens, TTFT and tok/s, plus server-side and GPU gauges.
+- **GPU agent** for GPU hosts (`--pid=host` and GPU device access). It reports per-process VRAM and maps it to the model server that owns it. DCGM, nvidia_gpu_exporter and AMD exporters are also supported as sources.
+- **Export presets** via `OBS_EXPORTERS`: Phoenix (self-hosted, Phoenix Cloud and Arize AX), Langfuse, LangSmith, OpenObserve, SigNoz, Grafana, Datadog, Honeycomb, New Relic, Elastic, and generic OTLP.
+- **Multi-replica view:** with `REDIS_URL` set, the admin page merges live stats across replicas (scope `cluster`).
+- **Grafana dashboard and alert rules** rewritten to use only the emitted metric names, with group totals joined through `llm_model_group_info`. Prometheus config scrapes the gateway and GPU agents.
+- **Docs:** new `docs/OBSERVABILITY.md` (architecture, presets, agent install, metric reference, known gaps). Updated `TELEMETRY_GUIDE.md` and `README.md`.
+
+### ✨ Changed
+
+- `ENABLE_TELEMETRY=true` still works as before. Other tools are selected with `OBS_EXPORTERS`.
+- The gateway version is now 0.14.0.
+
+---
+
 ## [0.13.0] - 2026-10-03
 
 ### 🔐 Security

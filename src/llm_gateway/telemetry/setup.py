@@ -1,13 +1,19 @@
-import os
+"""Wire OpenTelemetry providers for the FastAPI app.
+
+Startup order:
+  1. Resolve sinks from OBS_EXPORTERS (export/sinks.py). Nothing is created when
+     ENABLE_TELEMETRY is off.
+  2. Trace provider: a Phoenix processor (if configured) plus the shared processors.
+  3. Metric readers: the Prometheus pull reader (OBS_PROMETHEUS, default on, independent of
+     ENABLE_TELEMETRY) plus one periodic reader per metric sink.
+  4. Instruments are created on the meter provider.
+"""
 import logging
+import os
 
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-from phoenix.otel import register
-
 from opentelemetry.sdk.trace import TracerProvider as SDKTracerProvider
 
 from .config import (
@@ -17,132 +23,104 @@ from .config import (
     telemetry_enabled,
 )
 from .metrics import setup_metrics
+from ..observability import VERSION, instance_id
+
+logger = logging.getLogger(__name__)
+
+
+def build_resource(extra: dict | None = None) -> Resource:
+    attrs = {
+        "service.name": "llm-gateway",
+        "service.version": VERSION,
+        "service.instance.id": instance_id(),
+    }
+    if extra:
+        attrs.update(extra)
+    return Resource.create(attrs)
 
 
 def setup_telemetry(app) -> None:
-    """Set up Phoenix / OpenTelemetry for the FastAPI app.
+    """Set up tracing, metrics and exporters for the FastAPI app.
 
-    No-op unless ENABLE_TELEMETRY is truthy.  When off, no exporter is created,
-    so nothing can retry against an unreachable collector.
+    ENABLE_TELEMETRY off: no exporter is created, nothing can retry against a collector.
+    The Prometheus pull reader is still attached when OBS_PROMETHEUS is on.
     """
-    if not telemetry_enabled():
+    from ..observability.collect.process import set_tracemalloc
+    from ..observability.export.prometheus import build_prometheus_reader, prometheus_enabled
+    from ..observability.export import sinks
+
+    if os.getenv("OBS_TRACEMALLOC", "false").strip().lower() in {"1", "true", "yes", "on"}:
+        set_tracemalloc(True)
+
+    on = telemetry_enabled()
+    if not on:
         logging.info(
-            "Telemetry disabled (set %s=true to enable OpenTelemetry/Phoenix export).",
+            "Telemetry export disabled (set %s=true to enable OpenTelemetry/Phoenix export).",
             ENABLE_TELEMETRY_ENV,
         )
-        # Explicitly install exporter-free providers.  Simply returning here is
-        # not enough: opentelemetry's get_meter_provider()/get_tracer_provider()
-        # lazily auto-configure an SDK provider from OTEL_EXPORTER_OTLP_ENDPOINT
-        # the first time anything asks for a meter, which is what kept the OTLP
-        # exporter alive -- and retrying forever -- even with export "off".
-        neutralize_otlp_env()
-        trace.set_tracer_provider(SDKTracerProvider())
-        metrics.set_meter_provider(MeterProvider(metric_readers=[]))
-        # Local, in-process metric instruments still work; only export is off.
-        setup_metrics()
-        return
+        # Explicitly neutralise OTLP env hints: opentelemetry lazily auto-configures an
+        # exporter from OTEL_EXPORTER_OTLP_ENDPOINT on first use, which is what kept an
+        # OTLP exporter alive and retrying with export "off".
+        neutralize_otlp_env(keep_sdk=prometheus_enabled())
+    else:
+        silence_otlp_exporter_logs()
 
-    silence_otlp_exporter_logs()
-    resource = Resource.create({
-        "service.name": "llm-gateway",
-        "service.version": os.getenv("APP_VERSION", "0.6.0"),
-    })
+    plan = sinks.init_sinks() if on else {"phoenix_processor": None, "phoenix_project": None,
+                                          "shared_processors": [], "readers": []}
 
-    # Phoenix Tracing Setup (Default global tracer)
-    tracer_provider = setup_phoenix_telemetry()
-
-    # Add OTLP HTTP exporter if endpoint is set
-    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    # if otlp_endpoint:
-    #     span_exporter = OTLPSpanExporter(endpoint=f"{otlp_endpoint}/v1/traces")
-    #     tracer_provider.add_span_processor(BatchSpanProcessor(span_exporter))
-
-    # Set the global tracer provider
+    # Traces: exporter-free when off; otherwise the configured processors.
+    extra = {"openinference.project.name": plan["phoenix_project"]} if plan["phoenix_project"] else None
+    tracer_provider = SDKTracerProvider(resource=build_resource(extra))
+    if plan["phoenix_processor"] is not None:
+        tracer_provider.add_span_processor(plan["phoenix_processor"])
+    for proc in plan["shared_processors"]:
+        tracer_provider.add_span_processor(proc)
     trace.set_tracer_provider(tracer_provider)
 
-    # Metrics Setup with graceful fallback
+    # Metrics: Prometheus pull reader is independent of ENABLE_TELEMETRY.
+    readers = list(plan["readers"])
+    if prometheus_enabled():
+        reader = build_prometheus_reader()
+        if reader is not None:
+            readers.append(reader)
+    metrics.set_meter_provider(MeterProvider(resource=build_resource(), metric_readers=readers))
     setup_metrics()
 
-    # Try to use OTLP exporter if endpoint is configured
-    metric_exporter = None
-    if otlp_endpoint:
-        try:
-            # Test if endpoint is reachable before creating exporter
-            import socket
-            from urllib.parse import urlparse
-
-            parsed = urlparse(otlp_endpoint)
-            host = parsed.hostname or 'localhost'
-            port = parsed.port or 4318
-
-            # Quick connection test (timeout 2 seconds)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            result = sock.connect_ex((host, port))
-            sock.close()
-
-            if result == 0:
-                # Endpoint is reachable, use OTLP exporter
-                metric_exporter = OTLPMetricExporter(endpoint=f"{otlp_endpoint}/v1/metrics")
-                logging.info(f"Metrics exporter connected to {otlp_endpoint}")
-            else:
-                # Endpoint unreachable, silent fallback
-                logging.warning(f"OTLP metrics endpoint {otlp_endpoint} unreachable, disabling metrics export")
-        except Exception as e:
-            # Any error in setup, silent fallback
-            logging.warning(f"Failed to setup OTLP metrics exporter: {e}, disabling metrics export")
-
-    if metric_exporter:
-        metric_reader = PeriodicExportingMetricReader(metric_exporter)
-        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
-    else:
-        meter_provider = MeterProvider(resource=resource)
-
-    metrics.set_meter_provider(meter_provider)
-
-    # Instrument FastAPI - DISABLED for tenant project separation
-    # FastAPI auto-instrumentation creates root spans with global project name.
-    # Tenant tracers need to create root spans for proper project separation.
-    # FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
+    # Instrument FastAPI is intentionally NOT enabled: tenant tracers create their own root spans.
 
 
-def setup_phoenix_telemetry() -> SDKTracerProvider:
-    """Register a Phoenix tracer provider.
+def setup_phoenix_telemetry():
+    """Phoenix tenant-tracer setup (kept for callers that want a Phoenix-registered provider).
 
-    Returns a plain, exporter-free provider when telemetry is switched off, so
-    callers get a usable object without opening a connection to anything.
+    Returns a plain, exporter-free provider when telemetry is off.
     """
     if not telemetry_enabled():
         return SDKTracerProvider()
-
-    endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006")
-    api_key = os.getenv("PHOENIX_API_KEY")
-
-    # Ensure endpoint has /v1/traces for OTLP HTTP
-    if not endpoint.endswith("/v1/traces"):
-        otlp_endpoint = f"{endpoint}/v1/traces"
-    else:
-        otlp_endpoint = endpoint
+    from phoenix.otel import register
+    from ..observability.export.presets import resolve, PresetError
 
     try:
-        tracer_provider = register(
-            project_name="llm-gateway",
-            endpoint=otlp_endpoint,
-            headers={"authorization": f"Bearer {api_key}"} if api_key else {},
-            batch=True,
-            auto_instrument=True,
-            set_global_tracer_provider=False  # Changed to False for tenant project separation
-        )
-        return tracer_provider
-    except Exception as e:
-        logging.warning(
-            f"Phoenix auto-instrumentation failed: {e}. Returning bare tracer."
-        )
+        endpoint = resolve("phoenix").traces.endpoint
+        headers = dict(resolve("phoenix").traces.headers)
+    except PresetError as exc:
+        logging.warning("Phoenix preset not configured: %s", exc)
+        return SDKTracerProvider()
+    try:
         return register(
             project_name="llm-gateway",
-            endpoint=otlp_endpoint,
-            headers={"authorization": f"Bearer {api_key}"} if api_key else {},
+            endpoint=endpoint,
+            headers=headers or None,
             batch=True,
-            auto_instrument=False, # Disable auto-instrument on fallback
-            set_global_tracer_provider=False
+            auto_instrument=True,
+            set_global_tracer_provider=False,
+        )
+    except Exception as e:
+        logging.warning(f"Phoenix auto-instrumentation failed: {e}. Returning bare tracer.")
+        return register(
+            project_name="llm-gateway",
+            endpoint=endpoint,
+            headers=headers or None,
+            batch=True,
+            auto_instrument=False,
+            set_global_tracer_provider=False,
         )

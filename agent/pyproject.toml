@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-gpu-agent"
+version = "0.14.0"
+description = "Tiny per-host GPU and GPU-process agent for llm-secure-gateway"
+requires-python = ">=3.10"
+dependencies = [
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+# NVIDIA: pynvml module from nvidia-ml-py (the pynvml PyPI package is deprecated)
+nvidia = ["nvidia-ml-py>=12.535"]
+# AMD: amdsmi ships with ROCm (not on PyPI). Without it the agent falls back to rocm-smi.
+test = ["pytest>=8.0"]
+
+[project.scripts]
+llm-gpu-agent = "llm_gpu_agent.app:main"
+
+[tool.setuptools.packages.find]
+include = ["llm_gpu_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

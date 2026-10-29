@@ -113,7 +113,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         # Skip auth for docs, health, root, and admin
-        if request.url.path in ["/", "/health", "/docs", "/openapi.json", "/favicon.ico"] or request.url.path.startswith(("/admin", "/auth", "/static", "/api/v1/bots")):
+        if request.url.path in ["/", "/health", "/metrics", "/docs", "/openapi.json", "/favicon.ico"] or request.url.path.startswith(("/admin", "/auth", "/static", "/api/v1/bots")):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
@@ -190,7 +190,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 class PolicyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         # Skip for health/admin/docs/auth/static
-        if request.url.path in ["/health", "/docs", "/openapi.json", "/favicon.ico"] or request.url.path.startswith(("/admin", "/auth", "/static", "/api/v1/bots")):
+        if request.url.path in ["/health", "/metrics", "/docs", "/openapi.json", "/favicon.ico"] or request.url.path.startswith(("/admin", "/auth", "/static", "/api/v1/bots")):
              return await call_next(request)
 
         from .policy import get_policy_engine, PolicyRequest

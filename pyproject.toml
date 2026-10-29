@@ -1,6 +1,6 @@
 [project]
 name = "llm-gateway"
-version = "0.13.0"
+version = "0.14.0"
 description = "A Secure LLM Gateway wrapper for Ollama/vLLM with API Keys and SPIFFE identity support."
 authors = [
     {name = "Anshu Kushawaha", email = "anshu.kushwaha@nuvo.ai"},
@@ -37,6 +37,8 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-exporter-otlp",
     "opentelemetry-instrumentation-asyncio",
+    "opentelemetry-exporter-prometheus",
+    "prometheus-client",
 
     # Phoenix OTEL wrapper
     "arize-phoenix-otel",

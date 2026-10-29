@@ -24,7 +24,7 @@ _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 ENABLE_TELEMETRY_ENV = "ENABLE_TELEMETRY"
 
 
-def neutralize_otlp_env() -> None:
+def neutralize_otlp_env(keep_sdk: bool = False) -> None:
     """Remove OTLP endpoint hints so no library can auto-configure an exporter.
 
     opentelemetry auto-configures from these on first use, so clearing them is
@@ -36,8 +36,10 @@ def neutralize_otlp_env() -> None:
         "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
     ):
         os.environ.pop(var, None)
-    # Standard OpenTelemetry kill switch, honoured by the SDK itself.
-    os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+    # Standard OpenTelemetry kill switch, honoured by the SDK itself. Skipped when the
+    # Prometheus pull endpoint needs a live MeterProvider (it makes no outbound connection).
+    if not keep_sdk:
+        os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
 
 def telemetry_enabled() -> bool:

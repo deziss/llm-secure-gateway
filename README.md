@@ -292,6 +292,19 @@ warning is expected and only goes away with HTTPS.
 
 ---
 
+## Observability (v0.14.0)
+
+The gateway measures each model's traffic (RPS, queue, tok/s, time to first token), the model servers and GPUs behind it, and its own process health. The numbers show on the **Observability** page in the admin UI (admins and managers), at `/metrics` for Prometheus, and over OTLP to the tool you choose.
+
+- Admin page: `/admin/observability`. Tabs for Models, Groups, GPUs, Gateway and Integrations.
+- Prometheus: `GET /metrics` on the gateway port, with an optional bearer token (`OBS_METRICS_TOKEN`).
+- GPU metrics: a small GPU agent per host (`--pid=host`, GPU device access), or an existing DCGM or nvidia_gpu_exporter.
+- Sinks: `OBS_EXPORTERS=langfuse,grafana,...` picks presets for Phoenix, Langfuse, LangSmith, OpenObserve, SigNoz, Grafana, Datadog, Honeycomb, New Relic, Elastic or any OTLP collector.
+
+See **[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)** for the architecture, preset variables, GPU agent install, the metric reference and known gaps.
+
+---
+
 ## Telemetry (off by default)
 
 Tracing and metrics export is **opt-in**. Left off, the gateway builds no OTLP exporters at all, so a collector that is not running cannot fill the logs with `Connection refused` retries.
@@ -425,6 +438,7 @@ llm-secure-gateway/
 | [USER_GUIDE.md](USER_GUIDE.md) | Step-by-step walkthrough for configuring backends, owners, and keys |
 | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | Complete reference for all REST endpoints, request bodies, and responses |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | In-depth architectural designs, sequence diagrams, and security models |
+| [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) | Observability: admin page, `/metrics`, GPU agent, export presets and metric reference |
 | [TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md) | Configuration guide for Arize Phoenix, OpenTelemetry, and Prometheus |
 | [UPGRADE.md](UPGRADE.md) | Migration guidelines, version upgrade procedures, and breaking changes |
 | [CHANGELOG.md](CHANGELOG.md) | Chronological release notes and changelog history |

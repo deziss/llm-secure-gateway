@@ -25,7 +25,7 @@ CSS = (SRC / "static" / "css" / "tailwind.min.css").read_text()
 
 AUTH_PAGES = {"login", "register", "forgot_password", "reset_password"}
 ADMIN_PAGES = [
-    "audit", "dashboard", "backends", "owners", "users", "spend", "aliases",
+    "audit", "dashboard", "backends", "owners", "users", "spend", "aliases", "observability",
     "settings", "playground", "chat_playground", "embedding_playground",
     "playground_compare",
 ]
@@ -52,8 +52,8 @@ def _nav_links(html):
 @pytest.mark.parametrize(
     "role,expected_count,must_have,must_lack",
     [
-        ("admin", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/servers"], []),
-        ("manager", 12, ["/admin/view/settings", "/admin/view/audit", "/admin/view/users"], []),
+        ("admin", 13, ["/admin/view/settings", "/admin/view/audit", "/admin/view/servers"], []),
+        ("manager", 13, ["/admin/view/settings", "/admin/view/audit", "/admin/view/users"], []),
         ("developer", 6, ["/admin/view/projects", "/admin/dashboard"],
          ["/admin/view/servers", "/admin/view/users", "/admin/view/settings", "/admin/view/spend", "/admin/view/audit"]),
         ("viewer", 5, ["/admin/dashboard", "/admin/view/playground"],
