@@ -257,3 +257,11 @@ def test_main_refuses_to_start_without_token(monkeypatch, capsys):
     monkeypatch.setattr(app, "build_collectors", lambda *a, **k: (None, None))
     assert app.main(["--no-nvidia", "--no-amd"]) == 2
     assert "GPU_AGENT_TOKEN" in capsys.readouterr().err
+
+
+def test_python_module_launch_is_not_a_model_hint():
+    from llm_gpu_agent.procs import model_hint
+    assert model_hint(["python3", "-m", "uvicorn", "app:app", "--port", "8000"]) is None
+    assert model_hint(["/usr/bin/python3.12", "-m", "vllm.entrypoints.openai.api_server",
+                       "--model", "/models/Qwen2.5-7B"]) == "Qwen2.5-7B"
+    assert model_hint(["llama-server", "-m", "/models/phi-3.gguf"]) == "phi-3"

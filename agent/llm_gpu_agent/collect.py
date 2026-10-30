@@ -52,7 +52,9 @@ class NvidiaCollector:
         for i in range(self._count):
             try:
                 h = n.nvmlDeviceGetHandleByIndex(i)
-                util = _safe(lambda: n.nvmlDeviceGetUtilizationRates(h).gpu)
+                rates = _safe(lambda: n.nvmlDeviceGetUtilizationRates(h))
+                util = getattr(rates, "gpu", None)
+                mem_util = getattr(rates, "memory", None)
                 mem = _safe(lambda: n.nvmlDeviceGetMemoryInfo(h))
                 procs = []
                 for p in _safe(lambda: n.nvmlDeviceGetComputeRunningProcesses(h), []) or []:
@@ -67,6 +69,7 @@ class NvidiaCollector:
                     "name": _text(_safe(lambda: n.nvmlDeviceGetName(h))),
                     "vendor": "nvidia",
                     "util_pct": float(util) if util is not None else None,
+                    "mem_util_pct": float(mem_util) if mem_util is not None else None,
                     "mem_used_mib": mem.used / MIB if mem else None,
                     "mem_total_mib": mem.total / MIB if mem else None,
                     "temp_c": _safe(lambda: n.nvmlDeviceGetTemperature(h, 0)),

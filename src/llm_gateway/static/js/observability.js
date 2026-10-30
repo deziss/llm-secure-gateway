@@ -223,7 +223,7 @@
       const key = m.server + "|" + m.model;
       let arr = state.history.get(key);
       if (!arr) { arr = []; state.history.set(key, arr); }
-      arr.push(isNum(m.rps_10s) ? m.rps_10s : 0);
+      arr.push(m.gateway_traffic || !isNum(m.server_rps) ? (isNum(m.rps_10s) ? m.rps_10s : 0) : m.server_rps);
       if (arr.length > SPARK_LEN) arr.splice(0, arr.length - SPARK_LEN);
     }
     const inflight = (p.models || []).reduce((s, m) => s + (isNum(m.inflight_bytes) ? m.inflight_bytes : 0), 0);
@@ -274,7 +274,6 @@
   function renderModels(p) {
     const servers = new Map((p.servers || []).map((s) => [s.name, s]));
     const rows = (p.models || []).map((m) => {
-      const s = servers.get(m.server) || {};
       const tr = el("tr", { cls: "hover:bg-surface-inset" });
       tr.appendChild(td(m.server));
       const modelCell = td(m.model, "font-mono text-xs");
@@ -287,9 +286,13 @@
       tr.appendChild(td(fmt(m.tok_s_decode, 1), "text-right tabular-nums"));
       tr.appendChild(td(fmt(m.tok_s_throughput, 1), "text-right tabular-nums"));
       tr.appendChild(td(fmtMs(m.ttft_p50_ms), "text-right tabular-nums"));
-      const run = isNum(s.running) || isNum(s.waiting) ? fmtInt(s.running) + " / " + fmtInt(s.waiting) : DASH;
+      tr.appendChild(td(fmt(m.server_rps, 2), "text-right tabular-nums"));
+      tr.appendChild(td(fmt(m.server_tok_s, 1), "text-right tabular-nums"));
+      tr.appendChild(td(fmtMs(m.itl_ms), "text-right tabular-nums"));
+      const run = isNum(m.server_running) || isNum(m.server_waiting)
+        ? fmtInt(m.server_running) + " / " + fmtInt(m.server_waiting) : DASH;
       tr.appendChild(td(run, "text-right tabular-nums"));
-      tr.appendChild(td(fmtPct(s.kv_cache_pct, 0), "text-right tabular-nums"));
+      tr.appendChild(td(fmtPct(m.kv_cache_pct, 0), "text-right tabular-nums"));
       const spark = el("td", { cls: "p-3" }, [sparkline(state.history.get(m.server + "|" + m.model))]);
       tr.appendChild(spark);
       return tr;
@@ -373,7 +376,8 @@
     ]);
     const gpuLine = el("p", { cls: "text-caption text-ink-muted tabular-nums", text: gpuParts.length ? gpuParts.join("  ·  ") : "No GPU data" });
     const stats = el("p", { cls: "text-caption text-ink-muted tabular-nums",
-      text: `${fmt(inst.rps_60s, 2)} rps · ${fmt(inst.tok_s_throughput, 1)} tok/s · queue ${fmtInt(inst.waiting)} · running ${fmtInt(inst.server_running)}` });
+      text: `server ${fmt(inst.server_rps, 2)} rps · ${fmt(inst.server_tok_s, 1)} tok/s · running ${fmtInt(inst.server_running)}`
+        + ` · gateway ${fmt(inst.rps_60s, 2)} rps · queue ${fmtInt(inst.waiting)}` });
     return el("li", { cls: "py-3 space-y-1" }, [top, gpuLine, stats]);
   }
 

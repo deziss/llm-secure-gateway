@@ -9,6 +9,7 @@ Units: utilisation is percent (0..100) everywhere; memory is MiB; power is watts
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from . import promtext
@@ -156,6 +157,12 @@ PARSERS = {
 }
 
 
+def _same_model(a: str, b: str) -> bool:
+    """Model names compared on letters and digits only ("Qwen3-30B-A3B" == "qwen-3-30b-a3b")."""
+    ka, kb = re.sub(r"[^a-z0-9]", "", normalize(a)), re.sub(r"[^a-z0-9]", "", normalize(b))
+    return bool(ka) and ka == kb
+
+
 def attribute_processes(targets: list[dict], hosts: list[dict]) -> None:
     """Set process["server"] in place: a process belongs to a server when its model_hint
     normalises to one of that server's models and the server is bound to the same host."""
@@ -168,11 +175,11 @@ def attribute_processes(targets: list[dict], hosts: list[dict]) -> None:
         for gpu_row in host.get("gpus") or []:
             for p in gpu_row.get("processes") or []:
                 p["server"] = None
-                hint = normalize(p.get("model_hint") or "")
+                hint = p.get("model_hint") or ""
                 if not hint:
                     continue
                 for t in servers:
-                    if hint in {normalize(m) for m in t.get("models") or []}:
+                    if any(_same_model(hint, m) for m in t.get("models") or []):
                         p["server"] = t["name"]
                         break
 
@@ -204,6 +211,28 @@ def server_gpus(server: dict, hosts: list[dict]) -> tuple[list[dict], str]:
     if picked:
         return picked, "process"
     return gpus, "host"
+
+
+def model_gpus(server: dict, model: str, hosts: list[dict]) -> tuple[list[dict], str]:
+    """GPUs running one model of a server: GPUs with a process whose model hint matches the
+    model and that belongs to this server. Falls back to server_gpus() when no process matches
+    (pinned indices, other processes of the server, or the whole host)."""
+    host_name = server.get("gpu_host")
+    host = next((h for h in hosts if h.get("name") == host_name), None) if host_name else None
+    if host is not None and server.get("gpu_indices") is None:
+        picked = [
+            g for g in host.get("gpus") or []
+            if any(p.get("server") == server.get("name") and _same_model(p.get("model_hint") or "", model)
+                   for p in (g.get("processes") or []))
+        ]
+        if picked:
+            return picked, "process"
+        if any(p.get("server") == server.get("name")
+               for g in host.get("gpus") or [] for p in (g.get("processes") or [])):
+            # The server's other models are visible on this host but this one is not, so it
+            # runs somewhere the agent cannot see. Showing the whole host would be wrong.
+            return [], "none"
+    return server_gpus(server, hosts)
 
 
 def summarize(gpus: list[dict], attribution: str) -> list[dict]:
