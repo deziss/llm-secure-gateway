@@ -239,3 +239,12 @@ def test_migration_005_refuses_two_populated_tables():
             "CREATE TABLE model_server (name TEXT PRIMARY KEY)",
             "INSERT INTO model_server VALUES ('z')",
         ])
+
+
+def test_project_update_keeps_block_endpoints_and_is_active():
+    """The edit-project form sends block_endpoints and is_active. A field missing from
+    OwnerUpdate is dropped silently by exclude_unset, so the checkbox never saved."""
+    from llm_gateway.routers.owners import OwnerUpdate
+
+    sent = OwnerUpdate(block_endpoints=False, is_active=False).model_dump(exclude_unset=True)
+    assert sent == {"block_endpoints": False, "is_active": False}

@@ -186,7 +186,7 @@ $(document).ready(function () {
 
     try {
       const res = await fetchWithCsrf("/admin/projects/" + encodeURIComponent(id), {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
@@ -322,7 +322,7 @@ async function loadKeys(ownerId) {
   try {
     const res = await fetchWithCsrf(`/admin/projects/${encodeURIComponent(ownerId)}/keys`);
     if (!res.ok) throw new Error("Failed to load keys");
-    const keys = await res.json();
+    const keys = (await res.json()).filter((k) => k.is_active !== false);
 
     if (keys.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-ink-muted italic text-sm">No active keys. Click 'Issue New Key' below.</td></tr>`;
