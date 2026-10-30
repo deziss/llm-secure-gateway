@@ -176,7 +176,15 @@ def _totals(instances: list[dict]) -> dict:
     for inst in instances:
         for g in inst["gpus"]:
             gpus[(g["host"], g["index"])] = g  # dedupe: two instances can share one GPU
-    used = [g["mem_used_mib"] for g in gpus.values() if g["mem_used_mib"] is not None]
+    # VRAM used: a model's own process memory when known, else its GPUs' used memory (deduped).
+    own = [i["model_vram_mib"] for i in instances if i.get("model_vram_mib") is not None]
+    shared: dict[tuple, float] = {}
+    for inst in instances:
+        if inst.get("model_vram_mib") is None:
+            for g in inst["gpus"]:
+                if g["mem_used_mib"] is not None:
+                    shared[(g["host"], g["index"])] = g["mem_used_mib"]
+    used = own + list(shared.values())
     total = [g["mem_total_mib"] for g in gpus.values() if g["mem_total_mib"] is not None]
     util = [g["util_pct"] for g in gpus.values() if g["util_pct"] is not None]
     # Server-wide figures repeat on every model row of that server: count them once per server.
@@ -227,6 +235,7 @@ def build_groups(models: list[dict], servers: list[dict], hosts: list[dict],
         out_models.append({**m, "group": group})
         srv = by_name.get(m.get("server"), {})
         gpus, attribution = gpu_mod.model_gpus(srv, m.get("model") or "", hosts) if srv else ([], "none")
+        own_vram = gpu_mod.model_vram_mib(srv, m.get("model") or "", hosts) if srv else None
         grouped.setdefault(group, []).append({
             "server": m.get("server"),
             "model": m.get("model"),
@@ -245,6 +254,9 @@ def build_groups(models: list[dict], servers: list[dict], hosts: list[dict],
             "server_scope": m.get("server_scope"),
             "gpus": gpu_mod.summarize(gpus, attribution),
             "gpu_attribution": attribution,
+            "model_vram_mib": own_vram,
+            "gpu_note": gpu_mod.gpu_note(srv, m.get("model") or "", hosts, attribution) if srv else "Unknown server",
+            "has_traffic": bool(m.get("gateway_traffic")) or bool(m.get("server_running") or m.get("server_waiting")),
         })
     groups = [
         {"group": g, "instances": insts, "totals": _totals(insts)}
@@ -488,3 +500,274 @@ async def set_server_gpu(name: str, body: ServerGpuIn, session: AsyncSession = D
     await session.commit()
     _backends_cache.clear()
     return {"name": name, "gpu_host": server.gpu_host, "gpu_indices": server.gpu_indices}
+
+
+# --------------------------------------------------------------------------- #
+# Integrations (export to Langfuse, SigNoz, OpenObserve, Grafana, Phoenix, ...)
+# --------------------------------------------------------------------------- #
+class IntegrationIn(BaseModel):
+    enabled: bool = True
+    config: dict[str, str] = Field(default_factory=dict)
+    secrets: dict[str, str] = Field(default_factory=dict)   # non-empty value = set/replace
+    clear_secrets: List[str] = Field(default_factory=list)  # explicit removal; omission keeps the stored value
+
+
+def _prom_card() -> dict:
+    import os
+    from .export.prometheus import prometheus_enabled, prometheus_status
+
+    token_set = bool(os.getenv("OBS_METRICS_TOKEN", "").strip())
+    scrape = (
+        "scrape_configs:\n"
+        "  - job_name: llm-gateway\n"
+        "    metrics_path: /metrics\n"
+        + ("    authorization:\n      type: Bearer\n      credentials: <OBS_METRICS_TOKEN>\n" if token_set else "")
+        + "    static_configs:\n      - targets: ['<gateway-host>:6130']\n"
+    )
+    return {
+        "name": "prometheus", "builtin": True, "title": "Prometheus (pull)",
+        "description": "Scrape GET /metrics with Prometheus, Grafana Agent/Alloy or VictoriaMetrics. Always on unless OBS_PROMETHEUS=false.",
+        "docs": "https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config",
+        "signals": ["metrics"], "enabled": prometheus_enabled(), "source": "env",
+        "token_set": token_set, "scrape_config": scrape,
+        "howto": [
+            "Add the scrape job below to prometheus.yml (replace the host).",
+            "Grafana: add that Prometheus as a data source, then import grafana/llm-gateway-dashboard.json from the repo.",
+            "Control: OBS_PROMETHEUS, OBS_METRICS_TOKEN and OBS_METRICS_ALLOW_ANONYMOUS are environment settings.",
+        ],
+        "status": prometheus_status(),
+    }
+
+
+async def _load_rows(session) -> dict:
+    from sqlmodel import select
+    from ..models import ObsIntegration
+
+    rows = (await session.execute(select(ObsIntegration))).scalars().all()
+    return {r.name: r for r in rows}
+
+
+def _catalog(rows: dict) -> list[dict]:
+    from .export import manager
+    from .export.presets import META
+    from .export.sinks import configured_names, sinks_status
+
+    runtime = manager.runtime_status()
+    traces_only = {"phoenix", "langfuse", "langsmith"}
+    env_names = {s["name"] for s in sinks_status() if s.get("source") == "env" and s["name"] != "prometheus"}
+    out = []
+    for name in sorted(META):
+        meta = META[name]
+        row = rows.get(name)
+        env = manager.row_env(row) if row else {}
+        fields = []
+        for f in meta["fields"]:
+            item = dict(f)
+            if f["secret"]:
+                item["set"] = bool(env.get(f["key"]))
+            else:
+                item["value"] = env.get(f["key"], "")
+            fields.append(item)
+        rt = runtime.get(name) or {}
+        out.append({
+            "name": name, "builtin": False, "title": meta["title"], "description": meta["description"],
+            "docs": meta["docs"], "howto": meta["howto"], "fields": fields,
+            "signals": ["traces"] if name in traces_only else ["traces", "metrics"],
+            "configured": row is not None, "enabled": bool(row.enabled) if row else False,
+            "active": bool(rt.get("active")), "mode": rt.get("mode"),
+            "status": rt.get("status"), "error": rt.get("error"),
+            "env_configured": name in env_names or name in configured_names(),
+            "updated_at": row.updated_at.isoformat() if row and row.updated_at else None,
+        })
+    return out
+
+
+@router.get("/integrations")
+async def list_integrations(session: AsyncSession = Depends(get_session), user=Depends(require_manager)) -> dict:
+    rows = await _load_rows(session)
+    await session.close()
+    return {"integrations": [_prom_card()] + _catalog(rows)}
+
+
+def _validate_input(name: str, body: IntegrationIn) -> None:
+    from .export import manager
+
+    allowed = manager.allowed_keys(name)
+    if not allowed:
+        raise HTTPException(status_code=404, detail=f"unknown integration '{name}'")
+    for key, value in list(body.config.items()) + list(body.secrets.items()):
+        if key not in allowed:
+            raise HTTPException(status_code=422, detail=f"unknown field {key!r} for {name}")
+        if len(value) > 2048:
+            raise HTTPException(status_code=422, detail=f"{key} is too long")
+    for key in body.secrets:
+        if not allowed[key]["secret"]:
+            raise HTTPException(status_code=422, detail=f"{key} is not a secret field; send it under config")
+    for key in body.config:
+        if allowed[key]["secret"]:
+            raise HTTPException(status_code=422, detail=f"{key} is a secret field; send it under secrets")
+    for key in body.clear_secrets:
+        if key not in allowed or not allowed[key]["secret"]:
+            raise HTTPException(status_code=422, detail=f"cannot clear {key!r}")
+    for key, value in body.config.items():
+        v = value.strip()
+        if v and ("ENDPOINT" in key or key.endswith("_URL") or key.endswith("_HOST")):
+            try:
+                _check_url(v)
+            except ValueError:
+                raise HTTPException(status_code=422, detail=f"{allowed[key]['label']} must be an http(s) URL") from None
+
+
+def _merged_env(name: str, row, body: IntegrationIn) -> dict:
+    """Stored values with the request applied on top (blank secrets keep the stored value)."""
+    from .export import manager
+
+    env = manager.row_env(row) if row else {}
+    for key, value in body.config.items():
+        if value.strip():
+            env[key] = value.strip()
+        else:
+            env.pop(key, None)
+    for key, value in body.secrets.items():
+        if value.strip():
+            env[key] = value.strip()
+    for key in body.clear_secrets:
+        env.pop(key, None)
+    return env
+
+
+@router.put("/integrations/{name}")
+async def save_integration(name: str, body: IntegrationIn, session: AsyncSession = Depends(get_session),
+                           user=Depends(require_admin)) -> dict:
+    from .export import manager
+    from .export.presets import PresetError, resolve
+    from ..models import ObsIntegration
+
+    _validate_input(name, body)
+    allowed = manager.allowed_keys(name)
+    row = await session.get(ObsIntegration, name)
+    env = _merged_env(name, row, body)
+    try:
+        resolve(name, env)  # reject incomplete config before storing it
+    except PresetError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    plain = {k: v for k, v in env.items() if not allowed.get(k, {}).get("secret")}
+    secret = {k: v for k, v in env.items() if allowed.get(k, {}).get("secret")}
+    if row is None:
+        row = ObsIntegration(name=name)
+    row.enabled = body.enabled
+    row.config = plain
+    row.secrets_enc = manager._encrypt_secrets(secret)
+    row.updated_at = _utcnow()
+    row.updated_by = getattr(user, "email", None)
+    session.add(row)
+    await session.commit()
+    await session.close()
+    await manager.load_and_apply()
+    return {"saved": name, "enabled": body.enabled}
+
+
+class IntegrationToggle(BaseModel):
+    enabled: bool
+
+
+@router.post("/integrations/{name}/enabled")
+async def toggle_integration(name: str, body: IntegrationToggle, session: AsyncSession = Depends(get_session),
+                             user=Depends(require_admin)) -> dict:
+    from .export import manager
+    from ..models import ObsIntegration
+
+    row = await session.get(ObsIntegration, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="integration is not configured yet")
+    row.enabled = body.enabled
+    row.updated_at = _utcnow()
+    session.add(row)
+    await session.commit()
+    await session.close()
+    await manager.load_and_apply()
+    return {"name": name, "enabled": body.enabled}
+
+
+@router.delete("/integrations/{name}")
+async def delete_integration(name: str, session: AsyncSession = Depends(get_session),
+                             user=Depends(require_admin)) -> dict:
+    from .export import manager
+    from ..models import ObsIntegration
+
+    row = await session.get(ObsIntegration, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="integration is not configured")
+    await session.delete(row)
+    await session.commit()
+    await session.close()
+    await manager.load_and_apply()
+    return {"deleted": name}
+
+
+def _test_span_bytes() -> bytes:
+    """One OTLP-encoded span. Built directly (not through a TracerProvider) so it works even when
+    OTEL_SDK_DISABLED is set in the process, which would turn real spans into no-ops."""
+    import os
+    import time as _time
+    from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import ReadableSpan
+    from opentelemetry.sdk.util.instrumentation import InstrumentationScope
+    from opentelemetry.trace import SpanContext, SpanKind, Status, StatusCode, TraceFlags
+
+    now = _time.time_ns()
+    ctx = SpanContext(trace_id=int.from_bytes(os.urandom(16), "big") or 1, span_id=int.from_bytes(os.urandom(8), "big") or 1,
+                      is_remote=False, trace_flags=TraceFlags(TraceFlags.SAMPLED))
+    span = ReadableSpan(
+        name="llm-gateway integration test", context=ctx, parent=None,
+        resource=Resource.create({"service.name": "llm-gateway"}),
+        attributes={"openinference.span.kind": "LLM", "llm.model_name": "integration-test",
+                    "gen_ai.system": "llm-gateway",
+                    "input.value": "Integration test from the LLM Gateway admin page."},
+        kind=SpanKind.INTERNAL, status=Status(StatusCode.OK), start_time=now - 1_000_000, end_time=now,
+        instrumentation_scope=InstrumentationScope("llm_gateway.integration_test"),
+    )
+    return encode_spans([span]).SerializePartialToString()
+
+
+@router.post("/integrations/{name}/test")
+async def test_integration(name: str, body: IntegrationIn | None = None, session: AsyncSession = Depends(get_session),
+                           user=Depends(require_admin)) -> dict:
+    """Send one real span to the integration's traces endpoint and report what the backend said.
+    Uses the submitted (unsaved) values on top of the stored ones, so a form can be tried first."""
+    import time as _time
+
+    import httpx
+    from ..models import ObsIntegration
+    from .export.presets import PresetError, resolve
+    from .export.sinks import redact_url
+
+    body = body or IntegrationIn()
+    _validate_input(name, body)
+    row = await session.get(ObsIntegration, name)
+    await session.close()
+    try:
+        preset = resolve(name, _merged_env(name, row, body))
+    except PresetError as exc:
+        return {"ok": False, "stage": "config", "message": str(exc)}
+    if preset.traces is None:
+        return {"ok": False, "stage": "config", "message": "this integration has no traces endpoint to test"}
+    headers = {**preset.traces.headers, "Content-Type": "application/x-protobuf"}
+    t0 = _time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=4.0), follow_redirects=False) as client:
+            r = await client.post(preset.traces.endpoint, content=_test_span_bytes(), headers=headers)
+    except httpx.TimeoutException:
+        return {"ok": False, "stage": "network", "message": "timed out connecting to the endpoint",
+                "endpoint": redact_url(preset.traces.endpoint)}
+    except httpx.HTTPError as exc:
+        return {"ok": False, "stage": "network", "message": redact_url(f"{type(exc).__name__}: {exc}")[:300],
+                "endpoint": redact_url(preset.traces.endpoint)}
+    ms = round((_time.monotonic() - t0) * 1000)
+    hint = {401: "credentials rejected", 403: "credentials rejected or not allowed",
+            404: "endpoint path not found (check the URL / region)", 415: "backend refused protobuf OTLP"}.get(r.status_code)
+    return {"ok": 200 <= r.status_code < 300, "stage": "http", "status_code": r.status_code, "latency_ms": ms,
+            "endpoint": redact_url(preset.traces.endpoint),
+            "message": "span accepted" if r.is_success else (hint or r.text[:200] or f"HTTP {r.status_code}")}

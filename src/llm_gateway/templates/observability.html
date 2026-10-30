@@ -34,24 +34,36 @@
 
   <!-- ── Models ─────────────────────────────────────────────── -->
   <section id="panel-models" role="tabpanel" aria-labelledby="tab-models" data-panel="models">
+    <div class="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Filter models">
+      <input id="fModelsQ" type="search" placeholder="Filter server or model…" aria-label="Filter models by text" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:14rem" />
+      <select id="fModelsServer" aria-label="Filter by server" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink"><option value="">All servers</option></select>
+      <select id="fModelsStatus" aria-label="Filter by status" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+        <option value="">All statuses</option>
+        <option value="active">Active (running or queued)</option>
+        <option value="idle">Idle</option>
+        <option value="errors">Errors / server down</option>
+      </select>
+      <button type="button" data-action="filters-clear" data-scope="models" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
+      <span id="fModelsCount" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
+    </div>
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
       <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Per-model live statistics">
         <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
           <tr>
-            <th scope="col" class="p-3 border-b border-hairline">Server</th>
-            <th scope="col" class="p-3 border-b border-hairline">Model</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">RPS 10s</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">RPS 60s</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Waiting</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Generating</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">tok/s decode</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">tok/s total</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">TTFT p50</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Server RPS</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Server tok/s</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">ITL</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Server run / wait</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">KV cache</th>
+            <th scope="col" class="p-3 border-b border-hairline" data-scope="models" data-key="server">Server</th>
+            <th scope="col" class="p-3 border-b border-hairline" data-scope="models" data-key="model">Model</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="rps_10s">RPS 10s</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="rps_60s">RPS 60s</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="waiting">Waiting</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="generating">Generating</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_decode">tok/s decode</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_throughput">tok/s total</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="ttft_p50_ms">TTFT p50</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_rps">Server RPS</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_tok_s">Server tok/s</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="itl_ms">ITL</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_running">Server run / wait</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="kv_cache_pct">KV cache</th>
             <th scope="col" class="p-3 border-b border-hairline">Trend (RPS)</th>
           </tr>
         </thead>
@@ -63,7 +75,35 @@
 
   <!-- ── Groups (collage) ───────────────────────────────────── -->
   <section id="panel-groups" role="tabpanel" aria-labelledby="tab-groups" data-panel="groups" class="hidden">
-    <div id="obsGroups" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+    <div class="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Filter model groups">
+      <input id="fGroupsQ" type="search" placeholder="Filter group, server or model…" aria-label="Filter groups by text" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:14rem" />
+      <select id="fGroupsGpu" aria-label="Filter by GPU data" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+        <option value="">GPU: all</option>
+        <option value="with">With GPU data</option>
+        <option value="without">Without GPU data</option>
+        <option value="shared">Shared GPU / host total</option>
+      </select>
+      <select id="fGroupsTraffic" aria-label="Filter by traffic" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+        <option value="">Traffic: all</option>
+        <option value="active">Active</option>
+        <option value="idle">Idle</option>
+      </select>
+      <select id="fGroupsSort" aria-label="Sort groups" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+        <option value="name">Sort: name</option>
+        <option value="vram">Sort: VRAM</option>
+        <option value="util">Sort: GPU util</option>
+        <option value="tok">Sort: tok/s</option>
+        <option value="queue">Sort: queue</option>
+      </select>
+      <button type="button" data-action="filters-clear" data-scope="groups" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
+      <span id="fGroupsCount" class="text-caption text-ink-muted" aria-live="polite"></span>
+      <div class="ml-auto inline-flex overflow-hidden rounded-control border border-hairline" role="group" aria-label="View mode">
+        <button type="button" data-action="view" data-view="cards" aria-pressed="true" class="px-3 py-1.5 text-sm text-ink">Cards</button>
+        <button type="button" data-action="view" data-view="list" aria-pressed="false" class="px-3 py-1.5 text-sm text-ink border-l border-hairline">List</button>
+      </div>
+    </div>
+    <div id="obsGroups" class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3"></div>
+    <div id="obsGroupsList" class="hidden rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto"></div>
     <p id="obsGroupsEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No model groups yet.</p>
   </section>
 
@@ -217,23 +257,43 @@
   </section>
 
   <!-- ── Integrations ───────────────────────────────────────── -->
-  <section id="panel-integrations" role="tabpanel" aria-labelledby="tab-integrations" data-panel="integrations" class="hidden">
+  <section id="panel-integrations" role="tabpanel" aria-labelledby="tab-integrations" data-panel="integrations" class="hidden space-y-4">
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4">
+      <h2 class="text-sm font-bold text-ink">Send this gateway's data to other observability tools</h2>
+      <p class="mt-1 text-caption text-ink-muted">Traces (OpenInference + OpenTelemetry GenAI attributes, token counts, latency, model, server) and metrics are exported over OTLP, or scraped from <code>/metrics</code>. Pick a tool, enter its endpoint and key, press Test, then enable it. Changes apply immediately, without a restart. Credentials are stored encrypted.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2" role="search" aria-label="Filter integrations">
+      <input id="fIntQ" type="search" placeholder="Filter tools…" aria-label="Filter integrations" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:14rem" />
+      <select id="fIntState" aria-label="Filter by state" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+        <option value="">All</option>
+        <option value="active">Active</option>
+        <option value="failing">Failing</option>
+        <option value="disabled">Configured but off</option>
+        <option value="unconfigured">Not configured</option>
+      </select>
+      <span id="fIntCount" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
+    </div>
+    <div id="obsIntegrations" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+    <p id="obsIntegrationsEmpty" class="p-4 text-center text-sm text-ink-muted hidden">No integrations match the filters.</p>
+
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <h3 class="px-4 pt-3 text-sm font-bold text-ink">Live export status</h3>
       <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Telemetry sinks">
         <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
           <tr>
-            <th scope="col" class="p-3 border-b border-hairline">Sink</th>
-            <th scope="col" class="p-3 border-b border-hairline">Signals</th>
-            <th scope="col" class="p-3 border-b border-hairline">Endpoint</th>
-            <th scope="col" class="p-3 border-b border-hairline">Last OK</th>
-            <th scope="col" class="p-3 border-b border-hairline">Last error</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Exported</th>
-            <th scope="col" class="p-3 border-b border-hairline text-right">Failed</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline">Sink</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline">Source</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline">Signals</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline">Endpoint</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline">Last OK</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline">Last error</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline text-right">Exported</th>
+            <th scope="col" class="px-3 py-2 border-b border-hairline text-right">Failed</th>
           </tr>
         </thead>
         <tbody id="obsSinksBody" class="divide-y divide-hairline text-ink"></tbody>
       </table>
-      <p id="obsSinksEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No telemetry sinks are enabled.</p>
+      <p id="obsSinksEmpty" class="p-4 text-center text-sm text-ink-muted hidden">Nothing is exporting yet. Configure an integration above.</p>
     </div>
   </section>
 </div>

@@ -79,12 +79,20 @@ async def lifespan(app: FastAPI):
         poll_task = asyncio.create_task(poller_loop())
     except ImportError as exc:
         logging.getLogger(__name__).warning("observability poller unavailable: %s", exc)
+    # Integrations configured in the admin UI: apply at startup, then follow changes.
+    integ_task = None
+    try:
+        from .observability.export.manager import integrations_loop
+        integ_task = asyncio.create_task(integrations_loop())
+    except ImportError as exc:
+        logging.getLogger(__name__).warning("integrations manager unavailable: %s", exc)
     try:
         yield
     finally:
         fed_task.cancel()
-        if poll_task is not None:
-            poll_task.cancel()
+        for t in (poll_task, integ_task):
+            if t is not None:
+                t.cancel()
         from .proxy_helpers import close_all_clients
         await close_all_clients()
 

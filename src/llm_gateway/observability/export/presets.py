@@ -246,3 +246,163 @@ def resolve(name: str, env: Optional[Mapping[str, str]] = None) -> ResolvedPrese
     if key not in PRESETS:
         raise PresetError(f"unknown exporter preset '{name}' (known: {', '.join(preset_names())})")
     return PRESETS[key](os.environ if env is None else env)
+
+
+# ---------------------------------------------------------------------------
+# UI metadata: what the Integrations tab shows and asks for. Field keys are the env var
+# names the builders above read, so UI-stored config goes through the same resolve().
+# F(key, label, secret=False, required=False, placeholder="", help="")
+# ---------------------------------------------------------------------------
+def _f(key, label, secret=False, required=False, placeholder="", help=""):
+    return {"key": key, "label": label, "secret": secret, "required": required,
+            "placeholder": placeholder, "help": help}
+
+
+META: dict[str, dict] = {
+    "phoenix": {
+        "title": "Arize Phoenix / Arize AX",
+        "description": "LLM traces in OpenInference format. Self-hosted Phoenix, Phoenix Cloud, or Arize AX.",
+        "docs": "https://arize.com/docs/phoenix",
+        "howto": [
+            "Self-hosted Phoenix: set the collector endpoint to your Phoenix URL (for example http://phoenix:6006). The API key is only needed when Phoenix auth is on.",
+            "Phoenix Cloud: use https://app.phoenix.arize.com (add /s/<space> for a named space) and an API key from Settings.",
+            "Arize AX: fill Space ID and API key instead; the endpoint defaults to https://otlp.arize.com.",
+            "Press Test to send one span, then open the project in Phoenix/Arize to see it.",
+        ],
+        "fields": [
+            _f("PHOENIX_COLLECTOR_ENDPOINT", "Phoenix endpoint", placeholder="http://phoenix:6006"),
+            _f("PHOENIX_API_KEY", "Phoenix API key", secret=True, help="Phoenix Cloud or auth-enabled self-hosted"),
+            _f("PHOENIX_PROJECT_NAME", "Project name", placeholder="llm-gateway"),
+            _f("ARIZE_SPACE_ID", "Arize Space ID", help="Setting this switches to Arize AX"),
+            _f("ARIZE_API_KEY", "Arize API key", secret=True),
+            _f("ARIZE_OTLP_ENDPOINT", "Arize OTLP endpoint", placeholder="https://otlp.arize.com/v1/traces"),
+        ],
+    },
+    "langfuse": {
+        "title": "Langfuse",
+        "description": "LLM tracing, cost and quality tracking over OpenTelemetry.",
+        "docs": "https://langfuse.com/docs/opentelemetry/get-started",
+        "howto": [
+            "In Langfuse open Project settings → API keys and create a key pair.",
+            "Host is https://cloud.langfuse.com, https://us.cloud.langfuse.com, or your self-hosted URL.",
+            "Press Test; traces appear under Tracing in the project.",
+        ],
+        "fields": [
+            _f("LANGFUSE_HOST", "Host", required=True, placeholder="https://cloud.langfuse.com"),
+            _f("LANGFUSE_PUBLIC_KEY", "Public key", required=True, placeholder="pk-lf-…"),
+            _f("LANGFUSE_SECRET_KEY", "Secret key", secret=True, required=True),
+        ],
+    },
+    "langsmith": {
+        "title": "LangSmith",
+        "description": "LangChain's tracing and evaluation platform (OTLP traces).",
+        "docs": "https://docs.smith.langchain.com",
+        "howto": [
+            "Create an API key under Settings → API keys.",
+            "EU workspaces: set the endpoint to https://eu.api.smith.langchain.com.",
+        ],
+        "fields": [
+            _f("LANGSMITH_API_KEY", "API key", secret=True, required=True),
+            _f("LANGSMITH_ENDPOINT", "Endpoint", placeholder="https://api.smith.langchain.com"),
+            _f("LANGSMITH_PROJECT", "Project", placeholder="llm-gateway"),
+        ],
+    },
+    "openobserve": {
+        "title": "OpenObserve",
+        "description": "Logs, metrics and traces in one open-source backend (traces + metrics here).",
+        "docs": "https://openobserve.ai/docs",
+        "howto": [
+            "URL is your OpenObserve base, for example http://openobserve:5080 or https://api.openobserve.ai.",
+            "User is the login email; Token is the password or an ingestion token.",
+            "Organization defaults to 'default'. Data lands in the stream you name (default 'default').",
+        ],
+        "fields": [
+            _f("ZO_URL", "URL", required=True, placeholder="http://openobserve:5080"),
+            _f("ZO_USER", "User (email)", required=True),
+            _f("ZO_TOKEN", "Token / password", secret=True, required=True),
+            _f("ZO_ORG", "Organization", placeholder="default"),
+            _f("ZO_STREAM", "Stream", placeholder="default"),
+        ],
+    },
+    "signoz": {
+        "title": "SigNoz",
+        "description": "Open-source APM with OTLP traces and metrics. Self-hosted or SigNoz Cloud.",
+        "docs": "https://signoz.io/docs/opentelemetry-collection-agents/",
+        "howto": [
+            "Self-hosted: point at the collector's OTLP HTTP port, for example http://signoz-otel-collector:4318.",
+            "SigNoz Cloud: fill the ingestion key and the region (us, eu, in) instead.",
+        ],
+        "fields": [
+            _f("SIGNOZ_OTLP_ENDPOINT", "OTLP endpoint (self-hosted)", placeholder="http://signoz-otel-collector:4318"),
+            _f("SIGNOZ_INGESTION_KEY", "Ingestion key (cloud)", secret=True, help="Setting this switches to SigNoz Cloud"),
+            _f("SIGNOZ_REGION", "Cloud region", placeholder="us"),
+        ],
+    },
+    "grafana": {
+        "title": "Grafana (Alloy / Cloud)",
+        "description": "OTLP into Grafana Alloy or an OpenTelemetry collector, or Grafana Cloud directly.",
+        "docs": "https://grafana.com/docs/grafana-cloud/send-data/otlp/",
+        "howto": [
+            "Self-managed: set the OTLP endpoint of Alloy or your collector (port 4318).",
+            "Grafana Cloud: copy endpoint, instance ID and token from Connections → OpenTelemetry.",
+            "Metrics also reach Grafana by Prometheus scraping /metrics (see the Prometheus card).",
+        ],
+        "fields": [
+            _f("GRAFANA_OTLP_ENDPOINT", "OTLP endpoint", placeholder="http://alloy:4318"),
+            _f("GRAFANA_OTLP_INSTANCE_ID", "Cloud instance ID"),
+            _f("GRAFANA_OTLP_TOKEN", "Cloud token", secret=True),
+        ],
+    },
+    "datadog": {
+        "title": "Datadog",
+        "description": "Through a Datadog Agent with OTLP ingest enabled.",
+        "docs": "https://docs.datadoghq.com/opentelemetry/",
+        "howto": [
+            "Enable OTLP ingest on the Agent (otlp_config.receiver.protocols.http) and point this at it.",
+        ],
+        "fields": [_f("DD_OTLP_ENDPOINT", "Agent OTLP endpoint", required=True, placeholder="http://datadog-agent:4318")],
+    },
+    "honeycomb": {
+        "title": "Honeycomb",
+        "description": "Traces and metrics to Honeycomb.",
+        "docs": "https://docs.honeycomb.io/send-data/opentelemetry/",
+        "howto": ["Create an Ingest API key in the environment settings. EU: https://api.eu1.honeycomb.io."],
+        "fields": [
+            _f("HONEYCOMB_API_KEY", "Ingest API key", secret=True, required=True),
+            _f("HONEYCOMB_ENDPOINT", "Endpoint", placeholder="https://api.honeycomb.io"),
+        ],
+    },
+    "newrelic": {
+        "title": "New Relic",
+        "description": "OTLP into New Relic.",
+        "docs": "https://docs.newrelic.com/docs/opentelemetry/",
+        "howto": ["Use an ingest license key. EU accounts: https://otlp.eu01.nr-data.net."],
+        "fields": [
+            _f("NEW_RELIC_LICENSE_KEY", "License key", secret=True, required=True),
+            _f("NEW_RELIC_OTLP_ENDPOINT", "Endpoint", placeholder="https://otlp.nr-data.net"),
+        ],
+    },
+    "elastic": {
+        "title": "Elastic APM",
+        "description": "OTLP into Elastic (APM Server or the managed OTLP endpoint).",
+        "docs": "https://www.elastic.co/docs/solutions/observability/apm/opentelemetry",
+        "howto": ["Use the APM/OTLP endpoint and an API key (sent as 'Authorization: ApiKey …')."],
+        "fields": [
+            _f("ELASTIC_OTLP_ENDPOINT", "OTLP endpoint", required=True, placeholder="https://my-deployment.apm.example.com"),
+            _f("ELASTIC_API_KEY", "API key", secret=True, required=True),
+        ],
+    },
+    "otlp": {
+        "title": "Generic OTLP/HTTP",
+        "description": "Any OpenTelemetry collector or backend: Jaeger, Tempo, Uptrace, a vendor-neutral collector, …",
+        "docs": "https://opentelemetry.io/docs/specs/otlp/",
+        "howto": [
+            "Endpoint is the OTLP/HTTP base URL; '/v1/traces' and '/v1/metrics' are appended.",
+            "Headers are 'key=value' pairs separated by commas, for example 'Authorization=Bearer abc,X-Tenant=a'.",
+        ],
+        "fields": [
+            _f("OTEL_EXPORTER_OTLP_ENDPOINT", "Endpoint", required=True, placeholder="http://collector:4318"),
+            _f("OTEL_EXPORTER_OTLP_HEADERS", "Headers", secret=True, help="key=value,key2=value2"),
+        ],
+    },
+}
