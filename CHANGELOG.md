@@ -1,3 +1,30 @@
+## [0.14.2] - 2026-10-30
+
+### ✨ New
+
+- **Integrations tab is a control panel.** Pick a tool (Arize Phoenix / Arize AX, Langfuse, LangSmith, OpenObserve, SigNoz, Grafana, Datadog, Honeycomb, New Relic, Elastic, generic OTLP), read how to connect it, enter its endpoint and key, press **Test** (sends one real span and shows the backend's HTTP answer), then turn it on or off. Changes apply immediately, with no restart; other replicas follow within about 15 seconds. Credentials are stored Fernet-encrypted in the new `obs_integration` table (migration 007) and are never returned by the API. A Prometheus card shows a ready-made scrape config.
+- **Per-tenant Phoenix projects from the UI.** "Separate project per gateway project and provider" sends traces to `gateway-<project>-<provider>`, as the environment setup does.
+- **Filters and sorting.** Models: text, server, status. Groups: text, GPU data, traffic, sort. Click any column header to sort the Models table, the Groups list and the GPU tables.
+- **Groups: compact cards and a List view** (the choice is remembered per browser).
+
+### ✨ Changed
+
+- **No double export.** When a tool is set both in `OBS_EXPORTERS` and in the UI, the UI settings win while enabled: the environment copy pauses (shown as "env (paused: set in UI)") and resumes when the UI integration is turned off or removed.
+- **Models and Groups list every configured model**, not only those with traffic through the gateway, with server-side RPS, tok/s and ITL. vLLM production-stack routers are read per engine, and per-model series are read from plain vLLM.
+- **GPU data is per model:** VRAM is the model's own process memory over its GPUs' capacity. A server on the same machine as a GPU host is linked automatically, and a model with no GPU process says why instead of showing the whole host.
+- The gateway version is now 0.14.2 (GPU agent too).
+
+### 🐛 Fixed
+
+- Buttons inside dialogs did nothing (Revoke key, Delete permission, Delete model): the dialog panels swallowed the click.
+- Editing a project never saved (the form sent `PUT`, the API only accepts `PATCH`), and its "block dangerous endpoints" checkbox was dropped.
+- Revoked API keys still showed as active.
+- A fallback chain with a single target could not be saved.
+- GPU agent: `python -m <module>` was read as a model name (shown as "uvicorn").
+- GPU table columns are aligned.
+
+---
+
 ## [0.14.1] - 2026-10-29
 
 ### ✨ New
@@ -365,7 +392,7 @@ Symptom: an admin page left open past the one-hour cookie lifetime raised a bare
 
 ---
 
-## [0.14.2] - 2026-10-30 - 2026-04-03
+## [Unreleased] - 2026-04-03
 
 ### ✨ Features
 
