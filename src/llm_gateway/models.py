@@ -83,6 +83,22 @@ class GpuHost(SQLModel, table=True):
     enabled: bool = Field(default=True)
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
+class ObsIntegration(SQLModel, table=True):
+    """An observability integration managed from the admin UI (observability v0.14.2).
+
+    ``config`` holds non-secret settings, ``secrets_enc`` a Fernet-encrypted JSON object of the
+    secret ones (API keys, tokens). Keys are the vendor's own env var names, so the same preset
+    builders resolve both UI and environment configuration.
+    """
+    __tablename__ = "obs_integration"
+
+    name: str = Field(primary_key=True, description="Preset id, e.g. langfuse")
+    enabled: bool = Field(default=True)
+    config: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False, server_default="{}"))
+    secrets_enc: Optional[str] = Field(default=None, description="Fernet token of a JSON object")
+    updated_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_by: Optional[str] = Field(default=None)
+
 class APIKeyScope(str, Enum):
     """Hierarchical scopes for API key access control.
 

@@ -92,6 +92,7 @@ class SinkStatus:
                 "last_error": redact_url(self.last_error),
                 "exported": self.exported,
                 "failed": self.failed,
+                "source": "env",
             }
 
 
@@ -289,8 +290,15 @@ def _plan() -> dict:
 
 
 def shared_span_processors() -> list:
-    """Non-Phoenix span processors, for per-tenant Phoenix providers to attach."""
-    return list(_SHARED_PROCESSORS or [])
+    """Non-Phoenix span processors, for per-tenant Phoenix providers to attach. Includes the
+    one that feeds UI-managed integrations (export/manager.py)."""
+    procs = list(_SHARED_PROCESSORS or [])
+    try:
+        from .manager import managed_span_processor
+        procs.append(managed_span_processor())
+    except Exception:
+        logger.debug("managed span processor unavailable", exc_info=True)
+    return procs
 
 
 def sinks_status() -> list[dict]:

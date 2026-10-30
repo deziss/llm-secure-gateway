@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from . import promtext
 from .groups import normalize
@@ -163,13 +164,38 @@ def _same_model(a: str, b: str) -> bool:
     return bool(ka) and ka == kb
 
 
+def _hostname(url: str | None) -> str | None:
+    try:
+        return (urlparse(url or "").hostname or "").lower() or None
+    except ValueError:
+        return None
+
+
+def effective_host(server: dict, hosts: list[dict]) -> str | None:
+    """The GPU host a server runs on: the explicit link, else the host that shares its IP/hostname.
+
+    The automatic match means a second server on the same machine (another port) needs no manual
+    link. An explicit link always wins, so a wrong link is the operator's to fix, not ours to guess.
+    """
+    if server.get("gpu_host"):
+        return server["gpu_host"]
+    mine = _hostname(server.get("url") or server.get("base_url"))
+    if not mine:
+        return None
+    for h in hosts:
+        if _hostname(h.get("url")) == mine:
+            return h.get("name")
+    return None
+
+
 def attribute_processes(targets: list[dict], hosts: list[dict]) -> None:
     """Set process["server"] in place: a process belongs to a server when its model_hint
     normalises to one of that server's models and the server is bound to the same host."""
     by_host: dict[str, list[dict]] = {}
     for t in targets:
-        if t.get("gpu_host"):
-            by_host.setdefault(t["gpu_host"], []).append(t)
+        name = effective_host(t, hosts)
+        if name:
+            by_host.setdefault(name, []).append(t)
     for host in hosts:
         servers = by_host.get(host.get("name"), [])
         for gpu_row in host.get("gpus") or []:
@@ -193,7 +219,7 @@ def server_gpus(server: dict, hosts: list[dict]) -> tuple[list[dict], str]:
       "process" GPUs where this server's agent processes run
       "host"    every GPU on the host (cannot tell which one the server uses)
     """
-    host_name = server.get("gpu_host")
+    host_name = effective_host(server, hosts)
     if not host_name:
         return [], "none"
     host = next((h for h in hosts if h.get("name") == host_name), None)
@@ -217,7 +243,7 @@ def model_gpus(server: dict, model: str, hosts: list[dict]) -> tuple[list[dict],
     """GPUs running one model of a server: GPUs with a process whose model hint matches the
     model and that belongs to this server. Falls back to server_gpus() when no process matches
     (pinned indices, other processes of the server, or the whole host)."""
-    host_name = server.get("gpu_host")
+    host_name = effective_host(server, hosts)
     host = next((h for h in hosts if h.get("name") == host_name), None) if host_name else None
     if host is not None and server.get("gpu_indices") is None:
         picked = [
@@ -233,6 +259,39 @@ def model_gpus(server: dict, model: str, hosts: list[dict]) -> tuple[list[dict],
             # runs somewhere the agent cannot see. Showing the whole host would be wrong.
             return [], "none"
     return server_gpus(server, hosts)
+
+
+def model_vram_mib(server: dict, model: str, hosts: list[dict]) -> float | None:
+    """VRAM this model's own processes hold (MiB), or None when no process is attributed to it.
+    A GPU is usually shared by several models, so the GPU's used memory is not the model's."""
+    host_name = effective_host(server, hosts)
+    host = next((h for h in hosts if h.get("name") == host_name), None) if host_name else None
+    if host is None:
+        return None
+    used, seen = 0.0, False
+    for g in host.get("gpus") or []:
+        for p in g.get("processes") or []:
+            if p.get("server") == server.get("name") and _same_model(p.get("model_hint") or "", model):
+                seen = True
+                used += float(p.get("used_mib") or 0.0)
+    return used if seen else None
+
+
+def gpu_note(server: dict, model: str, hosts: list[dict], attribution: str) -> str | None:
+    """Why a model has no GPU figures, in words an operator can act on."""
+    if attribution != "none":
+        return None
+    name = effective_host(server, hosts)
+    if not name:
+        return "No GPU host linked to this server"
+    host = next((h for h in hosts if h.get("name") == name), None)
+    if host is None:
+        return f"GPU host {name!r} not found"
+    if host.get("status") not in (None, "ok") and not host.get("gpus"):
+        return f"GPU host {name} is {host.get('status')}"
+    if host.get("gpus") and all(g.get("processes") is None for g in host["gpus"]):
+        return f"{name} exports no per-process data; link GPU indices to attribute"
+    return f"No process for this model found on {name} (engine not running there?)"
 
 
 def summarize(gpus: list[dict], attribution: str) -> list[dict]:

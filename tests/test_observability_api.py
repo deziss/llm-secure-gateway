@@ -129,11 +129,11 @@ async def test_live_payload_shape_and_grouping(snapshot):
 
     t = group["totals"]
     assert t["instance_count"] == 2 and t["gpu_count"] == 1          # both instances on GPU 0, counted once
-    assert t["vram_used_mib"] == 20000.0 and t["vram_total_mib"] == 81920.0
+    assert t["vram_used_mib"] == 19000.0 and t["vram_total_mib"] == 81920.0  # the model's own process memory, over its GPU's capacity
     assert t["server_waiting"] == 2  # vllm-a's queue counted once, not per model
     assert t["waiting"] == 1 and t["generating"] == 3
     assert t["tok_s"] == pytest.approx(60.0)
-    assert t["vram_pct"] == pytest.approx(20000 / 81920 * 100)
+    assert t["vram_pct"] == pytest.approx(19000 / 81920 * 100)
 
 
 async def test_viewer_is_forbidden_on_every_observability_route(snapshot):

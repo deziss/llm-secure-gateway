@@ -295,3 +295,15 @@ llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes * 100
 - **`/metrics` returns 401:** `OBS_METRICS_TOKEN` is set and the request has no matching bearer token.
 - **A sink's `last_error` says it cannot connect:** check the endpoint from inside the gateway
   container, not from your laptop.
+
+## Managing integrations from the admin UI
+
+Admin → Observability → **Integrations** lists every supported tool. Open a card to see how to connect it, fill in the endpoint and credentials, press **Test** (one real span is sent and the backend's HTTP answer is shown), then save. Turn a tool off without losing its settings, or remove it (deletes the stored credentials).
+
+- Changes apply immediately; other gateway replicas pick them up within about 15 seconds.
+- Credentials are stored Fernet-encrypted (`ENCRYPTION_KEY`) in the `obs_integration` table and are never returned by the API; leave a secret field blank to keep the stored value.
+- Settings made in the environment (`OBS_EXPORTERS`) still work and show as source `env` in **Live export status**. If a tool is configured in both places it exports twice, so use one.
+- Integrations configured here export even when `ENABLE_TELEMETRY` is off. Per-tenant Phoenix projects remain an environment feature.
+- Prometheus is pull-based and environment-controlled (`OBS_PROMETHEUS`, `OBS_METRICS_TOKEN`); its card shows a scrape config to copy.
+
+The Models and Groups tabs have filters and column sorting; the Groups tab has Cards and List views.

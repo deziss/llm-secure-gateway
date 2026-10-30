@@ -28,11 +28,20 @@ from ..observability import VERSION, instance_id
 logger = logging.getLogger(__name__)
 
 
+def _interval_ms() -> int:
+    try:
+        return max(1000, int(float(os.getenv("OBS_METRICS_INTERVAL_S", "60")) * 1000))
+    except ValueError:
+        return 60_000
+
+
 def build_resource(extra: dict | None = None) -> Resource:
     attrs = {
         "service.name": "llm-gateway",
         "service.version": VERSION,
         "service.instance.id": instance_id(),
+        # Phoenix/Arize read the project from this resource attribute; harmless for other tools.
+        "openinference.project.name": (os.getenv("PHOENIX_PROJECT_NAME") or "llm-gateway").strip() or "llm-gateway",
     }
     if extra:
         attrs.update(extra)
@@ -48,6 +57,8 @@ def setup_telemetry(app) -> None:
     from ..observability.collect.process import set_tracemalloc
     from ..observability.export.prometheus import build_prometheus_reader, prometheus_enabled
     from ..observability.export import sinks
+    from ..observability.export.manager import managed_metric_exporter, managed_span_processor
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
     if os.getenv("OBS_TRACEMALLOC", "false").strip().lower() in {"1", "true", "yes", "on"}:
         set_tracemalloc(True)
@@ -61,7 +72,9 @@ def setup_telemetry(app) -> None:
         # Explicitly neutralise OTLP env hints: opentelemetry lazily auto-configures an
         # exporter from OTEL_EXPORTER_OTLP_ENDPOINT on first use, which is what kept an
         # OTLP exporter alive and retrying with export "off".
-        neutralize_otlp_env(keep_sdk=prometheus_enabled())
+        # keep_sdk: integrations configured in the admin UI export through the SDK at runtime,
+        # so it must stay on. With no integration configured nothing leaves the process.
+        neutralize_otlp_env(keep_sdk=True)
     else:
         silence_otlp_exporter_logs()
 
@@ -75,10 +88,13 @@ def setup_telemetry(app) -> None:
         tracer_provider.add_span_processor(plan["phoenix_processor"])
     for proc in plan["shared_processors"]:
         tracer_provider.add_span_processor(proc)
+    # UI-managed integrations: attached once, always; it fans out to whatever is enabled.
+    tracer_provider.add_span_processor(managed_span_processor())
     trace.set_tracer_provider(tracer_provider)
 
     # Metrics: Prometheus pull reader is independent of ENABLE_TELEMETRY.
     readers = list(plan["readers"])
+    readers.append(PeriodicExportingMetricReader(managed_metric_exporter(), export_interval_millis=_interval_ms()))
     if prometheus_enabled():
         reader = build_prometheus_reader()
         if reader is not None:
