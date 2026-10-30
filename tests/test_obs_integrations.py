@@ -9,7 +9,7 @@ from llm_gateway.auth.models import Role
 from llm_gateway.observability import api
 from llm_gateway.observability.export import manager, presets
 
-from tests.test_observability_api import FakeSession, _app, _client  # noqa: F401
+from test_observability_api import FakeSession, _app, _client  # noqa: F401  (tests/ is on sys.path; it is not a package)
 
 
 @pytest.fixture(autouse=True)
