@@ -249,6 +249,7 @@ async def poll_once(interval: float | None = None, client: httpx.AsyncClient | N
                 "name": t["name"], "server_type": t["server_type"], "url": t["base_url"],
                 "status": "unreachable", "error": None, "running": None, "waiting": None,
                 "kv_cache_pct": None, "gen_tok_s": None, "prompt_tok_s": None, "loaded_models": [],
+                "kind": t["server_type"], "models": list(t.get("models") or []), "engines": [], "model_stats": {},
                 "gpu_host": t["gpu_host"], "gpu_indices": t["gpu_indices"],
             }
             jobs.append(asyncio.ensure_future(_run_job(

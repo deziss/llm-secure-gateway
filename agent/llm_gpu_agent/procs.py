@@ -25,6 +25,11 @@ def _tail(model: str) -> Optional[str]:
     return model or None
 
 
+def _is_python_module_launch(argv: list[str]) -> bool:
+    """True for `python[3.x] [opts] -m <module> ...`, where -m names a module, not a model."""
+    return bool(argv) and os.path.basename(argv[0]).startswith("python") and "-m" in argv
+
+
 def model_hint(argv: list[str]) -> Optional[str]:
     """Best model name for a command line, or None.
 
@@ -51,9 +56,14 @@ def model_hint(argv: list[str]) -> Optional[str]:
     alias = value_of("--alias")
     if alias:
         return alias
-    model = value_of("--model", "-m")
+    model = value_of("--model")
     if model:
         return _tail(model)
+    # `-m` is llama.cpp's model flag, but `python -m uvicorn ...` uses it for a module name.
+    if not _is_python_module_launch(argv):
+        model = value_of("-m")
+        if model:
+            return _tail(model)
     if "serve" in argv:
         i = argv.index("serve")
         if any(os.path.basename(a) == "vllm" for a in argv[:i]) and i + 1 < len(argv):

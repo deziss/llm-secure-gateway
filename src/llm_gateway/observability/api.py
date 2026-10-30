@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import socket
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
@@ -114,23 +115,91 @@ def merge_models(replica_rows: list[list[dict]]) -> list[dict]:
     return list(acc.values())
 
 
+_GATEWAY_ZERO = {
+    "rps_10s": 0.0, "rps_60s": 0.0, "requests_60s": 0, "errors_60s": 0, "waiting": 0, "generating": 0,
+    "tok_s_throughput": 0.0, "tok_s_decode": None, "ttft_p50_ms": None, "inflight_bytes": 0,
+    "tokens_estimated": False,
+}
+
+
+def with_server_rows(models: list[dict], servers: list[dict]) -> list[dict]:
+    """Every configured (server, model) pair gets a row, not only those with gateway traffic.
+
+    Clients often call model servers directly, so gateway counters stay at zero while the
+    server is busy. Server-side figures come from the poller: per-model when the server
+    reports them (vLLM model_name labels, router per-engine series), otherwise the server
+    totals when it serves exactly one model.
+    """
+    by_key = {(m.get("server"), m.get("model")): {**m, "gateway_traffic": True} for m in models}
+    for srv in servers:
+        names = list(srv.get("models") or [])
+        names += [m for m in (srv.get("model_stats") or {}) if m not in names]
+        for model in names:
+            by_key.setdefault((srv["name"], model), {
+                "server": srv["name"], "server_type": srv.get("server_type"), "model": model,
+                **_GATEWAY_ZERO, "gateway_traffic": False,
+            })
+    srv_by_name = {s["name"]: s for s in servers}
+    out = []
+    for (server, model), row in by_key.items():
+        srv = srv_by_name.get(server) or {}
+        stats = (srv.get("model_stats") or {}).get(model)
+        if stats is not None:
+            server_side = {
+                "server_rps": stats.get("rps"), "server_running": stats.get("running"),
+                "server_waiting": stats.get("waiting"), "server_tok_s": stats.get("out_tok_s"),
+                "kv_cache_pct": stats.get("kv_cache_pct"), "itl_ms": stats.get("itl_ms"),
+                "engines": stats.get("engines"),
+            }
+            server_side["server_scope"] = "model"
+        elif srv:
+            # No per-model figures: show the server's totals, shared by all of its models.
+            server_side = {
+                "server_rps": None, "server_running": srv.get("running"),
+                "server_waiting": srv.get("waiting"), "server_tok_s": srv.get("gen_tok_s"),
+                "kv_cache_pct": srv.get("kv_cache_pct"), "itl_ms": None, "engines": None,
+                "server_scope": "server",
+            }
+        else:
+            server_side = {"server_rps": None, "server_running": None, "server_waiting": None,
+                           "server_tok_s": None, "kv_cache_pct": None, "itl_ms": None, "engines": None,
+                           "server_scope": None}
+        row.update(server_side)
+        row["server_status"] = srv.get("status")
+        out.append(row)
+    out.sort(key=lambda r: (str(r.get("server")), str(r.get("model"))))
+    return out
+
+
 def _totals(instances: list[dict]) -> dict:
     gpus: dict[tuple, dict] = {}
     for inst in instances:
         for g in inst["gpus"]:
             gpus[(g["host"], g["index"])] = g  # dedupe: two instances can share one GPU
-    servers: dict[str, dict] = {}
-    for inst in instances:
-        servers.setdefault(inst["server"], inst)  # server queue is shared by its models
     used = [g["mem_used_mib"] for g in gpus.values() if g["mem_used_mib"] is not None]
     total = [g["mem_total_mib"] for g in gpus.values() if g["mem_total_mib"] is not None]
     util = [g["util_pct"] for g in gpus.values() if g["util_pct"] is not None]
-    srv_wait = [i["server_waiting"] for i in servers.values() if i["server_waiting"] is not None]
+    # Server-wide figures repeat on every model row of that server: count them once per server.
+    seen_servers: set = set()
+    srv_wait = []
+    for i in instances:
+        if i.get("server_scope") == "server":
+            if i["server"] in seen_servers:
+                continue
+            seen_servers.add(i["server"])
+        if i["server_waiting"] is not None:
+            srv_wait.append(i["server_waiting"])
     vram_used = sum(used) if used else None
     vram_total = sum(total) if total else None
+    def _best(inst: dict, server_field: str, gateway_field: str) -> float:
+        # Per-model server figures cover direct clients too; server-wide ones can't be split
+        # across models, so those rows use what the gateway saw.
+        v = inst.get(server_field) if inst.get("server_scope") == "model" else None
+        return float(v) if v is not None else float(inst.get(gateway_field) or 0.0)
+
     return {
-        "rps_60s": round(sum(i["rps_60s"] for i in instances), 3),
-        "tok_s": round(sum(i["tok_s_throughput"] or 0.0 for i in instances), 2),
+        "rps_60s": round(sum(_best(i, "server_rps", "rps_60s") for i in instances), 3),
+        "tok_s": round(sum(_best(i, "server_tok_s", "tok_s_throughput") for i in instances), 2),
         "waiting": sum(i["waiting"] or 0 for i in instances),
         "generating": sum(i["generating"] or 0 for i in instances),
         "server_waiting": sum(srv_wait) if srv_wait else None,
@@ -149,11 +218,15 @@ def build_groups(models: list[dict], servers: list[dict], hosts: list[dict],
     by_name = {s["name"]: s for s in servers}
     grouped: dict[str, list[dict]] = {}
     out_models = []
+    # "Qwen3-30B-A3B" and "qwen-3-30b-a3b" are the same model: bucket on letters and digits
+    # only, and label the bucket with the first spelling seen.
+    label_for: dict[str, str] = {}
     for m in models:
-        group = group_key(m.get("model") or "", overrides)
+        raw = group_key(m.get("model") or "", overrides)
+        group = label_for.setdefault(re.sub(r"[^a-z0-9]", "", raw.lower()) or raw, raw)
         out_models.append({**m, "group": group})
         srv = by_name.get(m.get("server"), {})
-        gpus, attribution = gpu_mod.server_gpus(srv, hosts) if srv else ([], "none")
+        gpus, attribution = gpu_mod.model_gpus(srv, m.get("model") or "", hosts) if srv else ([], "none")
         grouped.setdefault(group, []).append({
             "server": m.get("server"),
             "model": m.get("model"),
@@ -163,9 +236,13 @@ def build_groups(models: list[dict], servers: list[dict], hosts: list[dict],
             "tok_s_decode": m.get("tok_s_decode"),
             "waiting": m.get("waiting"),
             "generating": m.get("generating"),
-            "server_running": srv.get("running"),
-            "server_waiting": srv.get("waiting"),
-            "kv_cache_pct": srv.get("kv_cache_pct"),
+            "server_rps": m.get("server_rps"),
+            "server_tok_s": m.get("server_tok_s"),
+            "itl_ms": m.get("itl_ms"),
+            "server_running": m.get("server_running"),
+            "server_waiting": m.get("server_waiting"),
+            "kv_cache_pct": m.get("kv_cache_pct"),
+            "server_scope": m.get("server_scope"),
             "gpus": gpu_mod.summarize(gpus, attribution),
             "gpu_attribution": attribution,
         })
@@ -192,6 +269,7 @@ async def build_payload(overrides: dict[str, list[str]]) -> dict:
     local_models = _local_models()
     process = _local_process()
     scope, replicas, models = await _cluster_view(local_models, instance)
+    models = with_server_rows(models, servers)
     out_models, groups = build_groups(models, servers, hosts, overrides)
     return {
         "instance": instance,
