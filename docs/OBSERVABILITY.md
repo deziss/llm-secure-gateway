@@ -302,8 +302,9 @@ Admin → Observability → **Integrations** lists every supported tool. Open a 
 
 - Changes apply immediately; other gateway replicas pick them up within about 15 seconds.
 - Credentials are stored Fernet-encrypted (`ENCRYPTION_KEY`) in the `obs_integration` table and are never returned by the API; leave a secret field blank to keep the stored value.
-- Settings made in the environment (`OBS_EXPORTERS`) still work and show as source `env` in **Live export status**. If a tool is configured in both places it exports twice, so use one.
-- Integrations configured here export even when `ENABLE_TELEMETRY` is off. Per-tenant Phoenix projects remain an environment feature.
+- Settings made in the environment (`OBS_EXPORTERS`) still work and show as source `env` in **Live export status**. If a tool is set in both places, the UI settings win while enabled there: the environment copy pauses (no double export) and resumes when the UI integration is turned off or removed.
+- Integrations configured here export even when `ENABLE_TELEMETRY` is off.
+- Phoenix: tick "Separate project per gateway project and provider" to send traces to `gateway-<project>-<provider>` projects (the environment setup's behaviour); leave it off for one project named by "Project name".
 - Prometheus is pull-based and environment-controlled (`OBS_PROMETHEUS`, `OBS_METRICS_TOKEN`); its card shows a scrape config to copy.
 
 The Models and Groups tabs have filters and column sorting; the Groups tab has Cards and List views.

@@ -365,7 +365,7 @@ Symptom: an admin page left open past the one-hour cookie lifetime raised a bare
 
 ---
 
-## [Unreleased] - 2026-04-03
+## [0.14.2] - 2026-10-30 - 2026-04-03
 
 ### ✨ Features
 

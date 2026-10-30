@@ -1058,7 +1058,9 @@
     }
     const card = el("article", { cls: "rounded-panel border border-hairline bg-surface-raised shadow-rest p-3 space-y-2", data: { card: it.name } }, [head, el("p", { cls: "text-caption text-ink-muted", text: it.description }), line, actions]);
     if (it.env_configured && !it.builtin) {
-      card.appendChild(el("p", { cls: "text-caption text-warn", text: "Also set in the environment (OBS_EXPORTERS). Turning it on here exports twice; remove it from OBS_EXPORTERS." }));
+      card.appendChild(el("p", { cls: "text-caption text-warn", text: it.active
+        ? "Also set in the environment (OBS_EXPORTERS). The settings here win: the environment copy is paused, so nothing is sent twice."
+        : "Set in the environment (OBS_EXPORTERS). Turning it on here replaces the environment settings while it stays on." }));
     }
     if (open) card.appendChild(integrationBody(it));
     return card;
@@ -1083,6 +1085,15 @@
 
     const form = el("form", { cls: "grid grid-cols-1 md:grid-cols-2 gap-3 text-sm", attrs: { autocomplete: "off", "data-int-form": it.name } }, []);
     (it.fields || []).forEach((f) => {
+      if (f.type === "bool") {
+        const cb = el("input", { attrs: { type: "checkbox", name: f.key }, cls: "h-4 w-4" });
+        cb.checked = ["1", "true", "yes", "on"].includes(String(f.value || "").toLowerCase());
+        const row = el("label", { cls: "flex items-start gap-2 md:col-span-2 text-ink-muted" }, [cb,
+          el("span", null, [el("span", { cls: "block text-sm text-ink", text: f.label }),
+            f.help ? el("span", { cls: "block text-micro", text: f.help }) : null])]);
+        form.appendChild(row);
+        return;
+      }
       const input = el("input", { cls: "w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink",
         attrs: { type: f.secret ? "password" : "text", name: f.key, maxlength: "2048", autocomplete: "off", spellcheck: "false",
                  placeholder: f.secret && f.set ? "•••••• stored — leave blank to keep" : (f.placeholder || "") } });
@@ -1122,6 +1133,7 @@
   function formPayload(form, fields) {
     const config = {}, secrets = {}, clear = [];
     (fields || []).forEach((f) => {
+      if (f.type === "bool") { config[f.key] = form.elements[f.key] && form.elements[f.key].checked ? "true" : ""; return; }
       const v = form.elements[f.key] ? form.elements[f.key].value.trim() : "";
       if (f.secret) {
         if (v) secrets[f.key] = v;
@@ -1216,7 +1228,7 @@
     const sinks = p.sinks || [];
     const rows = sinks.map((s) => el("tr", null, [
       td(s.name, "font-medium"),
-      td(s.source || DASH),
+      td(s.superseded ? "env (paused: set in UI)" : (s.source || DASH)),
       td((s.signals || []).join(", ")),
       td(s.endpoint, "font-mono text-xs break-all"),
       td(s.last_ok ? fmtAge(s.last_ok) : DASH),

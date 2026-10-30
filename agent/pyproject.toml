@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm-gpu-agent"
-version = "0.14.1"
+version = "0.14.2"
 description = "Tiny per-host GPU and GPU-process agent for llm-secure-gateway"
 requires-python = ">=3.10"
 dependencies = [

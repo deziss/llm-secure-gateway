@@ -147,6 +147,16 @@ class _Active:
 _LOCK = threading.RLock()
 _ACTIVE: dict[str, _Active] = {}
 _ERRORS: dict[str, str] = {}
+_PHOENIX_PER_TENANT = [False]
+_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def phoenix_mode() -> Optional[str]:
+    """None when Phoenix is not managed here; else "per_tenant" or "single"."""
+    with _LOCK:
+        if "phoenix" not in _ACTIVE:
+            return None
+        return "per_tenant" if _PHOENIX_PER_TENANT[0] else "single"
 
 
 def _fingerprint(preset: ResolvedPreset) -> str:
@@ -195,6 +205,8 @@ def apply(desired: Mapping[str, Optional[Mapping[str, str]]]) -> None:
         for name in list(_ACTIVE):
             if name not in wanted or _ACTIVE[name].fingerprint != wanted[name][1]:
                 _teardown(name)
+        phx = desired.get("phoenix") or {}
+        _PHOENIX_PER_TENANT[0] = str(phx.get("PHOENIX_PROJECT_PER_TENANT", "")).strip().lower() in _TRUTHY
         for name, (preset, fp) in wanted.items():
             if name not in _ACTIVE:
                 try:
@@ -204,6 +216,8 @@ def apply(desired: Mapping[str, Optional[Mapping[str, str]]]) -> None:
                     _teardown(name)
                     _ERRORS[name] = sinks.redact_url(f"{type(exc).__name__}: {exc}")
                     logger.warning("Integration '%s' failed to start: %s", name, sinks.redact_url(str(exc)))
+        # The UI configuration wins over the same tool set in OBS_EXPORTERS: pause the env copy.
+        sinks.set_superseded(set(_ACTIVE))
 
 
 def runtime_status() -> dict[str, dict]:
@@ -289,3 +303,5 @@ def _reset_for_tests() -> None:
         for n in list(_ACTIVE):
             _teardown(n)
         _ERRORS.clear()
+        _PHOENIX_PER_TENANT[0] = False
+        sinks.set_superseded(set())

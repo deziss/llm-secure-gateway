@@ -153,3 +153,52 @@ async def test_test_button_network_failure(monkeypatch):
                           json={"enabled": True, "config": {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:4318"}})).json()
     assert r["ok"] is False and r["stage"] == "network"
     assert "SECRET" not in json.dumps(r) and "pw@" not in json.dumps(r)
+
+
+def test_ui_config_pauses_the_same_tool_from_env():
+    """A tool set both in OBS_EXPORTERS and in the UI must not export twice: the env copy pauses."""
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+    from llm_gateway.observability.export import sinks
+
+    class Inner(SpanExporter):
+        calls = 0
+        def export(self, spans):
+            Inner.calls += 1
+            return SpanExportResult.SUCCESS
+
+    env_copy = sinks._TrackedSpanExporter(Inner(), sinks.SinkStatus(name="langfuse"), suppressible=True)
+    env_copy.export([object()])
+    assert Inner.calls == 1
+
+    manager.apply({"langfuse": LANGFUSE})          # now also managed in the UI
+    assert sinks.is_superseded("langfuse")
+    assert env_copy.export([object()]) == SpanExportResult.SUCCESS
+    assert Inner.calls == 1                         # dropped, not sent twice
+    assert env_copy._status.as_dict()["superseded"] is True
+
+    manager.apply({"langfuse": None})               # turned off in the UI: env copy resumes
+    env_copy.export([object()])
+    assert Inner.calls == 2
+
+
+def test_managed_phoenix_per_tenant_projects():
+    from llm_gateway.telemetry.tracing import PhoenixTraceManager
+
+    base = {"PHOENIX_COLLECTOR_ENDPOINT": "http://phoenix:6006"}
+    manager.apply({"phoenix": base})
+    assert manager.phoenix_mode() == "single"
+
+    manager.apply({"phoenix": {**base, "PHOENIX_PROJECT_PER_TENANT": "true"}})
+    assert manager.phoenix_mode() == "per_tenant"
+    PhoenixTraceManager._managed.clear()
+    PhoenixTraceManager.get_tracer("acme", "vllm")
+    provider = PhoenixTraceManager._managed["gateway-acme-vllm"]
+    assert provider.resource.attributes["openinference.project.name"] == "gateway-acme-vllm"
+    assert provider.resource.attributes["service.name"] == "llm-gateway"
+    assert manager.managed_span_processor() in provider._active_span_processor._span_processors
+    PhoenixTraceManager._managed.clear()
+
+
+def test_bool_field_is_described_for_the_ui():
+    f = {x["key"]: x for x in presets.META["phoenix"]["fields"]}["PHOENIX_PROJECT_PER_TENANT"]
+    assert f["type"] == "bool" and not f["secret"]
