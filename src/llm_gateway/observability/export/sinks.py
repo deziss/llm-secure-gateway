@@ -93,10 +93,23 @@ class SinkStatus:
                 "exported": self.exported,
                 "failed": self.failed,
                 "source": "env",
+                "superseded": self.name in _SUPERSEDED,
             }
 
 
 _STATUS: dict[str, SinkStatus] = {}
+# Env-configured sinks whose tool is also enabled in the admin UI. The UI configuration wins:
+# the env exporter drops its batches (without counting them) so nothing is exported twice.
+_SUPERSEDED: set[str] = set()
+
+
+def set_superseded(names) -> None:
+    _SUPERSEDED.clear()
+    _SUPERSEDED.update(names)
+
+
+def is_superseded(name: str) -> bool:
+    return name in _SUPERSEDED
 _SHARED_PROCESSORS: Optional[list] = None
 _PHOENIX_PROCESSOR = None
 _READERS: list = []
@@ -112,11 +125,14 @@ def _status_for(name: str) -> SinkStatus:
 
 
 class _TrackedSpanExporter(SpanExporter):
-    def __init__(self, inner: SpanExporter, status: SinkStatus) -> None:
+    def __init__(self, inner: SpanExporter, status: SinkStatus, suppressible: bool = False) -> None:
         self._inner = inner
         self._status = status
+        self._suppressible = suppressible
 
     def export(self, spans):
+        if self._suppressible and self._status.name in _SUPERSEDED:
+            return SpanExportResult.SUCCESS
         try:
             result = self._inner.export(spans)
         except Exception as exc:
@@ -138,15 +154,18 @@ class _TrackedSpanExporter(SpanExporter):
 class _TrackedMetricExporter(MetricExporter):
     """Counts exports per batch (metrics are exported as batches, not per point)."""
 
-    def __init__(self, inner: MetricExporter, status: SinkStatus) -> None:
+    def __init__(self, inner: MetricExporter, status: SinkStatus, suppressible: bool = False) -> None:
         super().__init__(
             preferred_temporality=inner._preferred_temporality,
             preferred_aggregation=inner._preferred_aggregation,
         )
         self._inner = inner
         self._status = status
+        self._suppressible = suppressible
 
     def export(self, metrics_data, timeout_millis: float = 10_000, **kwargs):
+        if self._suppressible and self._status.name in _SUPERSEDED:
+            return MetricExportResult.SUCCESS
         try:
             result = self._inner.export(metrics_data, timeout_millis=timeout_millis, **kwargs)
         except Exception as exc:
@@ -254,12 +273,12 @@ def init_sinks(env=None) -> dict:
             if preset.traces is not None:
                 if name == PHOENIX:
                     _PHOENIX_PROCESSOR = _SharedSpanProcessor(
-                        BatchSpanProcessor(_TrackedSpanExporter(_span_exporter(preset.traces), status))
+                        BatchSpanProcessor(_TrackedSpanExporter(_span_exporter(preset.traces), status, suppressible=True))
                     )
                     _PHOENIX_PROCESSOR_PROJECT[0] = preset.resource.get("openinference.project.name")
                 else:
                     _SHARED_PROCESSORS.append(_SharedSpanProcessor(
-                        BatchSpanProcessor(_TrackedSpanExporter(_span_exporter(preset.traces), status))
+                        BatchSpanProcessor(_TrackedSpanExporter(_span_exporter(preset.traces), status, suppressible=True))
                     ))
 
             if preset.metrics is not None:
@@ -269,7 +288,7 @@ def init_sinks(env=None) -> dict:
                                    redact_url(preset.metrics.endpoint))
                     continue
                 reader = PeriodicExportingMetricReader(
-                    _TrackedMetricExporter(_metric_exporter(preset.metrics), status),
+                    _TrackedMetricExporter(_metric_exporter(preset.metrics), status, suppressible=True),
                     export_interval_millis=_metrics_interval_ms(),
                 )
                 _READERS.append(reader)

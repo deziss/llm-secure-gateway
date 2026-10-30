@@ -19,6 +19,7 @@ class PhoenixTraceManager:
     """
 
     _tracers: Dict[str, TracerProvider] = {}
+    _managed: Dict[str, TracerProvider] = {}  # per-tenant providers when Phoenix is managed in the UI
     _phoenix_endpoint: str = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006")
     _phoenix_api_key: Optional[str] = os.getenv("PHOENIX_API_KEY")
     if telemetry_enabled() and not _phoenix_api_key:
@@ -62,8 +63,13 @@ class PhoenixTraceManager:
         Create & Cache tracer for the given owner/backend combination.
         OpenTelemetry Tracer instance for the project
         """
-        if not telemetry_enabled():
-            # No exporter, no connection attempt — just a working tracer.
+        # Phoenix configured in the admin UI takes precedence over the environment setup.
+        from ..observability.export import manager
+        mode = manager.phoenix_mode()
+        if mode == "per_tenant":
+            return cls._managed_tracer(owner_id, backend_name)
+        if mode == "single" or not telemetry_enabled():
+            # Global provider: UI-managed integrations (and env sinks, when on) receive the spans.
             return trace.get_tracer(__name__)
 
         project_name = cls.get_project_name(owner_id, backend_name)
@@ -91,6 +97,21 @@ class PhoenixTraceManager:
                 return trace.get_tracer(__name__)
 
         return cls._tracers[project_name].get_tracer(__name__)
+
+    @classmethod
+    def _managed_tracer(cls, owner_id: str, backend_name: Optional[str]) -> trace.Tracer:
+        """A provider per tenant whose resource names the Phoenix project. Spans still go through
+        the one managed processor, so every enabled integration sees them; only Phoenix uses the
+        project attribute."""
+        project_name = cls.get_project_name(owner_id, backend_name)
+        provider = cls._managed.get(project_name)
+        if provider is None:
+            from .setup import build_resource
+            from ..observability.export.manager import managed_span_processor
+            provider = TracerProvider(resource=build_resource({"openinference.project.name": project_name}))
+            provider.add_span_processor(managed_span_processor())
+            cls._managed[project_name] = provider
+        return provider.get_tracer(__name__)
 
     @classmethod
     def get_tracer_count(cls) -> int:

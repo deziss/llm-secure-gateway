@@ -11,7 +11,7 @@ import socket
 
 #: Gateway version. main.py re-exports it as ``_VERSION``; kept here to avoid a
 #: circular import (main -> telemetry -> observability -> main).
-VERSION = "0.14.1"
+VERSION = "0.14.2"
 
 _INSTANCE_ID: str | None = None
 

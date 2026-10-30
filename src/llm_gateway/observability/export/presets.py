@@ -253,9 +253,9 @@ def resolve(name: str, env: Optional[Mapping[str, str]] = None) -> ResolvedPrese
 # names the builders above read, so UI-stored config goes through the same resolve().
 # F(key, label, secret=False, required=False, placeholder="", help="")
 # ---------------------------------------------------------------------------
-def _f(key, label, secret=False, required=False, placeholder="", help=""):
+def _f(key, label, secret=False, required=False, placeholder="", help="", kind="text"):
     return {"key": key, "label": label, "secret": secret, "required": required,
-            "placeholder": placeholder, "help": help}
+            "placeholder": placeholder, "help": help, "type": kind}
 
 
 META: dict[str, dict] = {
@@ -273,6 +273,8 @@ META: dict[str, dict] = {
             _f("PHOENIX_COLLECTOR_ENDPOINT", "Phoenix endpoint", placeholder="http://phoenix:6006"),
             _f("PHOENIX_API_KEY", "Phoenix API key", secret=True, help="Phoenix Cloud or auth-enabled self-hosted"),
             _f("PHOENIX_PROJECT_NAME", "Project name", placeholder="llm-gateway"),
+            _f("PHOENIX_PROJECT_PER_TENANT", "Separate project per gateway project and provider", kind="bool",
+               help="Traces go to gateway-<project>-<provider> instead of the single project name"),
             _f("ARIZE_SPACE_ID", "Arize Space ID", help="Setting this switches to Arize AX"),
             _f("ARIZE_API_KEY", "Arize API key", secret=True),
             _f("ARIZE_OTLP_ENDPOINT", "Arize OTLP endpoint", placeholder="https://otlp.arize.com/v1/traces"),
