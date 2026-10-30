@@ -321,13 +321,13 @@ function addChainTargetRow(backend = '', model = '', translate = false) {
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
         <label for="${uid}-backend" class="mb-1 block text-caption font-medium text-ink-muted">Target server</label>
-        <select id="${uid}-backend" class="target-backend w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" required onchange="onTargetBackendSelect(this)">
+        <select id="${uid}-backend" class="target-backend w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" ${index === 1 ? "required" : ""} onchange="onTargetBackendSelect(this)">
           ${backendOptions}
         </select>
       </div>
       <div>
         <label for="${uid}-model" class="mb-1 block text-caption font-medium text-ink-muted">Model Name (or * for all)</label>
-        <input type="text" id="${uid}-model" class="target-model w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" placeholder="e.g. llama-3.1-8b or *" value="${escapeHtml(model)}" required />
+        <input type="text" id="${uid}-model" class="target-model w-full min-h-touch rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" placeholder="e.g. llama-3.1-8b or *" value="${escapeHtml(model)}" ${index === 1 ? "required" : ""} />
       </div>
     </div>
     <label class="inline-flex items-center gap-2 cursor-pointer min-h-touch">

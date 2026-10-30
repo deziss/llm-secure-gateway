@@ -144,6 +144,7 @@ class OwnerUpdate(BaseModel):
     email: Optional[str] = None
     type: Optional[OwnerType] = None
     is_active: Optional[bool] = None
+    block_endpoints: Optional[bool] = None
     description: Optional[str] = None
     max_keys: Optional[int] = None
 

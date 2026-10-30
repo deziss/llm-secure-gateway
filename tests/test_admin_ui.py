@@ -200,3 +200,15 @@ def test_settings_tabs_follow_role():
         panels = set(re.findall(r'data-settings-tab="(\w+)"', html))
         assert tabs == panels, (tabs, panels)
     assert 'id="settingsScope"' in admin and 'id="settingsScope"' not in manager
+
+
+def test_modal_panels_do_not_swallow_clicks():
+    """Row actions inside modals (revoke key, delete permission, delete model) use one
+    delegated document-level click listener. An `onclick="event.stopPropagation()"` on a
+    modal panel kills that listener for every button inside it, so the button silently
+    does nothing. Backdrops close on `event.target === this` instead."""
+    offenders = [
+        p.name for p in TEMPLATES.glob("*.html")
+        if "event.stopPropagation()" in p.read_text(encoding="utf-8")
+    ]
+    assert offenders == [], f"stopPropagation on modal panels breaks delegated actions: {offenders}"
