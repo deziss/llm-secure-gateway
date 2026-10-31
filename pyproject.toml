@@ -58,7 +58,7 @@ license = {text = "AGPL-3.0-or-later"}
 [project.optional-dependencies]
 test = [
     "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
+    "pytest-asyncio>=1.4.1",
     "httpx>=0.28.0",
     "aiosqlite>=0.20.0",
     "respx>=0.22.0",
