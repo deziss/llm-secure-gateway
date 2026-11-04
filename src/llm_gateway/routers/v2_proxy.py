@@ -124,7 +124,7 @@ async def direct_proxy(
     headers = await build_backend_auth_headers(request, backend, session, owner_id, provider)
 
     tracker = None  # live-stats handle, set once the request is dispatched
-    span = tenant_tracer.start_span("llm_request_direct")
+    span = PhoenixTraceManager.start_root_span(owner_id, provider, "llm_request_direct")
     try:
         span.set_attribute("openinference.span.kind", "LLM")
         if model:
@@ -474,7 +474,7 @@ async def dynamic_proxy(
 
     tenant_tracer = PhoenixTraceManager.get_tracer(owner_id, provider)
     tracker = None  # live-stats handle, set once the request is dispatched
-    span = tenant_tracer.start_span("llm_request")
+    span = PhoenixTraceManager.start_root_span(owner_id, provider, "llm_request")
 
     try:
         span.set_attribute("openinference.span.kind", "LLM")
