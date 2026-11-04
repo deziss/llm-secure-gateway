@@ -267,7 +267,7 @@ async def anthropic_messages_endpoint(
 
         last_err = None
         for u in all_urls:
-            dest_url = f"{u.rstrip('/')}{target_path}"
+            dest_url = clean_target_url(u, target_path)
             try:
                 if is_stream:
                     req_obj = client.build_request("POST", dest_url, json=forward_body, headers=headers)
