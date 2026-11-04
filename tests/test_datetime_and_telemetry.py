@@ -110,3 +110,84 @@ class TestTelemetrySwitch:
         assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in os.environ
         assert "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" not in os.environ
         assert os.environ.get("OTEL_SDK_DISABLED") == "true"
+        os.environ.pop("OTEL_SDK_DISABLED", None)
+
+
+class TestPhoenixProjectTracing:
+    @pytest.fixture(autouse=True)
+    def _clean_tracers(self, monkeypatch):
+        from llm_gateway.telemetry.tracing import PhoenixTraceManager
+        from llm_gateway.observability.export import manager
+
+        monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+        manager._reset_for_tests()
+        PhoenixTraceManager._reset_for_tests()
+        yield
+        manager._reset_for_tests()
+        PhoenixTraceManager._reset_for_tests()
+
+    def test_project_name_formatting_and_sanitization(self):
+        from llm_gateway.telemetry.tracing import PhoenixTraceManager
+
+        assert PhoenixTraceManager.get_project_name("alice", "openai") == "gateway-alice-openai"
+        assert PhoenixTraceManager.get_project_name("alice") == "gateway-alice"
+
+        # Special characters replaced and sanitized
+        name = PhoenixTraceManager.get_project_name("org/team:alice", "vllm/server:1")
+        assert name == "gateway-org-team-alice-vllm-server-1"
+
+    def test_start_root_span_isolated_from_ambient_context(self):
+        """Root span created by PhoenixTraceManager must not inherit an active parent span."""
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from llm_gateway.observability.export import manager
+        from llm_gateway.telemetry.tracing import PhoenixTraceManager
+
+        manager.apply({"phoenix": {"PHOENIX_COLLECTOR_ENDPOINT": "http://phoenix:6006", "PHOENIX_PROJECT_PER_TENANT": "true"}})
+
+        ambient_provider = TracerProvider()
+        ambient_tracer = ambient_provider.get_tracer("ambient_http")
+
+        with ambient_tracer.start_as_current_span("parent_fastapi_request"):
+            parent_span = trace.get_current_span()
+            assert parent_span.is_recording()
+
+            # Start tenant span: must be an isolated root span
+            tenant_span = PhoenixTraceManager.start_root_span("tenant-a", "vllm", "llm_request")
+            try:
+                assert tenant_span.parent is None, "Tenant span must have no parent to serve as root span"
+            finally:
+                tenant_span.end()
+
+    def test_child_spans_inherit_isolated_root_span(self):
+        """Any child spans created under the tenant root span must correctly inherit the root span."""
+        from opentelemetry import trace
+        from llm_gateway.observability.export import manager
+        from llm_gateway.telemetry.tracing import PhoenixTraceManager
+
+        manager.apply({"phoenix": {"PHOENIX_COLLECTOR_ENDPOINT": "http://phoenix:6006", "PHOENIX_PROJECT_PER_TENANT": "true"}})
+
+        tenant_tracer = PhoenixTraceManager.get_tracer("tenant-b", "ollama")
+        root_span = PhoenixTraceManager.start_root_span("tenant-b", "ollama", "llm_request")
+        try:
+            with trace.use_span(root_span):
+                child_span = tenant_tracer.start_span("tool_call")
+                try:
+                    assert child_span.parent is not None
+                    assert child_span.parent.span_id == root_span.get_span_context().span_id
+                finally:
+                    child_span.end()
+        finally:
+            root_span.end()
+
+    def test_phoenix_project_per_tenant_disabled_in_env(self, monkeypatch):
+        """When PHOENIX_PROJECT_PER_TENANT is false, per-tenant projects are not created."""
+        from llm_gateway.telemetry.tracing import PhoenixTraceManager
+
+        monkeypatch.setenv("ENABLE_TELEMETRY", "true")
+        monkeypatch.setenv("PHOENIX_PROJECT_PER_TENANT", "false")
+
+        tracer = PhoenixTraceManager.get_tracer("tenant-c", "vllm")
+        assert "gateway-tenant-c-vllm" not in PhoenixTraceManager._tracers
+        assert PhoenixTraceManager.get_tracer_count() == 0
+

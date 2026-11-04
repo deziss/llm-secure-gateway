@@ -442,7 +442,7 @@ async def proxy_request(
 
     # Manual Span Management - llm_request as root
     tracker = None  # live-stats handle, set once the request is dispatched
-    span = tenant_tracer.start_span("llm_request")
+    span = PhoenixTraceManager.start_root_span(owner_id, provider_id, "llm_request")
     
     try:
         # OpenInference attributes

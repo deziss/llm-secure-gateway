@@ -72,6 +72,13 @@ class PhoenixTraceManager:
             # Global provider: UI-managed integrations (and env sinks, when on) receive the spans.
             return trace.get_tracer(__name__)
 
+        # Check environment-based per-tenant toggle (default: true when telemetry is enabled)
+        per_tenant_env = os.getenv("PHOENIX_PROJECT_PER_TENANT", "true").strip().lower() in {
+            "1", "true", "yes", "on", "enabled"
+        }
+        if not per_tenant_env:
+            return trace.get_tracer(__name__)
+
         project_name = cls.get_project_name(owner_id, backend_name)
 
         if project_name not in cls._tracers:
@@ -114,6 +121,33 @@ class PhoenixTraceManager:
         return provider.get_tracer(__name__)
 
     @classmethod
+    def start_root_span(
+        cls,
+        owner_id: str,
+        backend_name: Optional[str] = None,
+        span_name: str = "llm_request",
+        **kwargs,
+    ) -> trace.Span:
+        """
+        Start an isolated root span under the tenant's tracer.
+
+        Passing context=trace.Context() decouples the span from any outer context
+        (such as FastAPI middleware or incoming W3C traceparent headers), ensuring it acts
+        as a root span so Phoenix and other multi-tenant sinks route the entire trace
+        to the tenant's project without parent trace pollution.
+        """
+        tracer = cls.get_tracer(owner_id, backend_name)
+        if "context" not in kwargs:
+            kwargs["context"] = trace.Context()
+        return tracer.start_span(span_name, **kwargs)
+
+    @classmethod
     def get_tracer_count(cls) -> int:
         """Return the number of cached tracer providers"""
         return len(cls._tracers)
+
+    @classmethod
+    def _reset_for_tests(cls) -> None:
+        """Reset cached tracer providers for unit testing."""
+        cls._tracers.clear()
+        cls._managed.clear()

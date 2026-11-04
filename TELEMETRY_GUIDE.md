@@ -95,24 +95,114 @@ PHOENIX_API_KEY=your-phoenix-api-key
 
 ---
 
-## 2. Multi-Tenant Project Separation
+## 2. Multi-Tenant Project Separation & Context Isolation
 
 ### The Problem
 
-Phoenix groups traces by the ROOT span's project name. If FastAPI auto-instrumentation creates root spans with "llm-gateway" project, all tenant-specific child spans appear under that project.
+Arize Phoenix attributes traces to projects based solely on the **root span's** resource attribute:
+```json
+"openinference.project.name": "gateway-<owner_id>-<provider>"
+```
+In an async ASGI framework like FastAPI, incoming requests may inherit ambient context from:
+1. Outer FastAPI middleware or routing spans created by default/global tracers (`service.name=llm-gateway`).
+2. Upstream W3C `traceparent` headers injected by IDE extensions, client agents, or reverse proxies.
 
-### Solution
+When a tenant-specific span is created without explicit context isolation (`tracer.start_span("llm_request")`), OpenTelemetry Python automatically binds the active ambient span as its parent (`span.parent`). Because the trace root belongs to the global project (`llm-gateway`), Phoenix indexes the **entire trace** under `llm-gateway`, ignoring the tenant tracer provider's project name.
 
-- Set `set_global_tracer_provider=False` in the global tracer
-- Disable FastAPI auto-instrumentation
-- Let tenant-specific tracers create root spans
+### The Solution: Root Span Context Isolation
 
-### PhoenixTraceManager Usage
+To guarantee that tenant spans act as independent trace roots in Phoenix and multi-tenant telemetry backends:
+1. **Explicit Context Decoupling**: Spans are instantiated with `context=trace.Context()` to strip any ambient parent context.
+2. **Centralized Helper**: Use `PhoenixTraceManager.start_root_span(owner_id, provider, span_name)`.
+3. **Disabled Global Auto-Instrumentation**: `FastAPIInstrumentor` is intentionally omitted so root spans are controlled explicitly per tenant.
 
 ```python
-# Creates per-tenant tracer with project name: gateway-{owner_id}-{provider}
-tenant_tracer = PhoenixTraceManager.get_tracer(owner_id, provider)
+# In llm_gateway.telemetry.tracing:
+span = PhoenixTraceManager.start_root_span(
+    owner_id=owner_id,
+    backend_name=provider,
+    span_name="llm_request"
+)
 ```
+
+Child spans generated during streaming or downstream tool calls correctly nest under this tenant root span:
+
+```python
+with trace.use_span(span):
+    # Child spans inherit tenant trace_id and span_id
+    child_span = tenant_tracer.start_span("tool_call")
+```
+
+### Enabling Project-Wise Tracing
+
+Project separation is enabled by default when Phoenix telemetry is active:
+
+1. **Via Environment (`.env` or Docker Compose)**:
+   ```bash
+   ENABLE_TELEMETRY=true
+   PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006
+   PHOENIX_PROJECT_PER_TENANT=true   # true: gateway-<project>-<provider>; false: llm-gateway
+   ```
+
+2. **Via Admin UI (`/admin/observability` -> Integrations -> Arize Phoenix)**:
+   - Check **"Separate project per gateway project and provider"**.
+   - Traces are dynamically dispatched to `gateway-<owner_id>-<provider>`.
+   - Changes take effect immediately without restarting the gateway.
+
+---
+
+## 2a. Multi-Tenant Tracing Across Observability Platforms
+
+Does project-wise tracing work for other tools like Langfuse, OpenObserve, and Grafana Tempo? **Yes, each platform supports multi-tenancy differently.** Here is the complete architectural comparison:
+
+| Platform | Multi-Tenant Grouping Model | How `llm-secure-gateway` Integrates | Native Project Dashboard? |
+| :--- | :--- | :--- | :--- |
+| **Arize Phoenix** | Resource attribute `openinference.project.name` on the root span. | Dynamic per-tenant `TracerProvider` caching or managed span processor. | **Yes**: Creates separate project workspaces (`gateway-<owner>-<provider>`) in the Phoenix UI. |
+| **Langfuse** | Scoped per API Key pair (`pk-lf-...` / `sk-lf-...`). Within a project, multi-tenancy uses metadata & attributes (`user.id`, `session.id`, `tags`). | Emits standard `owner.id`, `model`, `provider`, and session tags on every span. For total isolation, configure distinct Langfuse projects per department. | **Yes** (via separate API keys) or **Filter-based** (filter by `user.id` / `owner.id` in a single project). |
+| **OpenObserve** | Organizations (`ZO_ORG`), Streams (`stream-name`), or OpenTelemetry resource/span attributes. | Exports OTLP traces with Basic Auth. Spans carry `owner.id`, `provider`, `model`. Can be partitioned into dedicated streams via `stream-name: gateway_<tenant>` or queried via SQL / TraceQL. | **Yes**: Filter/dashboard per project using SQL queries (`SELECT * FROM traces WHERE "owner.id" = 'anshu'`). |
+| **Grafana Tempo / Cloud** | Multi-tenant tenant ID header (`X-Scope-OrgID`) or TraceQL span attribute filtering. | Exports OTLP traces. In shared Tempo, filter traces in Explore using TraceQL: `{ .owner.id = "anshu" && .provider = "vllm" }`. In enterprise Tempo, pass tenant headers. | **Yes**: Dedicated dashboards with template variables parameterized on `$owner_id`. |
+
+### Detailed Platform Behaviors
+
+#### 1. Arize Phoenix & Arize AX
+- **Mechanism**: The OpenInference spec maps projects directly to `openinference.project.name` in the tracer's `Resource`.
+- **Project Structure**: Each unique `(owner_id, provider)` pair automatically provisions a project, for example:
+  - `gateway-anshu-vllm`
+  - `gateway-default-owner-vllm`
+  - `gateway-team-nlp-openai`
+- **Result**: Complete separation in the Phoenix project switcher dropdown, independent evaluation datasets, and separate drift tracking.
+
+#### 2. Langfuse
+- **Mechanism**: Langfuse projects are security boundaries defined by the public/secret key pair. Within a project, Langfuse natively tracks multi-tenancy through:
+  - `user.id`: Mapped to the gateway's `owner.id`.
+  - `metadata`: Contains `provider`, `backend.url`, `backend.type`, `model`.
+  - `tags`: Allows filtering by environment or project tag.
+- **Project Isolation**: Teams wanting isolated Langfuse workspaces can configure separate integrations or filter the main dashboard by `User ID = anshu`.
+
+#### 3. OpenObserve
+- **Mechanism**: OpenObserve ingests traces into high-efficiency columnar streams.
+- **Tenancy Options**:
+  - **Single Organization / Shared Stream**: Traces are indexed with all span attributes. In the OpenObserve UI, query with SQL:
+    ```sql
+    SELECT trace_id, duration, span_kind, "llm.model_name"
+    FROM "default"
+    WHERE "owner.id" = 'anshu'
+    ORDER BY start_time DESC
+    ```
+  - **Multi-Org Isolation**: Point `ZO_ORG` to separate tenant organizations for strict RBAC separation.
+
+#### 4. Grafana Tempo
+- **Mechanism**: Tempo stores traces indexed by search tags (span attributes).
+- **TraceQL Queries**:
+  - Find all traces for project `anshu`:
+    ```traceql
+    { .owner.id = "anshu" && .openinference.span.kind = "LLM" }
+    ```
+  - Find failed inference requests for a specific backend:
+    ```traceql
+    { .owner.id = "anshu" && status = error }
+    ```
+- **Grafana Dashboard**: Create a dropdown variable `$owner` mapped to label `owner.id` to create instant tenant-isolated trace views.
 
 ---
 

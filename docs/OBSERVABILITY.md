@@ -53,6 +53,7 @@ Notes:
 |---|---|---|
 | `OBS_EXPORTERS` | empty | Comma-separated presets to send to, e.g. `langfuse,phoenix`. Empty means no OTLP export. |
 | `ENABLE_TELEMETRY` | `false` | Backward-compatible switch for the Phoenix path. Still works without `OBS_EXPORTERS`. |
+| `PHOENIX_PROJECT_PER_TENANT` | `true` | When true, groups traces into `gateway-<project>-<provider>` in Phoenix; when false, routes all traces to `PHOENIX_PROJECT_NAME`. |
 | `OBS_METRICS_TOKEN` | empty | If set, `/metrics` requires `Authorization: Bearer <token>` (exact `Bearer ` prefix). If unset, `/metrics` returns 403 unless `OBS_METRICS_ALLOW_ANONYMOUS=true`. |
 | `OBS_METRICS_ALLOW_ANONYMOUS` | `false` | Serves `/metrics` without a token when `OBS_METRICS_TOKEN` is unset. Logs a startup warning; keep the port on a private network. |
 | `OBS_POLL_INTERVAL` | `5` | Seconds between model-server and GPU polls (minimum 1). |
@@ -72,8 +73,8 @@ Set `OBS_EXPORTERS` to one or more names. Each preset sends traces and/or metric
 
 | Preset | Target | Required variables | Optional variables (default) |
 |---|---|---|---|
-| `phoenix` | Self-hosted Arize Phoenix | `PHOENIX_COLLECTOR_ENDPOINT` (`http://localhost:6006`), `PHOENIX_API_KEY` if auth is on | `PHOENIX_PROJECT_NAME` (`llm-gateway`) |
-| `phoenix` (Phoenix Cloud) | app.phoenix.arize.com | `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_API_KEY` | `PHOENIX_PROJECT_NAME` |
+| `phoenix` | Self-hosted Arize Phoenix | `PHOENIX_COLLECTOR_ENDPOINT` (`http://localhost:6006`), `PHOENIX_API_KEY` if auth is on | `PHOENIX_PROJECT_NAME` (`llm-gateway`), `PHOENIX_PROJECT_PER_TENANT` (`true`) |
+| `phoenix` (Phoenix Cloud) | app.phoenix.arize.com | `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_API_KEY` | `PHOENIX_PROJECT_NAME`, `PHOENIX_PROJECT_PER_TENANT` (`true`) |
 | `phoenix` (Arize AX) | Arize AX | `ARIZE_SPACE_ID`, `ARIZE_API_KEY` | `ARIZE_OTLP_ENDPOINT` (`https://otlp.arize.com/v1/traces`) |
 | `langfuse` | Langfuse (cloud or self-hosted) | `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | none. Sent as Basic auth. |
 | `langsmith` | LangSmith | `LANGSMITH_API_KEY` | `LANGSMITH_ENDPOINT` (`https://api.smith.langchain.com`), `LANGSMITH_PROJECT` (`llm-gateway`) |
@@ -308,3 +309,18 @@ Admin → Observability → **Integrations** lists every supported tool. Open a 
 - Prometheus is pull-based and environment-controlled (`OBS_PROMETHEUS`, `OBS_METRICS_TOKEN`); its card shows a scrape config to copy.
 
 The Models and Groups tabs have filters and column sorting; the Groups tab has Cards and List views.
+
+## Multi-Tenant Tracing & Project Isolation
+
+The gateway routes requests from distinct API keys, users, and teams (`owner_id`). To prevent cross-tenant trace mixing in observability platforms:
+
+1. **Root Span Context Decoupling**:
+   - Every inference request creates its span using `PhoenixTraceManager.start_root_span(owner_id, provider, ...)` with `context=trace.Context()`.
+   - This decouples the LLM span from any ambient parent context (FastAPI router middleware or incoming W3C `traceparent` headers), ensuring it acts as the trace root.
+   - Sinks that index traces by the root span (like Arize Phoenix) therefore route the entire trace to the tenant's dedicated project without contamination.
+
+2. **Per-Platform Project Separation**:
+   - **Arize Phoenix**: Each `(owner_id, provider)` gets an isolated project named `gateway-<owner_id>-<provider>` (e.g. `gateway-anshu-vllm`).
+   - **Langfuse**: Multi-tenancy is tracked via span attributes (`user.id` / `owner.id`, `provider`, `model`, `tags`). Alternatively, separate API key pairs can be configured for complete workspace separation.
+   - **OpenObserve**: Partitioned via `stream-name` header, `ZO_ORG`, or filtered using SQL queries on `owner.id`.
+   - **Grafana Tempo**: Traces carry the `owner.id` and `provider` attributes, queryable in Grafana via TraceQL (`{ .owner.id = "..." }`).
