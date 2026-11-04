@@ -113,7 +113,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         # Skip auth for docs, health, root, and admin
-        if request.url.path in ["/", "/health", "/metrics", "/docs", "/openapi.json", "/favicon.ico"] or request.url.path.startswith(("/admin", "/auth", "/static", "/api/v1/bots")):
+        if request.url.path in ["/", "/health", "/metrics", "/docs", "/openapi.json", "/favicon.ico"] or request.url.path.startswith(("/admin", "/auth", "/static", "/api/v1/bots", "/api/client-snippets")):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")

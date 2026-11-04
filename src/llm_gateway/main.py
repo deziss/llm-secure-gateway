@@ -143,6 +143,7 @@ app.include_router(
 
 from .routers import (
     admin_router,
+    client_snippets_router,
     proxy_router,
     v2_proxy_router,
     backends_router,
@@ -162,6 +163,7 @@ from .routers import (
 app.include_router(ui_router)
 app.include_router(auth_aux_router)
 app.include_router(admin_router)
+app.include_router(client_snippets_router)
 app.include_router(backends_router)
 app.include_router(servers_router)
 app.include_router(owners_router)
