@@ -49,6 +49,8 @@ class AuthService:
             scopes=data.scopes,
             expires_at=expires_at,
             rate_limit_rpm=data.rate_limit_rpm,
+            rate_limit_tpm=getattr(data, "rate_limit_tpm", None),
+            max_concurrency=getattr(data, "max_concurrency", None),
         )
         session.add(api_key)
         return raw_key, api_key

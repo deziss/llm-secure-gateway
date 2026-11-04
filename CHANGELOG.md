@@ -1,3 +1,20 @@
+## [0.14.3] - 2026-11-04
+
+### ✨ New
+
+- **Full Native Anthropic `/v1/messages` Instrumentation**: Claude Code CLI, Cursor, and Anthropic SDKs are now first-class citizens. Full OpenInference tracing (`openinference.span.kind = "LLM"`), TTFT tracking, token usage collection, spend accounting, and live dashboard tracking with bidirectional translation to OpenAI/vLLM backends.
+- **Arize Phoenix Per-Tenant Project Isolation**: Root spans decoupled from ambient ASGI traces (`PhoenixTraceManager.start_root_span`) automatically index traces under isolated projects (`gateway-<tenant>-<provider>`) in Arize Phoenix.
+- **Queue-Aware & Least-Busy Dynamic Load Balancing**: Real-time traffic balancing across model backend replicas based on active in-flight requests from `LiveStats`, capacity weights, and rolling latency.
+- **Multi-Dimensional Rate Limiting**: Added Concurrency Semaphores (`max_concurrency`) and Tokens-Per-Minute (`rate_limit_tpm`) sliding window rate limiting alongside Requests-Per-Minute (`rate_limit_rpm`) with atomic Redis synchronization and local fallback.
+- **One-Click Client Setup Snippets in Admin UI**: Interactive tabbed modal in Projects / API keys to instantly copy tested configurations for Claude Code CLI, Cursor, Continue.dev, Python SDK (OpenAI & Anthropic), and cURL. Added `/api/client-snippets` endpoint.
+- **Database Migration 008**: Added `rate_limit_tpm` and `max_concurrency` columns to the `apikey` table.
+
+### 📜 License
+
+- Explicitly maintained and confirmed under the **GNU Affero General Public License v3.0 (AGPL-3.0)** across manifests and documentation.
+
+---
+
 ## [0.14.2] - 2026-10-30
 
 ### ✨ New

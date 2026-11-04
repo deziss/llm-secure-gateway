@@ -3,6 +3,8 @@ import httpx
 import asyncio
 import logging
 import time
+import os
+import random
 from typing import Optional, List, Tuple, Dict, Any
 
 from fastapi import HTTPException, Request
@@ -12,6 +14,7 @@ from sqlalchemy import select
 from .models import LLMBackend, OwnerPermission
 from .services import ConfigService
 from .rate_limit import get_rate_limiter
+from .observability.collect.requests import get_live_stats
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +97,58 @@ def get_backend_avg_latency(base_url: str) -> float:
     return sum(history) / len(history)
 
 
+def get_backend_in_flight(
+    store: Any,
+    backend_name: str,
+    base_url: str = "",
+    fallback_urls: Optional[List[str]] = None,
+) -> int:
+    """Calculate active in-flight request count (waiting + generating) for a backend."""
+    if store is None:
+        return 0
+    count = 0
+    targets = {backend_name}
+    if base_url:
+        targets.add(base_url)
+        targets.add(base_url.rstrip("/"))
+    if fallback_urls:
+        for u in fallback_urls:
+            if u:
+                targets.add(u)
+                targets.add(u.rstrip("/"))
+
+    # Check store._keys if LiveStats
+    keys_dict = getattr(store, "_keys", None)
+    if isinstance(keys_dict, dict):
+        lock = getattr(store, "_lock", None)
+        try:
+            if lock:
+                with lock:
+                    items = list(keys_dict.items())
+            else:
+                items = list(keys_dict.items())
+            for (srv, _stype, _mod), state in items:
+                if srv in targets:
+                    count += getattr(state, "waiting", 0) + getattr(state, "generating", 0)
+            return count
+        except Exception:
+            pass
+
+    # Check store.snapshot() if available (mock or custom store)
+    if hasattr(store, "snapshot") and callable(store.snapshot):
+        try:
+            snap = store.snapshot()
+            if isinstance(snap, list):
+                for row in snap:
+                    if isinstance(row, dict) and row.get("server") in targets:
+                        count += int(row.get("waiting", 0)) + int(row.get("generating", 0))
+                return count
+        except Exception:
+            pass
+
+    return count
+
+
 
 # ---------------------------------------------------------------------------
 # Persistent HTTPX client pool — one client per backend base_url.
@@ -140,18 +195,69 @@ def get_owner_id_from_request(request: Request) -> tuple[str, bool]:
 
 
 def apply_rate_limit(request: Request) -> None:
-    """Raise HTTP 429 with Retry-After if the requesting API key has exceeded its rate limit."""
-    if hasattr(request.state, "user") and hasattr(request.state.user, "rate_limit_rpm"):
-        limiter = get_rate_limiter()
-        user_key = getattr(request.state.user, "key_hash", "default")
-        limit = getattr(request.state.user, "rate_limit_rpm", None) or 60
-        allowed, retry_after = limiter.check_rate_limit(user_key, limit)
+    """Raise HTTP 429 with Retry-After if the requesting API key has exceeded its rate limit.
+
+    Checks:
+    1. Requests-Per-Minute (RPM) limit
+    2. Tokens-Per-Minute (TPM) limit
+    3. Max in-flight concurrency limit
+    """
+    if not hasattr(request.state, "user") or not request.state.user:
+        return
+
+    user = request.state.user
+    user_key = getattr(user, "key_hash", "default")
+    limiter = get_rate_limiter()
+
+    # 1. RPM Rate Limit
+    if hasattr(user, "rate_limit_rpm"):
+        limit_rpm = getattr(user, "rate_limit_rpm", None)
+        rpm_val = 60 if limit_rpm is None else limit_rpm
+        if rpm_val > 0:
+            allowed, retry_after = limiter.check_rate_limit(user_key, rpm_val)
+            if not allowed:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Rate limit exceeded",
+                    headers={"Retry-After": str(int(retry_after) or 1)},
+                )
+
+    # 2. TPM Rate Limit
+    limit_tpm = getattr(user, "rate_limit_tpm", None)
+    if isinstance(limit_tpm, int) and limit_tpm > 0:
+        allowed, retry_after = limiter.check_token_limit(user_key, limit_tpm)
         if not allowed:
             raise HTTPException(
                 status_code=429,
                 detail="Rate limit exceeded",
                 headers={"Retry-After": str(int(retry_after) or 1)},
             )
+
+    # 3. Concurrency Limit
+    limit_concurrency = getattr(user, "max_concurrency", None)
+    if isinstance(limit_concurrency, int) and limit_concurrency > 0:
+        acquired, _ = limiter.acquire_concurrency(user_key, limit_concurrency)
+        if not acquired:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded",
+                headers={"Retry-After": "1"},
+            )
+        request.state.concurrency_acquired = True
+        request.state.concurrency_key = user_key
+
+
+def release_rate_limit_concurrency(request: Request) -> None:
+    """Safely release concurrency slot if acquired during apply_rate_limit."""
+    if getattr(request.state, "concurrency_acquired", False):
+        user_key = getattr(request.state, "concurrency_key", None)
+        request.state.concurrency_acquired = False
+        if user_key:
+            limiter = get_rate_limiter()
+            try:
+                limiter.release_concurrency(user_key)
+            except Exception as e:
+                logger.warning("Failed to release concurrency for key %s: %s", user_key, e)
 
 
 def _canonical_endpoint(path: str) -> str:
@@ -293,11 +399,19 @@ def resolve_provider_and_model(model: str, query_provider: Optional[str] = None)
     return None, model
 
 
-async def get_target_backend(model: str, service: ConfigService, session: AsyncSession, provider: Optional[str] = None, owner_id: Optional[str] = None) -> LLMBackend:
+async def get_target_backend(
+    model: str,
+    service: ConfigService,
+    session: AsyncSession,
+    provider: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    strategy: Optional[str] = None,
+) -> LLMBackend:
     """Resolve the appropriate backend for a given model and optional provider using Smart Routing.
 
     If owner_id is provided, only backends the owner has permissions for are considered.
-    If ENABLE_EXPERIMENTAL_ROUTING is true, it finds all matching backends and randomly balances load.
+    If ENABLE_EXPERIMENTAL_ROUTING is true or strategy is configured, it dynamically balances load
+    using least-busy (queue-aware) or configured routing.
     Otherwise, it statically returns the first matching backend.
     """
     import random
@@ -345,10 +459,29 @@ async def get_target_backend(model: str, service: ConfigService, session: AsyncS
             if owner_backends:
                 backends = owner_backends
 
-    # Check if Experimental Routing is enabled
-    is_experimental = await service.get_setting(session, "ENABLE_EXPERIMENTAL_ROUTING", "false")
+    # Check routing strategy settings
+    try:
+        is_experimental = await service.get_setting(session, "ENABLE_EXPERIMENTAL_ROUTING", os.getenv("ENABLE_EXPERIMENTAL_ROUTING", "false"))
+    except Exception:
+        is_experimental = os.getenv("ENABLE_EXPERIMENTAL_ROUTING", "false")
 
-    if str(is_experimental).lower() != "true":
+    try:
+        routing_strategy_setting = await service.get_setting(session, "ROUTING_STRATEGY", os.getenv("ROUTING_STRATEGY", ""))
+    except Exception:
+        routing_strategy_setting = os.getenv("ROUTING_STRATEGY", "")
+
+    if isinstance(is_experimental, str):
+        is_exp_enabled = is_experimental.strip().lower() in ("true", "1")
+    else:
+        is_exp_enabled = is_experimental is True
+
+    strat_val = strategy if isinstance(strategy, str) else ""
+    setting_val = routing_strategy_setting if isinstance(routing_strategy_setting, str) else ""
+    eff_strategy = (strat_val or setting_val).strip().lower()
+
+    use_dynamic = is_exp_enabled or (eff_strategy in ("least_busy", "least-busy", "queue_aware", "queue-aware", "random", "weighted_random"))
+
+    if not use_dynamic:
          # Original Static Logic
          # Try explicit provider lookup via the registry
          if provider:
@@ -375,15 +508,22 @@ async def get_target_backend(model: str, service: ConfigService, session: AsyncS
         # If provider is explicitly specified, filter by it first
         if provider:
             b_type = str(backend.backend_type.value) if hasattr(backend.backend_type, 'value') else str(backend.backend_type)
-            if b_type != provider:
+            if b_type.lower() != provider.lower() and backend.name.lower() != provider.lower():
                 continue
 
-        # Only add if the model actually exists on this backend
-        if model in backend.models:
+        # Check if model exists on this backend (support exact model, clean model, or wildcard)
+        b_models = backend.models or []
+        if model in b_models or clean_model in b_models or "*" in b_models:
             valid_backends.append(backend)
 
-    # 2. Smart Routing Load Balancing (Weights + Rolling Latency)
-    if valid_backends:
+    if not valid_backends:
+        # 3. Last Resort Fallback
+        fallback = next((b for b in backends if b.backend_type == provider or (hasattr(b.backend_type, 'value') and b.backend_type.value == provider)), backends[0])
+        logger.warning(f"No backend strictly hosts model '{model}'. Falling back to default backend '{fallback.name}'.")
+        return fallback
+
+    # Check if explicit random/weighted_random was chosen
+    if eff_strategy in ("random", "weighted_random"):
         effective_weights = []
         for b in valid_backends:
             w = max(1, getattr(b, "weight", 100) or 100)
@@ -396,10 +536,50 @@ async def get_target_backend(model: str, service: ConfigService, session: AsyncS
         logger.info("Smart Routing selected backend '%s' for model '%s' (weight=%s). (%d candidates available)", selected_backend.name, model, getattr(selected_backend, "weight", 100), len(valid_backends))
         return selected_backend
 
-    # 3. Last Resort Fallback
-    fallback = next((b for b in backends if b.backend_type == provider or (hasattr(b.backend_type, 'value') and b.backend_type.value == provider)), backends[0])
-    logger.warning(f"No backend strictly hosts model '{model}'. Falling back to default backend '{fallback.name}'.")
-    return fallback
+    # 2. Least-Busy (Queue-Aware) Dynamic Load Balancing
+    store = get_live_stats()
+
+    candidate_evals = []
+    for idx, b in enumerate(valid_backends):
+        inflight = get_backend_in_flight(store, b.name, b.base_url, getattr(b, "fallback_urls", None))
+        avg_lat = max(0.0, float(get_backend_avg_latency(b.base_url)))
+        weight = max(1, int(getattr(b, "weight", 100) or 100))
+
+        # Latency factor penalizes higher latency (lower factor -> higher load score)
+        latency_factor = max(0.2, 1.0 / (1.0 + avg_lat))
+        score = (inflight + 1.0) / (weight * latency_factor)
+
+        # Tie-breaker key:
+        # 1. Lower score is better
+        # 2. If tied, lower latency is better
+        # 3. If tied, higher weight is better (-weight)
+        # 4. Stable order (idx)
+        candidate_evals.append((
+            round(score, 8),
+            round(avg_lat, 6),
+            -weight,
+            idx,
+            b,
+            inflight,
+            weight,
+            avg_lat,
+        ))
+
+    best = min(candidate_evals, key=lambda x: (x[0], x[1], x[2], x[3]))
+    selected = best[4]
+    selected_inflight = best[5]
+    selected_weight = best[6]
+    selected_avg_lat = best[7]
+
+    logger.info(
+        "Least-busy routing selected backend '%s' (in_flight=%d, weight=%d, avg_lat=%.3fs) for model '%s'",
+        selected.name,
+        selected_inflight,
+        selected_weight,
+        selected_avg_lat,
+        model,
+    )
+    return selected
 
 
 def clean_target_url(base_url: str, path: str) -> str:
