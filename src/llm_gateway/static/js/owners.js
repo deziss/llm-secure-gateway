@@ -209,6 +209,11 @@ $(document).ready(function () {
     }
   });
 
+  $("#snippetApiKeyInput, #snippetModelInput").on("input", function () {
+    clearTimeout(snippetDebounceTimer);
+    snippetDebounceTimer = setTimeout(fetchAndRenderSnippets, 200);
+  });
+
   // Escape is handled by admin-modal.js: it closes only the top-most dialog
   // (via its Close button, so page cleanup still runs) and leaves anything
   // beneath it open. A page-level listener here closed every modal at once.
@@ -345,7 +350,10 @@ async function loadKeys(ownerId) {
         </td>
         <td class="p-4 text-xs text-ink-muted whitespace-nowrap">${keyDate(k.created_at, "—")}</td>
         <td class="p-4 text-xs text-ink-muted whitespace-nowrap">${keyDate(k.expires_at, "Never")}</td>
-        <td class="p-4 text-right">
+        <td class="p-4 text-right whitespace-nowrap">
+          <button type="button" data-action="connect-key" data-prefix="${escapeHtml(k.prefix)}" class="text-indigo-400 hover:text-indigo-300 transition-colors p-1.5 rounded-lg hover:bg-indigo-500/10 cursor-pointer mr-1" title="Connect Client" aria-label="Connect Client">
+            <i data-lucide="plug" class="w-4 h-4"></i>
+          </button>
           <button type="button" data-action="revoke-key" data-prefix="${escapeHtml(k.prefix)}" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer" title="Revoke Key" aria-label="Revoke key">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
@@ -431,12 +439,23 @@ async function createKeyFromModal() {
           <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-20 transition"></div>
           <div id="newKeyValue" class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-ok break-all select-all"></div>
         </div>
-        <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-2.5 bg-slate-900 text-white dark:bg-white dark:text-black font-bold rounded-control hover:opacity-90 transition cursor-pointer">
-          Acknowledged &amp; Saved
-        </button>
+        <div class="flex flex-col gap-2 mb-2">
+          <button type="button" id="newKeySnippetsBtn" class="w-full min-h-touch py-2.5 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition cursor-pointer flex items-center justify-center gap-2">
+            <i data-lucide="terminal" class="w-4 h-4"></i> Client Setup Snippets
+          </button>
+          <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-2.5 bg-slate-900 text-white dark:bg-white dark:text-black font-bold rounded-control hover:opacity-90 transition cursor-pointer">
+            Acknowledged &amp; Saved
+          </button>
+        </div>
       </div>
     `;
     modal.querySelector("#newKeyValue").textContent = data.api_key;
+    modal.querySelector("#newKeySnippetsBtn").addEventListener("click", () => {
+      const issuedKey = data.api_key;
+      modal.remove();
+      loadKeys(ownerId);
+      openSnippetsModal({ key: issuedKey });
+    });
     modal.querySelector("#newKeyCloseBtn").addEventListener("click", () => {
       modal.remove();
       loadKeys(ownerId);
@@ -603,6 +622,13 @@ async function deletePermission(permId) {
 // Delegated row-action handler: ids travel as inert data-* attributes, never
 // interpolated into inline JS.
 document.addEventListener("click", function (e) {
+  const tabBtn = e.target.closest(".snippet-tab-btn");
+  if (tabBtn && tabBtn.dataset.tab) {
+    currentSnippetTab = tabBtn.dataset.tab;
+    renderActiveSnippet();
+    return;
+  }
+
   const btn = e.target.closest("[data-action]");
   if (!btn) return;
   const { action, id, prefix } = btn.dataset;
@@ -613,5 +639,178 @@ document.addEventListener("click", function (e) {
     case "delete": return deleteOwner(id);
     case "revoke-key": return revokeKey(prefix);
     case "delete-perm": return deletePermission(Number(id));
+    case "connect-key": return openSnippetsModal({ key: prefix ? prefix + "••••••••" : "" });
   }
 });
+
+// ── Client Setup Snippets Modal ───────────────────────────────────────────
+let currentSnippets = {};
+let currentSnippetTab = "claude_code";
+let currentPythonVariant = "openai";
+let currentCurlVariant = "openai";
+let snippetDebounceTimer = null;
+
+async function fetchAndRenderSnippets() {
+  const keyInput = document.getElementById("snippetApiKeyInput");
+  const modelInput = document.getElementById("snippetModelInput");
+  const key = keyInput ? keyInput.value.trim() : "";
+  const model = modelInput ? modelInput.value.trim() : "default";
+
+  try {
+    const params = new URLSearchParams();
+    if (key) params.set("key", key);
+    if (model) params.set("model", model);
+    const res = await fetchWithCsrf(`/api/client-snippets?${params.toString()}`);
+    if (res.ok) {
+      currentSnippets = await res.json();
+    } else {
+      const fallback = await fetchWithCsrf(`/admin/api/client-snippets?${params.toString()}`);
+      if (fallback.ok) {
+        currentSnippets = await fallback.json();
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load client snippets:", e);
+  }
+  renderActiveSnippet();
+}
+
+function renderActiveSnippet() {
+  const codeEl = document.getElementById("snippetCodeDisplay");
+  const titleEl = document.getElementById("snippetFormatTitle");
+  const variantBar = document.getElementById("snippetVariantBar");
+  const variantButtons = document.getElementById("snippetVariantButtons");
+  if (!codeEl) return;
+
+  document.querySelectorAll(".snippet-tab-btn").forEach((btn) => {
+    const tab = btn.dataset.tab;
+    if (tab === currentSnippetTab) {
+      btn.className =
+        "snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-accent text-accent-ink border-transparent shadow-sm";
+    } else {
+      btn.className =
+        "snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/50";
+    }
+  });
+
+  if (currentSnippetTab === "claude_code") {
+    if (variantBar) variantBar.classList.add("hidden");
+    if (titleEl) titleEl.textContent = "Bash Environment Variables (Claude Code)";
+    codeEl.textContent = currentSnippets.claude_code || "";
+  } else if (currentSnippetTab === "cursor") {
+    if (variantBar) variantBar.classList.add("hidden");
+    if (titleEl) titleEl.textContent = "Cursor Settings Configuration";
+    codeEl.textContent = currentSnippets.cursor || "";
+  } else if (currentSnippetTab === "continue_dev") {
+    if (variantBar) variantBar.classList.add("hidden");
+    if (titleEl) titleEl.textContent = "~/.continue/config.json";
+    codeEl.textContent = currentSnippets.continue_dev || "";
+  } else if (currentSnippetTab === "python_sdk") {
+    if (variantBar) variantBar.classList.remove("hidden");
+    if (titleEl) titleEl.textContent = currentPythonVariant === "openai" ? "Python (OpenAI SDK)" : "Python (Anthropic SDK)";
+    if (variantButtons) {
+      variantButtons.innerHTML = `
+        <button type="button" onclick="setSnippetVariant('openai')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentPythonVariant === 'openai' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">OpenAI SDK</button>
+        <button type="button" onclick="setSnippetVariant('anthropic')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentPythonVariant === 'anthropic' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">Anthropic SDK</button>
+      `;
+    }
+    codeEl.textContent = (currentPythonVariant === "openai" ? currentSnippets.python_openai : currentSnippets.python_anthropic) || "";
+  } else if (currentSnippetTab === "curl") {
+    if (variantBar) variantBar.classList.remove("hidden");
+    if (titleEl) titleEl.textContent = currentCurlVariant === "openai" ? "cURL (OpenAI Chat API)" : "cURL (Anthropic Messages API)";
+    if (variantButtons) {
+      variantButtons.innerHTML = `
+        <button type="button" onclick="setSnippetVariant('openai')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentCurlVariant === 'openai' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">OpenAI Format</button>
+        <button type="button" onclick="setSnippetVariant('anthropic')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentCurlVariant === 'anthropic' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">Anthropic Format</button>
+      `;
+    }
+    codeEl.textContent = (currentCurlVariant === "openai" ? currentSnippets.curl_openai : currentSnippets.curl_anthropic) || "";
+  }
+
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+}
+
+window.setSnippetVariant = function (variant) {
+  if (currentSnippetTab === "python_sdk") {
+    currentPythonVariant = variant;
+  } else if (currentSnippetTab === "curl") {
+    currentCurlVariant = variant;
+  }
+  renderActiveSnippet();
+};
+
+window.openSnippetsModal = function (opts = {}) {
+  const keyInput = document.getElementById("snippetApiKeyInput");
+  const modelInput = document.getElementById("snippetModelInput");
+  if (keyInput) keyInput.value = opts.key || "";
+  if (modelInput && opts.model) modelInput.value = opts.model;
+
+  const modal = document.getElementById("snippetsModal");
+  if (modal) modal.classList.remove("hidden");
+  fetchAndRenderSnippets();
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+};
+
+window.closeSnippetsModal = function () {
+  const modal = document.getElementById("snippetsModal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.copySnippetCode = function () {
+  const codeEl = document.getElementById("snippetCodeDisplay");
+  if (!codeEl) return;
+  const text = codeEl.textContent || codeEl.innerText;
+
+  function markCopied() {
+    const icon = document.getElementById("copySnippetIcon");
+    const txt = document.getElementById("copySnippetText");
+    if (txt) txt.textContent = "Copied!";
+    if (icon) {
+      icon.setAttribute("data-lucide", "check");
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
+      }
+    }
+    setTimeout(() => {
+      if (txt) txt.textContent = "Copy";
+      if (icon) {
+        icon.setAttribute("data-lucide", "copy");
+        if (window.lucide && typeof window.lucide.createIcons === "function") {
+          window.lucide.createIcons();
+        }
+      }
+    }, 2000);
+    if (typeof showToast === "function") {
+      showToast("Copied", "Snippet copied to clipboard");
+    }
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(markCopied).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
+
+  function fallbackCopy() {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      markCopied();
+    } catch (e) {
+      if (typeof showToast === "function") {
+        showToast("Copy Failed", "Please manually copy the snippet", "error");
+      }
+    }
+  }
+};
+

@@ -10,6 +10,7 @@ from ..auth.users import current_active_user
 from ..auth.models import Role, User
 from ..auth.manager import get_user_manager
 from ..services import ConfigService, get_config_service
+from ..services.snippet_service import generate_client_snippets
 from ..database import get_session
 from ..pagination import pagination_params
 
@@ -163,3 +164,37 @@ async def list_all_models(
     total = len(models)
     models = models[skip : skip + limit]
     return {"models": models, "total": total}
+
+
+@router.get("/api/client-snippets")
+@router.get("/client-snippets")
+async def get_client_snippets(
+    request: Request,
+    key: Optional[str] = None,
+    model: Optional[str] = "default",
+    user = Depends(current_active_user),
+) -> dict[str, str]:
+    """Return ready-to-run client setup snippets (Claude Code, Cursor, SDKs, cURL)."""
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if forwarded_proto and forwarded_host:
+        base_url = f"{forwarded_proto}://{forwarded_host}".rstrip("/")
+    else:
+        base_url = str(request.base_url).rstrip("/")
+
+    return generate_client_snippets(
+        base_url=base_url,
+        api_key=key or "",
+        model=model or "default",
+    )
+
+
+# Standalone router so /api/client-snippets works directly at root level
+client_snippets_router = APIRouter(dependencies=[Depends(current_active_user)])
+client_snippets_router.add_api_route(
+    "/api/client-snippets",
+    get_client_snippets,
+    methods=["GET"],
+    tags=["client-snippets"],
+)
+

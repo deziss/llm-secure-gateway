@@ -1,4 +1,4 @@
-from .admin import router as admin_router
+from .admin import router as admin_router, client_snippets_router
 from .proxy import router as proxy_router
 from .v2_proxy import router as v2_proxy_router
 from .backends import router as backends_router, servers_router
