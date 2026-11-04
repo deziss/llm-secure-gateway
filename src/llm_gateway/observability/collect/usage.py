@@ -72,7 +72,7 @@ def usage_from_event(obj: Any) -> Optional[Usage]:
     u = Usage()
 
     usage = obj.get("usage")
-    if isinstance(usage, dict):
+    if isinstance(usage, dict) and bool(usage):
         found = True
         u.prompt_tokens = _int(usage.get("prompt_tokens") or usage.get("input_tokens"))
         u.completion_tokens = _int(usage.get("completion_tokens") or usage.get("output_tokens"))
@@ -80,7 +80,7 @@ def usage_from_event(obj: Any) -> Optional[Usage]:
 
     # Anthropic message_start: usage nested under "message"
     msg = obj.get("message")
-    if isinstance(msg, dict) and isinstance(msg.get("usage"), dict):
+    if isinstance(msg, dict) and isinstance(msg.get("usage"), dict) and bool(msg.get("usage")):
         mu = msg["usage"]
         found = True
         if not u.prompt_tokens:

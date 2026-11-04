@@ -31,15 +31,16 @@ def _type_str(server_type) -> str:
 class RequestTracker:
     """Tracks one dispatched request in the live store."""
 
-    __slots__ = ("_store", "key", "start", "first_token_at", "finished", "_inflight")
+    __slots__ = ("_store", "key", "start", "first_token_at", "finished", "_inflight", "is_stream")
 
-    def __init__(self, store: LiveStats, key: tuple[str, str, str], start: float) -> None:
+    def __init__(self, store: LiveStats, key: tuple[str, str, str], start: float, is_stream: bool = False) -> None:
         self._store = store
         self.key = key
         self.start = start
         self.first_token_at: Optional[float] = None
         self.finished = False
         self._inflight = 0
+        self.is_stream = is_stream
 
     def retarget(self, server: str, server_type, model: str) -> None:
         """Re-key a still-waiting request after fallback chose a different server/model."""
@@ -106,12 +107,19 @@ class RequestTracker:
         return {"ttft": ttft, "decode_seconds": decode_s, "duration": now - self.start}
 
 
-def track_dispatch(server: str, server_type, model: str, store: Optional[LiveStats] = None) -> RequestTracker:
+def track_dispatch(
+    server: str,
+    server_type,
+    model: str,
+    store: Optional[LiveStats] = None,
+    is_stream: bool = False,
+    **kwargs,
+) -> RequestTracker:
     store = store or get_live_stats()
     key = store.resolve((server or "unknown", _type_str(server_type), model or "unknown"))
     now = store.now()
     store.dispatch(key, now)
-    return RequestTracker(store, key, now)
+    return RequestTracker(store, key, now, is_stream=is_stream)
 
 
 def finish_open_tracker(tracker: Optional[RequestTracker]) -> None:

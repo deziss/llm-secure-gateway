@@ -226,10 +226,15 @@ async def stream_with_telemetry(
                 n = max(1, len(text) // 4) if text else 0
                 usage = Usage(completion_tokens=n, total_tokens=n, estimated=bool(text))
                 estimated = bool(text)
-        elif not scan.usage_seen:
-            # Streaming without usage (e.g. OpenAI without include_usage): count content deltas.
+        elif not scan.usage_seen or (usage.completion_tokens == 0 and scan.delta_count > 0):
+            # Streaming without usage (e.g. OpenAI without include_usage or Anthropic without message_delta usage): count content deltas.
             est = estimate_completion(scan.delta_count)
-            usage = est
+            if usage.has_counts():
+                usage.completion_tokens = est.completion_tokens
+                usage.total_tokens = usage.prompt_tokens + usage.completion_tokens
+                usage.estimated = est.estimated
+            else:
+                usage = est
             estimated = est.estimated and est.completion_tokens > 0
         usage.finalize_total()
         if usage.estimated:
