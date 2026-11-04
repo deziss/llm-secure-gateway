@@ -276,8 +276,6 @@ llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes * 100
 
 ## What is not instrumented
 
-- **Native Anthropic `/v1/messages` passthrough** is not instrumented in v0.14.0. Requests on that
-  route do not appear in the metrics or the Models tab. The OpenAI-compatible and Ollama routes are.
 - **Text-to-speech** requests are not instrumented.
 - **Bots** (Telegram, Slack, Discord, WhatsApp) are not instrumented.
 - **Per-thread memory** cannot be measured from Python. The gateway has no per-thread allocator
@@ -285,6 +283,9 @@ llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes * 100
 - **Token counts for some streams** are estimated when the upstream sends no usage block. Those
   rows show "≈ est. tokens". Set `OBS_FORCE_STREAM_USAGE=true` to ask for usage.
 - **Circuit breaker state** is not in the metric list above. It is visible on the Model servers page.
+
+> [!NOTE]
+> Native Anthropic `/v1/messages` (Claude Code, Cursor, and Anthropic SDKs) is fully instrumented with OpenTelemetry root spans, OpenInference attributes, TTFT, token usage, live tracking, and per-tenant Phoenix project isolation.
 
 ## Troubleshooting
 
