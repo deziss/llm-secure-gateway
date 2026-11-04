@@ -285,6 +285,22 @@ curl -X POST http://localhost:6130/direct/ollama/api/chat \
   }'
 ```
 
+### Send Native Anthropic `/v1/messages` Request (Claude Code / Cursor)
+
+```bash
+curl -X POST http://localhost:6130/v1/messages \
+  -H "x-api-key: YOUR_GATEWAY_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-7-sonnet",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "Hello via Claude Code!"}],
+    "stream": true
+  }'
+```
+Traces appear under `gateway-{owner}-{backend}` with root span `anthropic_messages`, including token metrics, TTFT, and agent attribution (`agent.client: claude_code` or `cursor`).
+
 ### Verify in Phoenix UI
 
 1. Open: http://localhost:6006
