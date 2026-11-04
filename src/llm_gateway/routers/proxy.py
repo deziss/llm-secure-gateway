@@ -8,7 +8,7 @@ from ..services import ConfigService, get_config_service
 from ..database import get_session
 from ..telemetry import record_request_metrics, stream_with_telemetry, flatten_attributes, PhoenixTraceManager
 from ..observability.collect.requests import finish_open_tracker, track_dispatch, track_done
-from ..observability.collect.usage import inject_stream_usage
+from ..observability.collect.usage import inject_stream_usage, usage_from_body, usage_from_event, Usage
 from ..observability.export.semconv import set_llm_attributes
 from ..proxy_helpers import (
     backend_type_name,
@@ -171,47 +171,252 @@ async def anthropic_messages_endpoint(
         forward_body["model"] = model
         target_path = "/v1/chat/completions"
 
-    client = _get_client(backend.base_url)
-    all_urls = _get_all_urls(backend)
-    
-    last_err = None
-    for u in all_urls:
-        dest_url = f"{u.rstrip('/')}{target_path}"
-        try:
-            if is_stream:
-                req_obj = client.build_request("POST", dest_url, json=forward_body, headers=headers)
-                raw_resp = await client.send(req_obj, stream=True)
-                if raw_resp.status_code >= 400:
-                    err_text = await raw_resp.aread()
-                    await raw_resp.aclose()
-                    raise HTTPException(status_code=raw_resp.status_code, detail=err_text.decode("utf-8", errors="ignore"))
-                
-                if is_native_anthropic:
-                    async def stream_raw():
-                        async for chunk in raw_resp.aiter_raw():
-                            yield chunk
-                    return StreamingResponse(stream_raw(), media_type="text/event-stream")
-                else:
-                    from ..translation.anthropic_to_openai import translate_stream
-                    return StreamingResponse(translate_stream(raw_resp), media_type="text/event-stream")
-            else:
-                resp = await client.post(dest_url, json=forward_body, headers=headers)
-                if resp.status_code >= 400:
-                    raise HTTPException(status_code=resp.status_code, detail=resp.text)
-                
-                if is_native_anthropic:
-                    return JSONResponse(content=resp.json(), status_code=resp.status_code)
-                else:
-                    from ..translation.anthropic_to_openai import translate_response
-                    translated = translate_response(resp.json())
-                    return JSONResponse(content=translated, status_code=200)
-        except HTTPException:
-            raise
-        except Exception as e:
-            last_err = e
-            continue
+    provider_id = provider if provider else (backend.backend_type.value if hasattr(backend.backend_type, "value") else str(backend.backend_type))
 
-    raise HTTPException(status_code=502, detail=f"Backend request failed: {last_err}")
+    # Tenant root span decoupled from ambient parent context
+    span = PhoenixTraceManager.start_root_span(owner_id, provider_id, "anthropic_messages")
+    tracker = None
+
+    try:
+        # OpenInference and standard span attributes
+        span.set_attribute("openinference.span.kind", "LLM")
+        span.set_attribute("llm.model_name", model or "unknown")
+        span.set_attribute("http.method", request.method)
+        span.set_attribute("http.url", str(request.url))
+        span.set_attribute("endpoint", "/v1/messages")
+        span.set_attribute("owner.id", owner_id)
+        span.set_attribute("provider", provider_id)
+        span.set_attribute("model", model or "unknown")
+        span.set_attribute("backend.name", backend.name)
+        span.set_attribute("backend.url", backend.base_url)
+        span.set_attribute("backend.type", str(getattr(backend.backend_type, "value", backend.backend_type)))
+
+        from ..services.agent_detector import detect_coding_agent
+        agent_name, agent_version = detect_coding_agent(
+            request.headers.get("user-agent"),
+            request.headers.get("x-client-name") or request.headers.get("x-source")
+        )
+        span.set_attribute("agent.client", agent_name)
+        span.set_attribute("agent.version", agent_version)
+
+        if isinstance(body, dict):
+            messages = body.get("messages", [])
+            if messages:
+                flat_attrs = flatten_attributes(messages, prefix="llm.input_messages")
+                for k, v in flat_attrs.items():
+                    span.set_attribute(k, v)
+                try:
+                    span.set_attribute("llm.input_messages", json.dumps(messages))
+                except Exception:
+                    pass
+
+            system_prompt = body.get("system")
+            if system_prompt:
+                if isinstance(system_prompt, list):
+                    sys_text = "\n".join(part.get("text", "") for part in system_prompt if isinstance(part, dict) and part.get("type") == "text")
+                    span.set_attribute("llm.system_prompt", sys_text if sys_text else json.dumps(system_prompt))
+                elif isinstance(system_prompt, str):
+                    span.set_attribute("llm.system_prompt", system_prompt)
+                else:
+                    span.set_attribute("llm.system_prompt", str(system_prompt))
+
+            params = {k: v for k, v in body.items() if k not in ("messages", "model", "system")}
+            if params:
+                try:
+                    span.set_attribute("llm.invocation_parameters", json.dumps(params))
+                except Exception:
+                    pass
+
+        set_llm_attributes(
+            span,
+            model=model or "unknown",
+            provider=provider_id,
+            operation="chat",
+            server_name=backend.name,
+            server_type=backend_type_name(backend),
+            user_id=owner_id,
+        )
+
+        start_time = time.time()
+        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown", is_stream=is_stream)
+
+        api_key_hash = getattr(request.state.user, "key_hash", None) if hasattr(request.state, "user") else None
+        enable_spend = await config_service.get_setting(session, "ENABLE_SPEND_TRACKING", "true")
+
+        async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes] = None, cancelled: bool = False):
+            if str(enable_spend).lower() == "true":
+                try:
+                    from ..database import get_session_context
+                    from ..services.spend_service import record_spend
+                    async with get_session_context() as db_sess:
+                        await record_spend(
+                            db_sess,
+                            owner_id=owner_id,
+                            api_key_hash=api_key_hash,
+                            model=model or "unknown",
+                            provider=provider_id or "unknown",
+                            input_tokens=in_tokens,
+                            output_tokens=out_tokens,
+                        )
+                        await db_sess.commit()
+                except Exception as e:
+                    logger.warning("Failed to record spend: %s", e)
+
+        client = _get_client(backend.base_url)
+        all_urls = _get_all_urls(backend)
+
+        last_err = None
+        for u in all_urls:
+            dest_url = f"{u.rstrip('/')}{target_path}"
+            try:
+                if is_stream:
+                    req_obj = client.build_request("POST", dest_url, json=forward_body, headers=headers)
+                    raw_resp = await client.send(req_obj, stream=True)
+                    if raw_resp.status_code >= 400:
+                        err_text = await raw_resp.aread()
+                        await raw_resp.aclose()
+                        raise HTTPException(status_code=raw_resp.status_code, detail=err_text.decode("utf-8", errors="ignore"))
+
+                    translation_mode = "none" if is_native_anthropic else "anthropic_to_openai"
+                    return StreamingResponse(
+                        stream_with_telemetry(
+                            raw_resp,
+                            start_time,
+                            dest_url,
+                            model or "unknown",
+                            "/v1/messages",
+                            owner_id,
+                            span,
+                            client=None,
+                            translation_mode=translation_mode,
+                            on_complete=on_stream_complete,
+                            server_name=backend.name,
+                            server_type=backend_type_name(backend),
+                            tracker=tracker,
+                        ),
+                        status_code=raw_resp.status_code,
+                        headers=passthrough_response_headers(raw_resp.headers),
+                        media_type="text/event-stream",
+                        background=BackgroundTask(finish_open_tracker, tracker),
+                    )
+                else:
+                    resp = await client.post(dest_url, json=forward_body, headers=headers)
+                    if resp.status_code >= 400:
+                        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+                    resp_json = None
+                    try:
+                        resp_json = resp.json()
+                    except Exception:
+                        pass
+
+                    if not is_native_anthropic:
+                        from ..translation.anthropic_to_openai import translate_response
+                        translated = translate_response(resp_json or {})
+                        response_content = translated
+                        status_code = 200
+                    else:
+                        response_content = resp_json if resp_json is not None else {}
+                        status_code = resp.status_code
+
+                    usage = (usage_from_event(resp_json) if resp_json else None) or usage_from_body(resp.content) or Usage()
+                    usage.finalize_total()
+
+                    duration = time.time() - start_time
+                    record_request_metrics(
+                        backend_url=backend.base_url,
+                        model=model or "unknown",
+                        endpoint_uri="/v1/messages",
+                        user_name=owner_id,
+                        success=True,
+                        request_duration=duration,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        total_tokens=usage.total_tokens,
+                        server=backend.name,
+                        server_type=backend_type_name(backend),
+                    )
+
+                    track_done(
+                        tracker,
+                        success=True,
+                        output_tokens=usage.completion_tokens,
+                        estimated=usage.estimated,
+                        decode_seconds=usage.eval_duration_s,
+                    )
+
+                    set_llm_attributes(
+                        span,
+                        model=model or "unknown",
+                        response_model=model or "unknown",
+                        server_name=backend.name,
+                        server_type=backend_type_name(backend),
+                        input_tokens=usage.prompt_tokens,
+                        output_tokens=usage.completion_tokens,
+                        total_tokens=usage.total_tokens,
+                    )
+
+                    if isinstance(response_content, dict):
+                        content_blocks = response_content.get("content", [])
+                        if isinstance(content_blocks, list):
+                            out_text = "".join(b.get("text", "") for b in content_blocks if isinstance(b, dict) and b.get("type") == "text")
+                            if out_text:
+                                span.set_attribute("output.value", out_text[:10000])
+                                span.set_attribute("llm.output_messages", json.dumps([{"role": "assistant", "content": out_text[:10000]}]))
+
+                    span.set_status(trace.Status(trace.StatusCode.OK))
+                    span.end()
+
+                    await on_stream_complete(usage.prompt_tokens, usage.completion_tokens, chunks=[resp.content], cancelled=False)
+
+                    return JSONResponse(content=response_content, status_code=status_code)
+
+            except HTTPException:
+                raise
+            except Exception as e:
+                last_err = e
+                continue
+
+        raise HTTPException(status_code=502, detail=f"Backend request failed: {last_err}")
+
+    except HTTPException as exc:
+        duration = time.time() - start_time if 'start_time' in locals() else 0.0
+        if tracker is not None and not tracker.finished:
+            track_done(tracker, success=False)
+            record_request_metrics(
+                backend_url=backend.base_url,
+                model=model or "unknown",
+                endpoint_uri="/v1/messages",
+                user_name=owner_id,
+                success=False,
+                request_duration=duration,
+                server=backend.name,
+                server_type=backend_type_name(backend),
+            )
+        if span is not None and span.is_recording():
+            span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc.detail)))
+            span.record_exception(exc)
+            span.end()
+        raise
+    except Exception as e:
+        duration = time.time() - start_time if 'start_time' in locals() else 0.0
+        if tracker is not None and not tracker.finished:
+            track_done(tracker, success=False)
+            record_request_metrics(
+                backend_url=backend.base_url,
+                model=model or "unknown",
+                endpoint_uri="/v1/messages",
+                user_name=owner_id,
+                success=False,
+                request_duration=duration,
+                server=backend.name,
+                server_type=backend_type_name(backend),
+            )
+        if span is not None and span.is_recording():
+            span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            span.record_exception(e)
+            span.end()
+        raise
 
 
 @router.post("/v1/audio/speech")
