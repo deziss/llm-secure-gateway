@@ -125,6 +125,8 @@ class APIKeyCreate(SQLModel):
     scopes: List[str] = Field(default=["chat"])
     expires_at: Optional[datetime] = None
     rate_limit_rpm: Optional[int] = Field(default=60, description="Requests per minute limit")
+    rate_limit_tpm: Optional[int] = Field(default=None, description="Tokens per minute limit (None=unlimited)")
+    max_concurrency: Optional[int] = Field(default=None, description="Max concurrent in-flight requests (None=unlimited)")
 
 class APIKey(SQLModel, table=True):
     key_hash: str = Field(primary_key=True, index=True)
@@ -133,6 +135,8 @@ class APIKey(SQLModel, table=True):
     scopes: List[str] = Field(sa_column=Column(JSON))
     expires_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     rate_limit_rpm: Optional[int] = Field(default=60)
+    rate_limit_tpm: Optional[int] = Field(default=None, description="Tokens per minute limit (None=unlimited)")
+    max_concurrency: Optional[int] = Field(default=None, description="Max concurrent in-flight requests (None=unlimited)")
     monthly_budget_usd: Optional[float] = Field(default=None, description="Monthly spend limit in USD (None=unlimited)")
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
     updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))

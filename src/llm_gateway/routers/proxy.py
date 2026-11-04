@@ -16,6 +16,7 @@ from ..proxy_helpers import (
     passthrough_response_headers,
     get_owner_id_from_request,
     apply_rate_limit,
+    release_rate_limit_concurrency,
     check_owner_permissions,
     build_backend_auth_headers,
     get_target_backend,
@@ -24,6 +25,7 @@ from ..proxy_helpers import (
     _get_all_urls,
     clean_target_url,
 )
+from ..rate_limit import get_rate_limiter
 import time
 import json
 import logging
@@ -49,38 +51,43 @@ async def aggregate_ollama_tags(
          raise HTTPException(status_code=404, detail="Federation disabled. Query /direct/{backend}/api/tags instead.")
 
     apply_rate_limit(request)
+    try:
+        backends = await config_service.list_backends(session)
+        models_set = set()
+        models_list = []
 
-    backends = await config_service.list_backends(session)
-    models_set = set()
-    models_list = []
-
-    for backend in backends:
-        for model in backend.models:
-            if model not in models_set:
-                models_set.add(model)
-                # Create a fake Ollama-compatible model detail block
-                models_list.append({
-                    "name": model,
-                    "model": model,
-                    "modified_at": backend.updated_at.isoformat() if backend.updated_at else backend.created_at.isoformat(),
-                    "size": 0,
-                    "digest": "federated",
-                    "details": {
-                        "parent_model": "",
-                        "format": "gguf",
-                        "family": "federated",
-                        "families": ["federated"],
-                        "parameter_size": "unknown",
-                        "quantization_level": "unknown"
-                    }
-                })
-    return {"models": models_list}
+        for backend in backends:
+            for model in backend.models:
+                if model not in models_set:
+                    models_set.add(model)
+                    # Create a fake Ollama-compatible model detail block
+                    models_list.append({
+                        "name": model,
+                        "model": model,
+                        "modified_at": backend.updated_at.isoformat() if backend.updated_at else backend.created_at.isoformat(),
+                        "size": 0,
+                        "digest": "federated",
+                        "details": {
+                            "parent_model": "",
+                            "format": "gguf",
+                            "family": "federated",
+                            "families": ["federated"],
+                            "parameter_size": "unknown",
+                            "quantization_level": "unknown"
+                        }
+                    })
+        return {"models": models_list}
+    finally:
+        release_rate_limit_concurrency(request)
 
 @router.get("/api/version")
 async def ollama_version(request: Request) -> dict:
     """Return an Ollama-compatible version payload for CLI and client handshakes."""
     apply_rate_limit(request)
-    return {"version": "0.13.0"}
+    try:
+        return {"version": "0.13.0"}
+    finally:
+        release_rate_limit_concurrency(request)
 
 @router.get("/v1/models")
 async def aggregate_openai_models(
@@ -96,22 +103,24 @@ async def aggregate_openai_models(
     if str(is_enabled).lower() != "true":
          raise HTTPException(status_code=404, detail="Federation disabled. Query /direct/{backend}/v1/models instead.")
     apply_rate_limit(request)
+    try:
+        backends = await config_service.list_backends(session)
+        models_set = set()
+        models_list = []
 
-    backends = await config_service.list_backends(session)
-    models_set = set()
-    models_list = []
-
-    for backend in backends:
-        for model in backend.models:
-            if model not in models_set:
-                models_set.add(model)
-                models_list.append({
-                    "id": model,
-                    "object": "model",
-                    "created": int(backend.created_at.timestamp()),
-                    "owned_by": backend.name
-                })
-    return {"object": "list", "data": models_list}
+        for backend in backends:
+            for model in backend.models:
+                if model not in models_set:
+                    models_set.add(model)
+                    models_list.append({
+                        "id": model,
+                        "object": "model",
+                        "created": int(backend.created_at.timestamp()),
+                        "owned_by": backend.name
+                    })
+        return {"object": "list", "data": models_list}
+    finally:
+        release_rate_limit_concurrency(request)
 
 
 @router.post("/v1/messages")
@@ -244,6 +253,16 @@ async def anthropic_messages_endpoint(
         enable_spend = await config_service.get_setting(session, "ENABLE_SPEND_TRACKING", "true")
 
         async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes] = None, cancelled: bool = False):
+            release_rate_limit_concurrency(request)
+            total_tokens = in_tokens + out_tokens
+            if total_tokens > 0 and hasattr(request.state, "user"):
+                user_key = getattr(request.state.user, "key_hash", None)
+                if user_key:
+                    try:
+                        get_rate_limiter().record_tokens(user_key, total_tokens)
+                    except Exception as e:
+                        logger.warning("Failed to record tokens for TPM: %s", e)
+
             if str(enable_spend).lower() == "true":
                 try:
                     from ..database import get_session_context
@@ -278,6 +297,11 @@ async def anthropic_messages_endpoint(
                         raise HTTPException(status_code=raw_resp.status_code, detail=err_text.decode("utf-8", errors="ignore"))
 
                     translation_mode = "none" if is_native_anthropic else "anthropic_to_openai"
+                    def _finish_anthropic(trk, req):
+                        if trk is not None:
+                            finish_open_tracker(trk)
+                        release_rate_limit_concurrency(req)
+
                     return StreamingResponse(
                         stream_with_telemetry(
                             raw_resp,
@@ -297,7 +321,7 @@ async def anthropic_messages_endpoint(
                         status_code=raw_resp.status_code,
                         headers=passthrough_response_headers(raw_resp.headers),
                         media_type="text/event-stream",
-                        background=BackgroundTask(finish_open_tracker, tracker),
+                        background=BackgroundTask(_finish_anthropic, tracker, request),
                     )
                 else:
                     resp = await client.post(dest_url, json=forward_body, headers=headers)
@@ -368,6 +392,7 @@ async def anthropic_messages_endpoint(
                     span.end()
 
                     await on_stream_complete(usage.prompt_tokens, usage.completion_tokens, chunks=[resp.content], cancelled=False)
+                    release_rate_limit_concurrency(request)
 
                     return JSONResponse(content=response_content, status_code=status_code)
 
@@ -380,6 +405,7 @@ async def anthropic_messages_endpoint(
         raise HTTPException(status_code=502, detail=f"Backend request failed: {last_err}")
 
     except HTTPException as exc:
+        release_rate_limit_concurrency(request)
         duration = time.time() - start_time if 'start_time' in locals() else 0.0
         if tracker is not None and not tracker.finished:
             track_done(tracker, success=False)
@@ -399,6 +425,7 @@ async def anthropic_messages_endpoint(
             span.end()
         raise
     except Exception as e:
+        release_rate_limit_concurrency(request)
         duration = time.time() - start_time if 'start_time' in locals() else 0.0
         if tracker is not None and not tracker.finished:
             track_done(tracker, success=False)
@@ -464,34 +491,25 @@ async def audio_speech_endpoint(
         async def stream_audio():
             async for chunk in resp.aiter_raw():
                 yield chunk
-        return StreamingResponse(stream_audio(), media_type=media_type)
+        return StreamingResponse(
+            stream_audio(),
+            media_type=media_type,
+            background=BackgroundTask(release_rate_limit_concurrency, request),
+        )
     except HTTPException:
+        release_rate_limit_concurrency(request)
         raise
     except Exception as e:
+        release_rate_limit_concurrency(request)
         raise HTTPException(status_code=502, detail=f"TTS backend unreachable: {e}")
 
 
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"])
-async def proxy_request(
+async def _proxy_request_core(
     path: str,
     request: Request,
-    config_service: ConfigService = Depends(get_config_service),
-    session: AsyncSession = Depends(get_session)
+    config_service: ConfigService,
+    session: AsyncSession,
 ) -> StreamingResponse:
-    """
-    Proxy request to the selected LLM backend with dynamic routing + fallback.
-    Includes:
-    - Rate limiting
-    - Model selection (for applicable methods)
-    - Dynamic path forwarding
-    - Header forwarding
-    - Streaming response
-    - OpenTelemetry spans with multi-tenant tracing
-    - Automatic fallback to secondary URLs on connection failure
-    """
-
-    apply_rate_limit(request)
-
     # Extract model and provider from body only for methods that support it
     model = "unknown"
     provider = None
@@ -598,6 +616,7 @@ async def proxy_request(
                 )
                 cached_resp = await get_cached(cache_key, session)
                 if cached_resp:
+                    release_rate_limit_concurrency(request)
                     return JSONResponse(content=cached_resp, headers={"X-Cache": "HIT"})
 
             if str(enable_semantic_cache).lower() == "true":
@@ -610,6 +629,7 @@ async def proxy_request(
                     sem_res = await get_semantic_cached(model or "unknown", prompt_text, threshold=threshold, session=session)
                     if sem_res:
                         sem_resp, sim_score = sem_res
+                        release_rate_limit_concurrency(request)
                         return JSONResponse(
                             content=sem_resp,
                             headers={"X-Cache": "SEMANTIC-HIT", "X-Cache-Similarity": str(sim_score)},
@@ -713,6 +733,16 @@ async def proxy_request(
             is_streaming = isinstance(body, dict) and body.get("stream", False)
 
             async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes], cancelled: bool = False):
+                release_rate_limit_concurrency(request)
+                total_tokens = in_tokens + out_tokens
+                if total_tokens > 0 and hasattr(request.state, "user"):
+                    user_key = getattr(request.state.user, "key_hash", None)
+                    if user_key:
+                        try:
+                            get_rate_limiter().record_tokens(user_key, total_tokens)
+                        except Exception as e:
+                            logger.warning("Failed to record tokens for TPM: %s", e)
+
                 if str(enable_spend).lower() == "true":
                     try:
                         from ..database import get_session_context
@@ -756,6 +786,11 @@ async def proxy_request(
                     except Exception as e:
                         logger.debug("Failed to store cache: %s", e)
 
+            def _finish_proxy(trk, req):
+                if trk is not None:
+                    finish_open_tracker(trk)
+                release_rate_limit_concurrency(req)
+
             # 3. Pass span to streaming generator which handles ending it
             return StreamingResponse(
                 stream_with_telemetry(
@@ -765,11 +800,12 @@ async def proxy_request(
                 ),
                 status_code=r.status_code,
                 headers=passthrough_response_headers(r.headers),
-                background=BackgroundTask(finish_open_tracker, tracker),
+                background=BackgroundTask(_finish_proxy, tracker, request),
             )
 
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:
             # All URLs failed
+            release_rate_limit_concurrency(request)
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
             span.record_exception(exc)
             
@@ -791,6 +827,7 @@ async def proxy_request(
             )
                 
     except Exception as e:
+        release_rate_limit_concurrency(request)
         # Dispatched but failed without reaching the stream (e.g. fallback chain exhausted):
         # record it, otherwise the failure is invisible to metrics.
         if tracker is not None and not tracker.finished:
@@ -806,5 +843,22 @@ async def proxy_request(
              span.record_exception(e)
              span.end()
         raise e
+
+
+@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"])
+async def proxy_request(
+    path: str,
+    request: Request,
+    config_service: ConfigService = Depends(get_config_service),
+    session: AsyncSession = Depends(get_session)
+) -> StreamingResponse:
+    """Proxy request to the selected LLM backend with dynamic routing + fallback."""
+    apply_rate_limit(request)
+    try:
+        return await _proxy_request_core(path, request, config_service, session)
+    except Exception:
+        release_rate_limit_concurrency(request)
+        raise
+
 
 

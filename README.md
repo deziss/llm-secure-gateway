@@ -1,11 +1,11 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.13.0-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.14.3-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-399%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-671%20passing-brightgreen.svg)](tests/)
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
@@ -62,12 +62,16 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 
 ### 🚀 High-Performance Multi-Backend Routing
 - **Universal Provider Support**: Route requests to Ollama, vLLM clusters, llama.cpp servers, OpenAI, Anthropic, Google Gemini, Groq, or custom self-hosted endpoints.
+- **Queue-Aware & Least-Busy Dynamic Routing**: Real-time traffic balancing across model replicas factoring in in-flight request counts from `LiveStats`, capacity weights, and rolling latency.
+- **Native Anthropic Protocol**: Direct `/v1/messages` and `/messages` endpoint supporting Claude Code, Cursor, Cline, and Anthropic SDKs with bidirectional translation to OpenAI/vLLM backends.
 - **Protocol Translation**: Seamlessly translates requests between OpenAI and Anthropic formats, including automatic `<think>` reasoning tag stripping.
 - **Model Federation**: Aggregates distributed backend models into unified `/v1/models` and `/api/tags` endpoints.
 - **Native Ollama Protocol**: Full `/api/chat`, `/api/generate`, `/api/tags`, and `/api/version` compatibility for drop-in use with OpenWebUI and the Ollama CLI.
 
 ### 🛡️ Enterprise Security & Multi-Tenancy
+- **Multi-Dimensional Rate Limiting**: Enforces Concurrency Semaphores (`max_concurrency`), Tokens-Per-Minute (`rate_limit_tpm`), and Requests-Per-Minute (`rate_limit_rpm`) with atomic Redis storage and in-process fallback.
 - **Scoped Virtual API Keys**: Generate per-tenant keys restricted by model whitelist, route whitelist, CIDR IP filters, rate limits, and expiration dates.
+- **One-Click Client Setup Snippets**: Instant, interactive copy-paste setup configs in the Admin UI for Claude Code CLI, Cursor, Continue.dev, Python SDKs (OpenAI & Anthropic), and cURL.
 - **Zero-Trust Identity**: SPIFFE / mTLS identity extraction and validation support for service-to-service deployments.
 - **Credential Vault**: Sensitive upstream provider credentials stored encrypted at rest using AES-128 Fernet cryptography.
 - **Hardened Administrative UI**: Dark-mode management portal built with Tailwind CSS, Lucide icons, double-submit cookie CSRF tokens, and semantic accessibility (WCAG).
@@ -88,7 +92,7 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Audit History**: A filterable view of the persistent audit trail for admins and managers.
 
 ### 📊 Full-Stack Observability & Governance
-- **Arize Phoenix Tracing**: OpenInference-compliant distributed tracing with per-tenant project sandboxing.
+- **Arize Phoenix Multi-Tenant Project Isolation**: OpenInference-compliant distributed tracing with decoupled root spans (`gateway-{tenant}-{provider}`) for both OpenAI and native Anthropic `/v1/messages`.
 - **Prometheus & Metrics**: Native `/metrics` endpoint tracking request latency, token throughput, cache hits, error rates, and active connections.
 - **Token-Level Streaming Telemetry**: High-frequency async parser computing real-time prompt, completion, and total token usage on chunked responses.
 - **Spend & Quota Governance**: Per-tenant budget ceilings, token limits, and spend tracking with configurable webhooks and email notifications.
