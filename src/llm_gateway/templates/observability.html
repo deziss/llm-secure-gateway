@@ -34,6 +34,25 @@
 
   <!-- ── Models ─────────────────────────────────────────────── -->
   <section id="panel-models" role="tabpanel" aria-labelledby="tab-models" data-panel="models">
+    <!-- Timeframe Selector Toolbar -->
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-caption font-semibold text-ink-muted uppercase tracking-wider">Timeframe:</span>
+        <div class="inline-flex rounded-control border border-hairline bg-surface-inset p-0.5" role="group" aria-label="Observability timeframe">
+          <button type="button" data-action="timeframe" data-tf="1s" class="min-h-touch rounded px-3 py-1 text-xs font-semibold bg-accent text-accent-ink shadow-sm" aria-pressed="true">1s (Live)</button>
+          <button type="button" data-action="timeframe" data-tf="1m" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1m</button>
+          <button type="button" data-action="timeframe" data-tf="1h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1h</button>
+          <button type="button" data-action="timeframe" data-tf="6h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">6h</button>
+          <button type="button" data-action="timeframe" data-tf="12h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">12h</button>
+          <button type="button" data-action="timeframe" data-tf="24h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">24h</button>
+        </div>
+      </div>
+      <div class="text-caption text-ink-muted flex items-center gap-1.5" id="obsTimeframeIndicator">
+        <span id="obsLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
+        <span id="obsTimeframeLabel">Real-time live telemetry (1s)</span>
+      </div>
+    </div>
+
     <div class="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Filter models">
       <input id="fModelsQ" type="search" placeholder="Filter server or model…" aria-label="Filter models by text" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:14rem" />
       <select id="fModelsServer" aria-label="Filter by server" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink"><option value="">All servers</option></select>
@@ -65,6 +84,7 @@
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_running">Server run / wait</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="kv_cache_pct">KV cache</th>
             <th scope="col" class="p-3 border-b border-hairline">Trend (RPS)</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Telemetry</th>
           </tr>
         </thead>
         <tbody id="obsModelsBody" class="divide-y divide-hairline text-ink"></tbody>
@@ -296,7 +316,117 @@
       <p id="obsSinksEmpty" class="p-4 text-center text-sm text-ink-muted hidden">Nothing is exporting yet. Configure an integration above.</p>
     </div>
   </section>
+
+  <!-- ── Model Telemetry Deep-Dive Modal ────────────────────── -->
+  <div id="modelTelemetryModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="modelTelemetryModalTitle">
+    <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden" id="modelTelemetryModalDialog">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-4 border-b border-hairline bg-surface-inset">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-8 h-8 rounded-control bg-accent/10 text-accent flex items-center justify-center shrink-0">
+            <i data-lucide="line-chart" class="h-4 w-4" aria-hidden="true"></i>
+          </div>
+          <div class="min-w-0">
+            <h2 id="modelTelemetryModalTitle" class="text-base sm:text-lg font-bold text-ink flex items-center gap-2 truncate">
+              <span id="telemetryModalServer" class="text-ink">Server</span>
+              <span class="text-ink-muted font-normal">/</span>
+              <span id="telemetryModalModel" class="font-mono text-accent truncate">Model</span>
+            </h2>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-caption text-ink-muted">Historical Multi-Scale Telemetry</span>
+              <span id="telemetryModalTimeframe" class="rounded-control px-2 py-0.5 text-micro font-bold uppercase tracking-wider bg-accent/15 text-accent border border-accent/25">1s (Live)</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" data-action="close-modal" aria-label="Close modal" data-modal-close class="min-h-touch rounded-control p-2 text-ink-muted hover:text-ink hover:bg-surface-raised border border-transparent hover:border-hairline transition-colors">
+          <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <!-- Overview Stat Cards (Peak RPS, Total Requests, Error Rate %, Avg TTFT, Total Tokens) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-4 bg-surface-base border-b border-hairline">
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Peak RPS</div>
+          <div id="telemetryStatPeakRps" class="text-xl sm:text-2xl font-extrabold text-ink tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Total Requests</div>
+          <div id="telemetryStatTotalReqs" class="text-xl sm:text-2xl font-extrabold text-ink tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Error Rate %</div>
+          <div id="telemetryStatErrorRate" class="text-xl sm:text-2xl font-extrabold text-ink tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Avg TTFT</div>
+          <div id="telemetryStatAvgTtft" class="text-xl sm:text-2xl font-extrabold text-ink tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Total Tokens</div>
+          <div id="telemetryStatTotalTokens" class="text-xl sm:text-2xl font-extrabold text-accent tabular-nums">–</div>
+        </div>
+      </div>
+
+      <!-- Responsive 2x2 Grid with 4 Charts -->
+      <div class="p-4 overflow-y-auto max-h-[calc(88vh-180px)] space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- 1. Request Rate & Errors -->
+          <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
+                <i data-lucide="activity" class="h-4 w-4 text-accent" aria-hidden="true"></i> Request Rate &amp; Errors
+              </h3>
+              <span class="text-micro text-ink-muted uppercase tracking-wider">RPS / Errors</span>
+            </div>
+            <div class="h-56 relative w-full">
+              <canvas id="chartHistoryTraffic" aria-label="Request Rate and Errors"></canvas>
+            </div>
+          </div>
+
+          <!-- 2. Token Generation & Throughput -->
+          <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
+                <i data-lucide="zap" class="h-4 w-4 text-emerald-400" aria-hidden="true"></i> Token Generation &amp; Throughput
+              </h3>
+              <span class="text-micro text-ink-muted uppercase tracking-wider">Volume &amp; Decode TPS</span>
+            </div>
+            <div class="h-56 relative w-full">
+              <canvas id="chartHistoryTokens" aria-label="Token Generation and Throughput"></canvas>
+            </div>
+          </div>
+
+          <!-- 3. Latency Distribution -->
+          <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
+                <i data-lucide="clock" class="h-4 w-4 text-amber-400" aria-hidden="true"></i> Latency Distribution
+              </h3>
+              <span class="text-micro text-ink-muted uppercase tracking-wider">TTFT P50/P90, ITL in ms</span>
+            </div>
+            <div class="h-56 relative w-full">
+              <canvas id="chartHistoryLatency" aria-label="Latency Distribution (TTFT and ITL)"></canvas>
+            </div>
+          </div>
+
+          <!-- 4. Concurrency & Hardware Health -->
+          <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
+                <i data-lucide="cpu" class="h-4 w-4 text-purple-400" aria-hidden="true"></i> Concurrency &amp; Hardware Health
+              </h3>
+              <span class="text-micro text-ink-muted uppercase tracking-wider">Queue, Running &amp; KV Cache %</span>
+            </div>
+            <div class="h-56 relative w-full">
+              <canvas id="chartHistoryCompute" aria-label="Concurrency and Hardware Health"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
+<script src="/static/js/chart.umd.min.js"></script>
 <script src="/static/js/observability.js?v={{ asset_v }}"></script>
 {% endblock %}
