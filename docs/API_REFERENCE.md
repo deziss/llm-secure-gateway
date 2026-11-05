@@ -401,6 +401,48 @@ Delete an invite code.
 
 ---
 
+## Admin — Spend & Model Token Pricing
+
+Track real-time spend and configure per-model token pricing in USD per 1,000,000 (1M) tokens.
+
+### `GET /admin/spend/summary`
+Monthly spend summary grouped by project/owner.
+
+### `GET /admin/spend/by-model`
+Monthly spend summary grouped by model and provider.
+
+### `GET /admin/pricing`
+List all active model token pricing rules.
+
+### `POST /admin/pricing`
+Create or manually override token pricing for a model.
+```json
+{
+  "model": "gpt-4o",
+  "provider": "openai",
+  "input_cost_per_1m": 2.50,
+  "output_cost_per_1m": 10.00,
+  "cached_input_cost_per_1m": 1.25,
+  "description": "Standard production tier"
+}
+```
+
+### `PUT /admin/pricing/{id}`
+Update token rates for an existing model pricing entry.
+
+### `DELETE /admin/pricing/{id}`
+Delete a custom model pricing rule.
+
+### `POST /admin/pricing/sync-catalog`
+Sync benchmark provider catalog rates into the pricing table.
+```json
+{
+  "provider": "openai"
+}
+```
+
+---
+
 ## Proxy — V1 (Model-Based Routing)
 
 All V1 routes require API key authentication.

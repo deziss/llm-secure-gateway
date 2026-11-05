@@ -321,6 +321,25 @@ class CachedResponse(SQLModel, table=True):
     expires_at: datetime = Field(description="Expiry timestamp for TTL enforcement", sa_type=DateTime(timezone=False))
 
 
+class ModelPricing(SQLModel, table=True):
+    """Token pricing definition per model & provider in USD per 1,000,000 (1M) tokens."""
+    __tablename__ = "model_pricing"
+    __table_args__ = (
+        UniqueConstraint("model", "provider", name="uq_model_provider_pricing"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    model: str = Field(index=True, description="Model identifier, e.g. 'gpt-4o', 'claude-3-5-sonnet-20241022'")
+    provider: str = Field(default="*", index=True, description="Provider identifier, e.g. 'openai', 'anthropic', '*'")
+    input_cost_per_1m: float = Field(default=0.0, description="Cost in USD per 1,000,000 input tokens")
+    output_cost_per_1m: float = Field(default=0.0, description="Cost in USD per 1,000,000 output tokens")
+    cached_input_cost_per_1m: Optional[float] = Field(default=None, description="Optional cost in USD per 1M cached input tokens")
+    source: str = Field(default="manual", description="'manual' or 'provider_catalog'")
+    description: Optional[str] = Field(default=None, description="Optional notes or details")
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+
+
 
 # Pre-v0.13 names, kept so existing imports and plugins keep working.
 LLMBackend = ModelServer
