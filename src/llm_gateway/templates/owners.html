@@ -416,7 +416,7 @@ block content %}
   onclick="if(event.target === this) closePermissionsModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all"
+    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl"
   >
     <div
       class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
@@ -539,7 +539,7 @@ block content %}
 
 <!-- Manage Keys Modal -->
 <div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeKeysModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
     <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
       <div>
         <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-5 h-5" aria-hidden="true"></i> Manage API Keys</h2>
@@ -572,7 +572,7 @@ block content %}
         <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 text-sm">
           <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i> New Key Scopes
         </h3>
-        <div id="scopeCheckboxes" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        <div id="scopeCheckboxes" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:chat" checked class="accent-indigo-500" />
             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:chat</span>
@@ -588,7 +588,7 @@ block content %}
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:*" class="accent-indigo-500" />
             <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:*</span>
-            <span class="text-micro text-slate-500">(all LLM)</span>
+            <span class="text-micro text-slate-500">(all)</span>
           </label>
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="admin:*" class="accent-indigo-500" />
@@ -596,7 +596,7 @@ block content %}
           </label>
           <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-rose-700/50 rounded-xl cursor-pointer hover:border-rose-500/50 transition has-[:checked]:border-rose-500 has-[:checked]:bg-rose-500/10">
             <input type="checkbox" name="newKeyScope" value="*" class="accent-rose-500" />
-            <span class="text-xs font-bold text-rose-400">* (full access)</span>
+            <span class="text-xs font-bold text-rose-400">* (full)</span>
           </label>
         </div>
         <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
@@ -611,7 +611,7 @@ block content %}
 
 <!-- Client Setup Snippets Modal -->
 <div id="snippetsModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[70] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeSnippetsModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
     <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
       <div>
         <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
