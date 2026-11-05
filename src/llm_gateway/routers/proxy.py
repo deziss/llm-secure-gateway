@@ -365,8 +365,11 @@ async def anthropic_messages_endpoint(
                         tracker,
                         success=True,
                         output_tokens=usage.completion_tokens,
+                        prompt_tokens=usage.prompt_tokens,
+                        total_tokens=usage.total_tokens,
                         estimated=usage.estimated,
                         decode_seconds=usage.eval_duration_s,
+                        duration_s=duration,
                     )
 
                     set_llm_attributes(

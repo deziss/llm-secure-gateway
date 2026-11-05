@@ -72,8 +72,12 @@ class RequestTracker:
         success: bool = True,
         cancelled: bool = False,
         output_tokens: int = 0,
+        prompt_tokens: int = 0,
+        total_tokens: int = 0,
         estimated: bool = False,
         decode_seconds: Optional[float] = None,
+        duration_s: Optional[float] = None,
+        itl_ms: Optional[float] = None,
     ) -> Optional[dict]:
         """Close the request. Returns timing figures on the first call, None afterwards.
 
@@ -90,21 +94,26 @@ class RequestTracker:
             decode_s = now - self.first_token_at
         if decode_seconds is not None and decode_seconds > 0:
             decode_s = decode_seconds
+        dur = (now - self.start) if duration_s is None else duration_s
         self._store.finish(
             self.key,
             was_generating=self.first_token_at is not None,
             success=success,
             cancelled=cancelled,
             output_tokens=output_tokens,
+            prompt_tokens=prompt_tokens,
+            total_tokens=total_tokens,
             decode_seconds=decode_s,
+            duration_s=dur,
             ttft=ttft,
+            itl_ms=itl_ms,
             estimated=estimated,
             now=now,
         )
         if self._inflight:
             self._store.add_inflight_bytes(self.key, -self._inflight)
             self._inflight = 0
-        return {"ttft": ttft, "decode_seconds": decode_s, "duration": now - self.start}
+        return {"ttft": ttft, "decode_seconds": decode_s, "duration": dur}
 
 
 def track_dispatch(
@@ -140,15 +149,27 @@ def track_done(
     success: bool = True,
     cancelled: bool = False,
     output_tokens: int = 0,
+    prompt_tokens: int = 0,
+    total_tokens: int = 0,
     estimated: bool = False,
     decode_seconds: Optional[float] = None,
+    duration_s: Optional[float] = None,
+    itl_ms: Optional[float] = None,
+    **kwargs,
 ) -> Optional[dict]:
     if tracker is None:
         return None
     try:
         return tracker.finish(
-            success=success, cancelled=cancelled, output_tokens=output_tokens,
-            estimated=estimated, decode_seconds=decode_seconds,
+            success=success,
+            cancelled=cancelled,
+            output_tokens=output_tokens,
+            prompt_tokens=prompt_tokens,
+            total_tokens=total_tokens,
+            estimated=estimated,
+            decode_seconds=decode_seconds,
+            duration_s=duration_s,
+            itl_ms=itl_ms,
         )
     except Exception:  # never let stats break a request
         logger.debug("live stats finish failed", exc_info=True)

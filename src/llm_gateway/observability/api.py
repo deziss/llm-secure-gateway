@@ -11,7 +11,8 @@ import json
 import logging
 import re
 import socket
-from datetime import datetime, timezone
+import statistics
+from datetime import datetime, timezone, timedelta
 from typing import List, Literal, Optional
 from urllib.parse import urlparse
 
@@ -20,14 +21,16 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from ..database import get_session
-from ..models import GpuHost, ModelServer, SystemSetting, _utcnow
+from ..models import GpuHost, ModelServer, ModelTelemetryRollup, SystemSetting, _utcnow
 from ..routers.admin import require_admin, require_manager
 from ..services.config_service import _backends_cache, _settings_cache
 from .collect import gpu as gpu_mod
 from .collect import poller
 from .collect.groups import OVERRIDES_KEY, group_key, load_overrides, validate_overrides
+from .store import calculate_percentile
 
 logger = logging.getLogger(__name__)
 
@@ -297,9 +300,304 @@ async def build_payload(overrides: dict[str, list[str]]) -> dict:
     }
 
 
+def _downsample_rollups(
+    rows: list[ModelTelemetryRollup],
+    start_time: datetime,
+    end_time: datetime,
+    bucket_interval_s: int,
+    total_seconds: float,
+) -> tuple[dict, list[dict]]:
+    if end_time <= start_time:
+        end_time = start_time + timedelta(seconds=bucket_interval_s)
+
+    binned: dict[int, list[ModelTelemetryRollup]] = {}
+    for r in rows:
+        idx = int((r.bucket_time - start_time).total_seconds() // bucket_interval_s)
+        binned.setdefault(idx, []).append(r)
+
+    num_buckets = max(1, int((end_time - start_time).total_seconds() // bucket_interval_s))
+    points = []
+
+    for i in range(num_buckets):
+        b_start = start_time + timedelta(seconds=i * bucket_interval_s)
+        b_rows = binned.get(i, [])
+
+        reqs = sum(r.requests for r in b_rows)
+        errs = sum(r.errors for r in b_rows)
+        prom_tok = sum(r.prompt_tokens for r in b_rows)
+        comp_tok = sum(r.completion_tokens for r in b_rows)
+        tot_tok = sum(r.total_tokens for r in b_rows)
+
+        rps = round(reqs / bucket_interval_s, 3)
+        tok_s = round(comp_tok / bucket_interval_s, 2)
+
+        ttft_weights = sum(r.ttft_count for r in b_rows if r.ttft_p50_ms is not None and r.ttft_count > 0)
+        p50 = round(sum(r.ttft_p50_ms * r.ttft_count for r in b_rows if r.ttft_p50_ms is not None and r.ttft_count > 0) / ttft_weights, 1) if ttft_weights > 0 else (
+            round(statistics.mean([r.ttft_p50_ms for r in b_rows if r.ttft_p50_ms is not None]), 1) if any(r.ttft_p50_ms is not None for r in b_rows) else None
+        )
+        p90 = round(sum(r.ttft_p90_ms * r.ttft_count for r in b_rows if r.ttft_p90_ms is not None and r.ttft_count > 0) / ttft_weights, 1) if ttft_weights > 0 else (
+            round(statistics.mean([r.ttft_p90_ms for r in b_rows if r.ttft_p90_ms is not None]), 1) if any(r.ttft_p90_ms is not None for r in b_rows) else None
+        )
+
+        itl_cnt = sum(r.itl_count for r in b_rows)
+        itl = round(sum(r.itl_sum_ms for r in b_rows) / itl_cnt, 1) if itl_cnt > 0 else None
+
+        sc = sum(r.server_scrape_count for r in b_rows)
+        s_run = round(sum(r.server_running_sum for r in b_rows) / sc, 2) if sc > 0 else None
+        s_wait = round(sum(r.server_waiting_sum for r in b_rows) / sc, 2) if sc > 0 else None
+        kv = round(sum(r.kv_cache_pct_sum for r in b_rows) / sc, 2) if sc > 0 else None
+
+        samp = sum(r.samples_count for r in b_rows)
+        wait_avg = round(sum(r.waiting_sum for r in b_rows) / samp, 2) if samp > 0 else 0
+        gen_avg = round(sum(r.generating_sum for r in b_rows) / samp, 2) if samp > 0 else 0
+
+        points.append({
+            "timestamp": b_start.isoformat() + "Z",
+            "requests": reqs,
+            "errors": errs,
+            "prompt_tokens": prom_tok,
+            "completion_tokens": comp_tok,
+            "tokens": tot_tok,
+            "rps": rps,
+            "tok_s": tok_s,
+            "ttft_p50_ms": p50,
+            "ttft_p90_ms": p90,
+            "itl_ms": itl,
+            "server_running": s_run,
+            "server_waiting": s_wait,
+            "kv_cache_pct": kv,
+            "waiting": wait_avg,
+            "generating": gen_avg,
+        })
+
+    tot_reqs = sum(r.requests for r in rows)
+    tot_errs = sum(r.errors for r in rows)
+    err_rate = round((tot_errs / tot_reqs) * 100, 2) if tot_reqs > 0 else 0.0
+    tot_tokens = sum(r.total_tokens for r in rows)
+    tot_comp_tokens = sum(r.completion_tokens for r in rows)
+
+    avg_rps = round(tot_reqs / total_seconds, 3) if total_seconds > 0 else 0.0
+    peak_rps = round(max((p["rps"] for p in points), default=0.0), 3)
+
+    tot_dec_sum = sum(r.decode_tps_sum for r in rows)
+    tot_dec_n = sum(r.decode_n for r in rows)
+    tok_s_decode = round(tot_dec_sum / tot_dec_n, 2) if tot_dec_n > 0 else None
+    tok_s_throughput = round(tot_comp_tokens / total_seconds, 2) if total_seconds > 0 else 0.0
+
+    all_ttft_weights = sum(r.ttft_count for r in rows if r.ttft_p50_ms is not None and r.ttft_count > 0)
+    ttft_p50_ms = round(sum(r.ttft_p50_ms * r.ttft_count for r in rows if r.ttft_p50_ms is not None and r.ttft_count > 0) / all_ttft_weights, 1) if all_ttft_weights > 0 else (
+        round(statistics.mean([r.ttft_p50_ms for r in rows if r.ttft_p50_ms is not None]), 1) if any(r.ttft_p50_ms is not None for r in rows) else None
+    )
+    ttft_p90_ms = round(sum(r.ttft_p90_ms * r.ttft_count for r in rows if r.ttft_p90_ms is not None and r.ttft_count > 0) / all_ttft_weights, 1) if all_ttft_weights > 0 else (
+        round(statistics.mean([r.ttft_p90_ms for r in rows if r.ttft_p90_ms is not None]), 1) if any(r.ttft_p90_ms is not None for r in rows) else None
+    )
+
+    all_itl_cnt = sum(r.itl_count for r in rows)
+    itl_ms = round(sum(r.itl_sum_ms for r in rows) / all_itl_cnt, 1) if all_itl_cnt > 0 else None
+
+    all_sc = sum(r.server_scrape_count for r in rows)
+    server_rps = round(sum(r.server_rps_sum for r in rows) / all_sc, 2) if all_sc > 0 else None
+    server_tok_s = round(sum(r.server_tok_s_sum for r in rows) / all_sc, 2) if all_sc > 0 else None
+    server_running_avg = round(sum(r.server_running_sum for r in rows) / all_sc, 2) if all_sc > 0 else None
+    server_waiting_avg = round(sum(r.server_waiting_sum for r in rows) / all_sc, 2) if all_sc > 0 else None
+    kv_cache_pct_avg = round(sum(r.kv_cache_pct_sum for r in rows) / all_sc, 2) if all_sc > 0 else None
+
+    summary = {
+        "avg_rps": avg_rps,
+        "peak_rps": peak_rps,
+        "total_requests": tot_reqs,
+        "errors": tot_errs,
+        "error_rate_pct": err_rate,
+        "tok_s_decode": tok_s_decode,
+        "tok_s_throughput": tok_s_throughput,
+        "total_tokens": tot_tokens,
+        "ttft_p50_ms": ttft_p50_ms,
+        "ttft_p90_ms": ttft_p90_ms,
+        "itl_ms": itl_ms,
+        "server_rps": server_rps,
+        "server_tok_s": server_tok_s,
+        "server_running_avg": server_running_avg,
+        "server_waiting_avg": server_waiting_avg,
+        "kv_cache_pct_avg": kv_cache_pct_avg,
+    }
+    return summary, points
+
+
 # --------------------------------------------------------------------------- #
-# Live + stream
+# Live + stream + history
 # --------------------------------------------------------------------------- #
+@router.get("/history")
+async def history(
+    timeframe: Literal["1s", "1m", "1h", "6h", "12h", "24h"] = "1s",
+    server: Optional[str] = None,
+    model: Optional[str] = None,
+    session: AsyncSession = Depends(get_session),
+    user=Depends(require_manager),
+) -> dict:
+    from .store import get_live_stats
+
+    now_utc = datetime.now(timezone.utc)
+    now_naive = now_utc.replace(tzinfo=None)
+
+    if timeframe == "1s":
+        models = get_live_stats().get_1s_history(server=server, model=model)
+        snapshot = poller.get_snapshot()
+        servers_snap = {s["name"]: s for s in snapshot.get("servers", [])}
+        existing_keys = {(m["server"], m["model"]) for m in models}
+
+        configured_pairs: set[tuple[str, str, str]] = set()
+        for srv in snapshot.get("servers", []):
+            s_name = srv.get("name")
+            s_type = srv.get("server_type") or srv.get("kind", "unknown")
+            for mdl in srv.get("models", []):
+                if (server is None or server == s_name) and (model is None or model == mdl):
+                    configured_pairs.add((s_name, s_type, mdl))
+
+        for s_name, s_type, mdl in sorted(configured_pairs):
+            if (s_name, mdl) not in existing_keys:
+                dummy_summary = {
+                    "avg_rps": 0.0,
+                    "peak_rps": 0.0,
+                    "total_requests": 0,
+                    "errors": 0,
+                    "error_rate_pct": 0.0,
+                    "tok_s_decode": None,
+                    "tok_s_throughput": 0.0,
+                    "total_tokens": 0,
+                    "ttft_p50_ms": None,
+                    "ttft_p90_ms": None,
+                    "itl_ms": None,
+                    "server_rps": None,
+                    "server_tok_s": None,
+                    "server_running_avg": None,
+                    "server_waiting_avg": None,
+                    "kv_cache_pct_avg": None,
+                }
+                dummy_series = [
+                    {
+                        "sec_offset": -i,
+                        "requests": 0,
+                        "errors": 0,
+                        "tokens": 0,
+                        "rps": 0.0,
+                        "tok_s": 0.0,
+                        "ttft_p50_ms": None,
+                        "ttft_p90_ms": None,
+                    }
+                    for i in range(59, -1, -1)
+                ]
+                models.append({
+                    "server": s_name,
+                    "server_type": s_type,
+                    "model": mdl,
+                    "summary": dummy_summary,
+                    "series": dummy_series,
+                    **dummy_summary,
+                })
+
+        for m in models:
+            s_name = m.get("server")
+            m_name = m.get("model")
+            srv = servers_snap.get(s_name, {})
+            mstat = (srv.get("model_stats") or {}).get(m_name)
+            if mstat:
+                m["server_rps"] = mstat.get("rps")
+                m["server_tok_s"] = mstat.get("out_tok_s")
+                m["server_running_avg"] = mstat.get("running")
+                m["server_waiting_avg"] = mstat.get("waiting")
+                m["kv_cache_pct_avg"] = mstat.get("kv_cache_pct")
+            elif srv:
+                m["server_rps"] = None
+                m["server_tok_s"] = srv.get("gen_tok_s")
+                m["server_running_avg"] = srv.get("running")
+                m["server_waiting_avg"] = srv.get("waiting")
+                m["kv_cache_pct_avg"] = srv.get("kv_cache_pct")
+            if "summary" in m:
+                m["summary"]["server_rps"] = m.get("server_rps")
+                m["summary"]["server_tok_s"] = m.get("server_tok_s")
+                m["summary"]["server_running_avg"] = m.get("server_running_avg")
+                m["summary"]["server_waiting_avg"] = m.get("server_waiting_avg")
+                m["summary"]["kv_cache_pct_avg"] = m.get("kv_cache_pct_avg")
+
+        return {
+            "timeframe": "1s",
+            "start_time": (now_utc - timedelta(seconds=60)).isoformat(),
+            "end_time": now_utc.isoformat(),
+            "bucket_interval_s": 1,
+            "models": models,
+        }
+
+    try:
+        await poller.flush_telemetry_rollups(session)
+    except Exception as e:
+        logger.debug("Rollup flush before history query failed: %s", e)
+
+    tf_configs = {
+        "1m": (timedelta(minutes=1), 60),
+        "1h": (timedelta(hours=1), 60),
+        "6h": (timedelta(hours=6), 300),
+        "12h": (timedelta(hours=12), 600),
+        "24h": (timedelta(hours=24), 1200),
+    }
+    duration, bucket_interval_s = tf_configs[timeframe]
+    now_min = now_naive.replace(second=0, microsecond=0)
+    start_time = now_min - duration
+    end_time = now_min + (timedelta(minutes=1) if timeframe == "1m" else timedelta(0))
+    total_seconds = duration.total_seconds()
+
+    stmt = select(ModelTelemetryRollup).where(
+        ModelTelemetryRollup.bucket_time >= start_time,
+        ModelTelemetryRollup.bucket_time <= now_min + timedelta(minutes=1),
+    )
+    if server:
+        stmt = stmt.where(ModelTelemetryRollup.server == server)
+    if model:
+        stmt = stmt.where(ModelTelemetryRollup.model == model)
+    stmt = stmt.order_by(ModelTelemetryRollup.bucket_time.asc())
+
+    rows = (await session.execute(stmt)).scalars().all()
+
+    by_model: dict[tuple[str, str, str], list[ModelTelemetryRollup]] = {}
+    for r in rows:
+        key = (r.server, r.server_type, r.model)
+        by_model.setdefault(key, []).append(r)
+
+    snapshot = poller.get_snapshot()
+    for srv in snapshot.get("servers", []):
+        s_name = srv.get("name")
+        s_type = srv.get("server_type") or srv.get("kind", "unknown")
+        for mdl in srv.get("models", []):
+            if (server is None or server == s_name) and (model is None or model == mdl):
+                key = (s_name, s_type, mdl)
+                by_model.setdefault(key, [])
+
+    result_models = []
+    for (s_name, s_type, mdl), m_rows in sorted(by_model.items()):
+        summary, series = _downsample_rollups(
+            m_rows,
+            start_time=start_time,
+            end_time=end_time if end_time > start_time else start_time + timedelta(seconds=bucket_interval_s),
+            bucket_interval_s=bucket_interval_s,
+            total_seconds=total_seconds,
+        )
+        result_models.append({
+            "server": s_name,
+            "server_type": s_type,
+            "model": mdl,
+            "summary": summary,
+            "series": series,
+            **summary,
+        })
+
+    return {
+        "timeframe": timeframe,
+        "start_time": start_time.isoformat() + "Z",
+        "end_time": now_naive.isoformat() + "Z",
+        "bucket_interval_s": bucket_interval_s,
+        "models": result_models,
+    }
+
+
 @router.get("/live")
 async def live(session: AsyncSession = Depends(get_session), user=Depends(require_manager)) -> dict:
     overrides = await load_overrides(session)

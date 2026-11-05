@@ -6,13 +6,14 @@ of one per card. Everything here is a database aggregate or in-process state
 slow it down. The live traffic numbers stay on the SSE stream in admin.py.
 """
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import APIKey, AuditLog, CachedResponse, LLMBackend, Owner, SpendRecord
+from ..models import APIKey, AuditLog, CachedResponse, LLMBackend, ModelTelemetryRollup, Owner, SpendRecord
 from ..services import ConfigService, get_config_service
 from .admin import require_manager
 
@@ -203,6 +204,70 @@ async def _backends(session: AsyncSession) -> list:
     return out
 
 
+@router.get("/traffic-24h")
+async def dashboard_traffic_24h(
+    server: Optional[str] = None,
+    model: Optional[str] = None,
+    session: AsyncSession = Depends(get_session),
+    user=Depends(require_manager),
+) -> dict:
+    from ..observability.collect.poller import flush_telemetry_rollups
+
+    try:
+        await flush_telemetry_rollups(session)
+    except Exception:
+        pass
+
+    now = _now()
+    since = now - timedelta(hours=24)
+    start_hour = (now - timedelta(hours=23)).replace(minute=0, second=0, microsecond=0)
+
+    stmt = select(ModelTelemetryRollup).where(ModelTelemetryRollup.bucket_time >= since)
+    if server:
+        stmt = stmt.where(ModelTelemetryRollup.server == server)
+    if model:
+        stmt = stmt.where(ModelTelemetryRollup.model == model)
+    stmt = stmt.order_by(ModelTelemetryRollup.bucket_time.asc())
+
+    rows = (await session.execute(stmt)).scalars().all()
+
+    hourly = []
+    for h in range(24):
+        hour_start = start_hour + timedelta(hours=h)
+        hour_end = hour_start + timedelta(hours=1)
+        h_rows = [r for r in rows if r.bucket_time >= hour_start and r.bucket_time < hour_end]
+        reqs = sum(r.requests for r in h_rows)
+        toks = sum(r.total_tokens for r in h_rows)
+        errs = sum(r.errors for r in h_rows)
+        ttft_cnt = sum(r.ttft_count for r in h_rows)
+        avg_ttft = round(sum(r.ttft_sum_ms for r in h_rows) / ttft_cnt, 1) if ttft_cnt > 0 else None
+        hourly.append({
+            "hour": hour_start.isoformat() + "Z",
+            "timestamp": hour_start.isoformat() + "Z",
+            "requests": reqs,
+            "tokens": toks,
+            "total_tokens": toks,
+            "errors": errs,
+            "avg_ttft_ms": avg_ttft,
+        })
+
+    tot_reqs = sum(r.requests for r in rows)
+    tot_toks = sum(r.total_tokens for r in rows)
+    tot_errors = sum(r.errors for r in rows)
+    tot_ttft_cnt = sum(r.ttft_count for r in rows)
+    overall_ttft = round(sum(r.ttft_sum_ms for r in rows) / tot_ttft_cnt, 1) if tot_ttft_cnt > 0 else None
+
+    return {
+        "start_time": since.isoformat() + "Z",
+        "end_time": now.isoformat() + "Z",
+        "total_requests": tot_reqs,
+        "total_tokens": tot_toks,
+        "total_errors": tot_errors,
+        "avg_ttft_ms": overall_ttft,
+        "hourly": hourly,
+    }
+
+
 @router.get("/summary")
 async def dashboard_summary(
     session: AsyncSession = Depends(get_session),
@@ -212,6 +277,7 @@ async def dashboard_summary(
     now = _now()
     spend = await _spend(session, now)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    traffic_24h = await dashboard_traffic_24h(session=session, user=user)
     return {
         "generated_at": _iso(now),
         "spend": spend,
@@ -220,4 +286,5 @@ async def dashboard_summary(
         "cache": await _cache(session, now),
         "security": await _security(session, service, now),
         "backends": await _backends(session),
+        "traffic_24h": traffic_24h,
     }
