@@ -308,6 +308,11 @@
   .reply-tools .md-copy { color: rgb(var(--ink-muted)); border-color: rgb(var(--hairline)); background: rgb(var(--surface-raised)); }
   .reply-tools .md-copy:hover { color: rgb(var(--ink)); background: rgb(var(--surface-inset)); }
   .reply-tools .md-copy[aria-pressed="true"] { color: rgb(var(--accent)); border-color: rgb(var(--accent) / 0.5); }
+
+  /* Modal size utilities */
+  .modal-lg { max-width: 56rem; }  /* 896px / 4xl */
+  .modal-xl { max-width: 64rem; }  /* 1024px / 5xl */
+  .modal-2xl { max-width: 72rem; } /* 1152px / 6xl */
 }
 
 @layer utilities {
