@@ -62,7 +62,7 @@ test = [
     "httpx>=0.28.0",
     "aiosqlite>=0.20.0",
     "respx>=0.22.0",
-    "pyflakes>=3.2.0",
+    "pyflakes>=4.0.3",
 ]
 
 [build-system]
