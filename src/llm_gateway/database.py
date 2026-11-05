@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Import User model to register with SQLModel
 from .auth.models import User  # noqa: F401
-from .models import LLMBackend, LLMBot, LLMBotMessage, LLMBotResponse, FallbackChain, ModelAlias, SpendRecord, CachedResponse  # noqa: F401
+from .models import LLMBackend, LLMBot, LLMBotMessage, LLMBotResponse, FallbackChain, ModelAlias, SpendRecord, CachedResponse, ModelPricing  # noqa: F401
 
 
 _DIRECT_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://gateway:password@postgres:5432/gateway_db")

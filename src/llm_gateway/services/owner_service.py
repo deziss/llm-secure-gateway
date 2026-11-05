@@ -64,12 +64,21 @@ class OwnerService:
         if existing:
             existing.encrypted_key = encrypted
             session.add(existing)
-            return existing
-
-        pk = ProviderKey(owner_id=owner_id, provider_id=provider, encrypted_key=encrypted)
-        session.add(pk)
+            pk = existing
+        else:
+            pk = ProviderKey(owner_id=owner_id, provider_id=provider, encrypted_key=encrypted)
+            session.add(pk)
+        
         await session.commit()
         await session.refresh(pk)
+
+        # Auto-detect and populate provider model rates from catalog
+        try:
+            from .pricing_catalog import auto_seed_pricing_for_provider
+            await auto_seed_pricing_for_provider(session, provider)
+        except Exception as exc:
+            logger.warning("Could not auto-seed pricing for provider %s: %s", provider, exc)
+
         return pk
 
     async def get_decrypted_key(self, session: AsyncSession, owner_id: str, provider: str) -> Optional[str]:

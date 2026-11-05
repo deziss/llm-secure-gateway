@@ -13,12 +13,16 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import SpendRecord, Owner, APIKey, SystemSetting
+from ..models import SpendRecord, Owner, APIKey, SystemSetting, ModelPricing
+from .pricing_catalog import (
+    PROVIDER_PRICING_CATALOG,
+    lookup_catalog_rate,
+    auto_seed_pricing_for_provider,
+)
 
 logger = logging.getLogger(__name__)
 
-# Default pricing (USD per 1K tokens).  Admins can override via
-# SystemSetting key=MODEL_PRICING with a JSON dict.
+# Default pricing fallback (USD per 1K tokens) for legacy compatibility.
 DEFAULT_PRICING: dict[str, dict[str, float]] = {
     # OpenAI
     "gpt-4o":            {"input": 0.0025, "output": 0.01},
@@ -28,6 +32,8 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "gpt-4.1-nano":      {"input": 0.0001, "output": 0.0004},
     "gpt-4-turbo":       {"input": 0.01, "output": 0.03},
     "gpt-3.5-turbo":     {"input": 0.0005, "output": 0.0015},
+    "o1":                {"input": 0.015, "output": 0.06},
+    "o1-mini":           {"input": 0.0011, "output": 0.0044},
     "o3":                {"input": 0.01, "output": 0.04},
     "o3-mini":           {"input": 0.0011, "output": 0.0044},
     "o4-mini":           {"input": 0.0011, "output": 0.0044},
@@ -40,7 +46,7 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "gemini-2.5-pro":    {"input": 0.00125, "output": 0.01},
     "gemini-2.5-flash":  {"input": 0.00015, "output": 0.0006},
     "gemini-2.0-flash":  {"input": 0.0001, "output": 0.0004},
-    # Groq (self-hosted inference — effectively free per token)
+    # Groq
     "llama-3.3-70b-versatile": {"input": 0.00059, "output": 0.00079},
     # Local (vLLM / Ollama — zero cost)
     "_default_local":    {"input": 0.0, "output": 0.0},
@@ -48,7 +54,10 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
 
 
 async def _load_pricing(session: AsyncSession) -> dict:
-    """Load pricing table: DB override merged on top of defaults."""
+    """Load pricing table: DB ModelPricing overrides merged on top of defaults."""
+    merged: dict = dict(DEFAULT_PRICING)
+
+    # 1. First, check legacy SystemSetting key=MODEL_PRICING if present
     try:
         result = await session.execute(
             select(SystemSetting).where(SystemSetting.key == "MODEL_PRICING")
@@ -56,31 +65,117 @@ async def _load_pricing(session: AsyncSession) -> dict:
         setting = result.scalars().first()
         if setting and setting.value:
             custom = json.loads(setting.value)
-            merged = dict(DEFAULT_PRICING)
             merged.update(custom)
-            return merged
     except Exception as exc:
-        logger.warning("Failed to load MODEL_PRICING from DB: %s", exc)
-    return DEFAULT_PRICING
+        logger.debug("No legacy MODEL_PRICING setting found: %s", exc)
+
+    # 2. Primary: Load all explicit ModelPricing rules from DB
+    try:
+        res = await session.execute(
+            select(ModelPricing).order_by(ModelPricing.id.asc())
+        )
+        pricing_rows = res.scalars().all()
+        for row in pricing_rows:
+            entry = {
+                "input_per_1m": row.input_cost_per_1m,
+                "output_per_1m": row.output_cost_per_1m,
+                "cached_input_per_1m": row.cached_input_cost_per_1m,
+                "input": row.input_cost_per_1m / 1000.0,
+                "output": row.output_cost_per_1m / 1000.0,
+                "source": row.source,
+                "provider": row.provider,
+            }
+            # Index by (model, provider) and model
+            merged[(row.model, row.provider)] = entry
+            # Provider-specific overrides have higher priority than generic
+            if row.provider == "*" or row.model not in merged:
+                merged[row.model] = entry
+    except Exception as exc:
+        logger.warning("Failed to load ModelPricing from DB: %s", exc)
+
+    return merged
 
 
-def _get_model_cost(pricing: dict, model: str, provider: str) -> dict[str, float]:
-    """Resolve per-1K-token pricing for a model."""
+def _get_model_cost(pricing: dict, model: str, provider: str) -> dict:
+    """Resolve token pricing for a model."""
+    p_clean = (provider or "").lower().strip()
+    if p_clean == "google":
+        p_clean = "gemini"
+
+    # 1. Exact (model, provider) match
+    if (model, p_clean) in pricing:
+        return pricing[(model, p_clean)]
+
+    # 2. Exact (model, "*") match
+    if (model, "*") in pricing:
+        return pricing[(model, "*")]
+
+    # 3. Model name match
     if model in pricing:
         return pricing[model]
-    # Local providers are free
-    if provider in ("ollama", "vllm"):
-        return pricing.get("_default_local", {"input": 0.0, "output": 0.0})
-    # Unknown cloud model — use a conservative default
-    return {"input": 0.003, "output": 0.015}
+
+    # 4. Local providers are free
+    if p_clean in ("ollama", "vllm", "llamacpp"):
+        return {
+            "input_per_1m": 0.0,
+            "output_per_1m": 0.0,
+            "cached_input_per_1m": 0.0,
+            "input": 0.0,
+            "output": 0.0,
+        }
+
+    # 5. Check provider catalog registry
+    catalog_rate = lookup_catalog_rate(model, p_clean)
+    if catalog_rate:
+        return {
+            "input_per_1m": catalog_rate["input_cost_per_1m"],
+            "output_per_1m": catalog_rate["output_cost_per_1m"],
+            "cached_input_per_1m": catalog_rate.get("cached_input_cost_per_1m"),
+            "input": catalog_rate["input_cost_per_1m"] / 1000.0,
+            "output": catalog_rate["output_cost_per_1m"] / 1000.0,
+        }
+
+    # 6. Unknown cloud model — conservative default: $3.00/1M in, $15.00/1M out
+    return {
+        "input_per_1m": 3.00,
+        "output_per_1m": 15.00,
+        "cached_input_per_1m": 1.50,
+        "input": 0.003,
+        "output": 0.015,
+    }
 
 
-def calculate_cost(pricing: dict, model: str, provider: str,
-                   input_tokens: int, output_tokens: int) -> float:
-    """Calculate USD cost for a request."""
+def calculate_cost(
+    pricing: dict,
+    model: str,
+    provider: str,
+    input_tokens: int,
+    output_tokens: int,
+    cached_tokens: int = 0,
+) -> float:
+    """Calculate USD cost for a request using 1M-token standard rates."""
     rates = _get_model_cost(pricing, model, provider)
-    cost = (input_tokens / 1000.0) * rates["input"] + \
-           (output_tokens / 1000.0) * rates["output"]
+
+    rate_in_1m = rates.get("input_per_1m")
+    if rate_in_1m is None:
+        rate_in_1m = rates.get("input", 0.003) * 1000.0
+
+    rate_out_1m = rates.get("output_per_1m")
+    if rate_out_1m is None:
+        rate_out_1m = rates.get("output", 0.015) * 1000.0
+
+    rate_cached_1m = rates.get("cached_input_cost_per_1m")
+    if rate_cached_1m is None:
+        rate_cached_1m = rates.get("cached_input_per_1m")
+    if rate_cached_1m is None:
+        rate_cached_1m = rate_in_1m * 0.5 if cached_tokens > 0 else rate_in_1m
+
+    regular_input = max(0, input_tokens - cached_tokens)
+    cost = (
+        (regular_input / 1_000_000.0) * rate_in_1m
+        + (cached_tokens / 1_000_000.0) * rate_cached_1m
+        + (output_tokens / 1_000_000.0) * rate_out_1m
+    )
     return round(cost, 8)
 
 
@@ -92,10 +187,13 @@ async def record_spend(
     provider: str,
     input_tokens: int,
     output_tokens: int,
+    cached_tokens: int = 0,
 ) -> SpendRecord:
     """Record a spend event and return the record."""
     pricing = await _load_pricing(session)
-    cost = calculate_cost(pricing, model, provider, input_tokens, output_tokens)
+    cost = calculate_cost(
+        pricing, model, provider, input_tokens, output_tokens, cached_tokens=cached_tokens
+    )
 
     record = SpendRecord(
         owner_id=owner_id,
@@ -222,3 +320,98 @@ async def get_spend_by_model(session: AsyncSession) -> list[dict]:
         }
         for row in result.fetchall()
     ]
+
+
+async def list_model_pricing(session: AsyncSession) -> list[ModelPricing]:
+    """List all model pricing rules from DB. Auto-seeds defaults if empty."""
+    res = await session.execute(
+        select(ModelPricing).order_by(ModelPricing.model.asc(), ModelPricing.provider.asc())
+    )
+    rows = list(res.scalars().all())
+    if not rows:
+        # Seed default catalog pricing for popular providers
+        for p in ["openai", "anthropic", "gemini", "groq", "deepseek"]:
+            await auto_seed_pricing_for_provider(session, p)
+        res = await session.execute(
+            select(ModelPricing).order_by(ModelPricing.model.asc(), ModelPricing.provider.asc())
+        )
+        rows = list(res.scalars().all())
+    return rows
+
+
+async def upsert_model_pricing(
+    session: AsyncSession,
+    model: str,
+    provider: str,
+    input_cost_per_1m: float,
+    output_cost_per_1m: float,
+    cached_input_cost_per_1m: Optional[float] = None,
+    description: Optional[str] = None,
+) -> ModelPricing:
+    """Create or manually override pricing for a model."""
+    m_clean = model.strip()
+    p_clean = (provider or "*").strip().lower()
+
+    res = await session.execute(
+        select(ModelPricing).where(
+            ModelPricing.model == m_clean,
+            ModelPricing.provider == p_clean,
+        )
+    )
+    existing = res.scalars().first()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    if existing:
+        existing.input_cost_per_1m = float(input_cost_per_1m)
+        existing.output_cost_per_1m = float(output_cost_per_1m)
+        if cached_input_cost_per_1m is not None:
+            existing.cached_input_cost_per_1m = float(cached_input_cost_per_1m)
+        if description is not None:
+            existing.description = description
+        existing.source = "manual"
+        existing.updated_at = now
+        session.add(existing)
+        await session.commit()
+        await session.refresh(existing)
+        return existing
+
+    new_rule = ModelPricing(
+        model=m_clean,
+        provider=p_clean,
+        input_cost_per_1m=float(input_cost_per_1m),
+        output_cost_per_1m=float(output_cost_per_1m),
+        cached_input_cost_per_1m=float(cached_input_cost_per_1m) if cached_input_cost_per_1m is not None else None,
+        source="manual",
+        description=description,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(new_rule)
+    await session.commit()
+    await session.refresh(new_rule)
+    return new_rule
+
+
+async def delete_model_pricing(session: AsyncSession, pricing_id: int) -> bool:
+    """Delete a model pricing rule by ID."""
+    res = await session.execute(
+        select(ModelPricing).where(ModelPricing.id == pricing_id)
+    )
+    item = res.scalars().first()
+    if not item:
+        return False
+    await session.delete(item)
+    await session.commit()
+    return True
+
+
+async def sync_all_catalog_pricing(session: AsyncSession, provider: Optional[str] = None) -> list[ModelPricing]:
+    """Sync standard catalog rates for one or all providers."""
+    providers_to_sync = [provider] if provider else list(PROVIDER_PRICING_CATALOG.keys())
+    all_seeded = []
+    for p in providers_to_sync:
+        if p in PROVIDER_PRICING_CATALOG:
+            seeded = await auto_seed_pricing_for_provider(session, p)
+            all_seeded.extend(seeded)
+    return all_seeded
+

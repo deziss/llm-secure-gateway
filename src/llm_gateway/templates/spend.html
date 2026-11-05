@@ -121,12 +121,219 @@
   </div>
 </div>
 
+<!-- Model Token Pricing & Cost Rules (USD per 1,000,000 tokens) -->
+<div class="mt-8 rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden">
+  <div class="p-6 border-b border-hairline flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <h2 class="text-lg font-semibold text-ink flex items-center gap-2">
+        <i data-lucide="calculator" class="text-accent w-5 h-5"></i> Model Token Rates & Pricing
+      </h2>
+      <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
+        Configured rates in USD per 1,000,000 (1M) tokens. Automatically populated when owners add provider API keys, or customizable with manual overrides.
+      </p>
+    </div>
+    <div class="flex items-center gap-2.5 flex-wrap">
+      <input
+        type="text"
+        id="pricingSearchInput"
+        placeholder="Filter models or providers..."
+        oninput="filterPricingTable()"
+        class="px-3 py-1.5 text-xs bg-surface-inset border border-hairline rounded-control text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
+      />
+      <button
+        onclick="syncPricingCatalog()"
+        id="btnSyncCatalog"
+        class="px-3.5 py-1.5 text-xs bg-surface-inset hover:bg-surface-inset/70 border border-hairline rounded-control font-semibold flex items-center gap-1.5 text-ink transition-colors"
+        title="Refresh default rates from standard provider catalog"
+      >
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-warn"></i> Sync Catalog
+      </button>
+      <button
+        onclick="openAddPricingModal()"
+        class="px-3.5 py-1.5 text-xs bg-accent hover:bg-accent/90 text-white rounded-control font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+      >
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add / Override Rate
+      </button>
+    </div>
+  </div>
+  <div class="p-1 overflow-x-auto">
+    <table class="w-full text-left text-sm border-separate border-spacing-0">
+      <thead class="bg-surface-inset text-ink-muted text-caption font-medium">
+        <tr>
+          <th class="p-4">Model</th>
+          <th class="p-4">Provider</th>
+          <th class="p-4">Input Rate ($ / 1M)</th>
+          <th class="p-4">Output Rate ($ / 1M)</th>
+          <th class="p-4">Cached Input</th>
+          <th class="p-4">Source</th>
+          <th class="p-4 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="pricingTbody" class="divide-y divide-hairline">
+        <tr>
+          <td colspan="7" class="p-8 text-center text-ink-muted">Loading model pricing rates...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add / Edit Model Pricing -->
+<div id="pricingModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closePricingModal()">
+  <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all">
+    <div class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset">
+      <div>
+        <h2 id="pricingModalTitle" class="text-lg font-bold text-ink flex items-center gap-2">
+          <i data-lucide="coins" class="text-accent w-5 h-5"></i> Configure Model Rate
+        </h2>
+        <p class="text-caption text-ink-muted mt-0.5">Define token pricing in USD per 1,000,000 (1M) tokens.</p>
+      </div>
+      <button onclick="closePricingModal()" class="text-ink-muted hover:text-ink text-xl font-bold p-1">&times;</button>
+    </div>
+
+    <form id="pricingForm" onsubmit="savePricingRule(event)" class="p-5 sm:p-6 space-y-4 overflow-y-auto">
+      <input type="hidden" id="editPricingId" value="" />
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-caption font-medium text-ink-muted mb-1">Model Name *</label>
+          <input
+            type="text"
+            id="formPricingModel"
+            required
+            placeholder="e.g. gpt-4o, claude-3-5-sonnet"
+            class="w-full px-3 py-2 bg-surface-inset border border-hairline rounded-control text-ink text-sm focus:outline-none focus:border-accent font-mono"
+          />
+        </div>
+        <div>
+          <label class="block text-caption font-medium text-ink-muted mb-1">Provider *</label>
+          <select
+            id="formPricingProvider"
+            class="w-full px-3 py-2 bg-surface-inset border border-hairline rounded-control text-ink text-sm focus:outline-none focus:border-accent"
+          >
+            <option value="*">* (All Providers / Generic)</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="groq">Groq</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="mistral">Mistral</option>
+            <option value="ollama">Ollama (Local / Free)</option>
+            <option value="vllm">vLLM (Local / Free)</option>
+            <option value="llamacpp">llama.cpp (Local / Free)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-caption font-medium text-ink-muted mb-1">
+            Input Cost ($ / 1M tokens) *
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink-muted text-sm">$</span>
+            <input
+              type="number"
+              step="0.0001"
+              min="0"
+              id="formPricingInput1M"
+              required
+              placeholder="2.50"
+              oninput="updatePricingPreview()"
+              class="w-full pl-7 pr-3 py-2 bg-surface-inset border border-hairline rounded-control text-ink text-sm focus:outline-none focus:border-accent font-mono"
+            />
+          </div>
+          <span id="rateIn1kHint" class="text-micro text-ink-muted mt-1 block">≈ $0.000000 / 1K tokens</span>
+        </div>
+        <div>
+          <label class="block text-caption font-medium text-ink-muted mb-1">
+            Output Cost ($ / 1M tokens) *
+          </label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink-muted text-sm">$</span>
+            <input
+              type="number"
+              step="0.0001"
+              min="0"
+              id="formPricingOutput1M"
+              required
+              placeholder="10.00"
+              oninput="updatePricingPreview()"
+              class="w-full pl-7 pr-3 py-2 bg-surface-inset border border-hairline rounded-control text-ink text-sm focus:outline-none focus:border-accent font-mono"
+            />
+          </div>
+          <span id="rateOut1kHint" class="text-micro text-ink-muted mt-1 block">≈ $0.000000 / 1K tokens</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-caption font-medium text-ink-muted mb-1">
+          Cached Input Cost ($ / 1M tokens, optional)
+        </label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink-muted text-sm">$</span>
+          <input
+            type="number"
+            step="0.0001"
+            min="0"
+            id="formPricingCached1M"
+            placeholder="e.g. 1.25 (leave empty for default discount)"
+            class="w-full pl-7 pr-3 py-2 bg-surface-inset border border-hairline rounded-control text-ink text-sm focus:outline-none focus:border-accent font-mono"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-caption font-medium text-ink-muted mb-1">Description / Notes (Optional)</label>
+        <input
+          type="text"
+          id="formPricingDescription"
+          placeholder="e.g. Negotiated enterprise tier discount"
+          class="w-full px-3 py-2 bg-surface-inset border border-hairline rounded-control text-ink text-sm focus:outline-none focus:border-accent"
+        />
+      </div>
+
+      <!-- Live Cost Simulation Box -->
+      <div class="p-3.5 rounded-control bg-surface-inset/60 border border-hairline flex items-center justify-between">
+        <div>
+          <span class="text-micro font-semibold text-ink-muted block uppercase tracking-wider">Estimated Cost</span>
+          <span class="text-xs text-ink">Sample: 100K prompt + 25K output tokens</span>
+        </div>
+        <div id="pricingPreviewBadge" class="text-sm font-mono font-bold text-accent">
+          $0.0000
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-3 border-t border-hairline">
+        <button
+          type="button"
+          onclick="closePricingModal()"
+          class="px-4 py-2 text-xs font-semibold rounded-control border border-hairline text-ink hover:bg-surface-inset transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          id="btnSavePricing"
+          class="px-5 py-2 text-xs font-semibold rounded-control bg-accent hover:bg-accent/90 text-white transition-colors"
+        >
+          Save Rate Rule
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+let allPricingRules = [];
+
 async function loadSpendData() {
   try {
-    const [resSummary, resByModel] = await Promise.all([
+    const [resSummary, resByModel, resPricing] = await Promise.all([
       fetch('/admin/spend/summary'),
-      fetch('/admin/spend/by-model')
+      fetch('/admin/spend/by-model'),
+      fetch('/admin/pricing'),
     ]);
 
     if (!resSummary.ok || !resByModel.ok) {
@@ -182,9 +389,14 @@ async function loadSpendData() {
       `).join('');
     }
 
+    // Render Pricing Rules Table
+    if (resPricing && resPricing.ok) {
+      allPricingRules = await resPricing.json();
+      renderPricingTable(allPricingRules);
+    }
+
   } catch (err) {
     console.error("Failed to load spend data", err);
-    // Replace the "Loading..." rows so the page doesn't look stuck.
     document.querySelectorAll("main table tbody").forEach((tb) => {
       const cols = tb.closest("table").querySelectorAll("thead th").length || 1;
       tb.innerHTML = `<tr><td colspan="${cols}" class="p-8 text-center text-down text-sm">Couldn't load spend data. Reload the page, or sign in again if your session expired.</td></tr>`;
@@ -192,6 +404,243 @@ async function loadSpendData() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadSpendData);
+function renderPricingTable(rules) {
+  const tbody = document.getElementById('pricingTbody');
+  if (!rules || rules.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-ink-muted">No pricing rules configured yet. Click "Sync Catalog" to populate default rates.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rules.map(r => {
+    const isManual = r.source === 'manual';
+    const sourceBadge = isManual
+      ? `<span class="px-2.5 py-0.5 text-micro font-semibold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">Manual Override</span>`
+      : `<span class="px-2.5 py-0.5 text-micro font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Auto-Detected</span>`;
+
+    const cachedStr = (r.cached_input_cost_per_1m != null)
+      ? `$${Number(r.cached_input_cost_per_1m).toFixed(4)}`
+      : `<span class="text-ink-muted text-micro">Default</span>`;
+
+    const inPer1k = (Number(r.input_cost_per_1m) / 1000).toFixed(6);
+    const outPer1k = (Number(r.output_cost_per_1m) / 1000).toFixed(6);
+
+    return `
+      <tr class="hover:bg-surface-inset transition-colors">
+        <td class="p-4 font-mono font-semibold text-ink">
+          ${r.model}
+          ${r.description ? `<span class="block text-micro text-ink-muted font-sans font-normal mt-0.5">${r.description}</span>` : ''}
+        </td>
+        <td class="p-4"><span class="px-2 py-0.5 text-micro rounded-full bg-surface-inset border border-hairline font-semibold text-ink">${r.provider}</span></td>
+        <td class="p-4 font-mono font-semibold text-ink">
+          $${Number(r.input_cost_per_1m).toFixed(4)}
+          <span class="block text-micro text-ink-muted font-normal mt-0.5">$${inPer1k} / 1k</span>
+        </td>
+        <td class="p-4 font-mono font-semibold text-ink">
+          $${Number(r.output_cost_per_1m).toFixed(4)}
+          <span class="block text-micro text-ink-muted font-normal mt-0.5">$${outPer1k} / 1k</span>
+        </td>
+        <td class="p-4 font-mono text-ink text-xs">${cachedStr}</td>
+        <td class="p-4">${sourceBadge}</td>
+        <td class="p-4 text-right whitespace-nowrap">
+          <button
+            type="button"
+            data-action="edit-pricing"
+            data-id="${r.id}"
+            class="px-2.5 py-1 text-xs rounded-control border border-hairline hover:bg-surface-inset text-ink mr-1.5 transition-colors"
+            title="Edit token rate"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            data-action="delete-pricing"
+            data-id="${r.id}"
+            class="px-2 py-1 text-xs rounded-control text-down hover:bg-down/10 transition-colors"
+            title="Delete pricing rule"
+          >
+            Delete
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterPricingTable() {
+  const query = (document.getElementById('pricingSearchInput').value || '').toLowerCase().trim();
+  if (!query) {
+    renderPricingTable(allPricingRules);
+    return;
+  }
+  const filtered = allPricingRules.filter(r =>
+    (r.model && r.model.toLowerCase().includes(query)) ||
+    (r.provider && r.provider.toLowerCase().includes(query)) ||
+    (r.description && r.description.toLowerCase().includes(query))
+  );
+  renderPricingTable(filtered);
+}
+
+function openAddPricingModal() {
+  document.getElementById('pricingModalTitle').innerHTML = '<i data-lucide="plus-circle" class="text-accent w-5 h-5"></i> Add / Override Model Rate';
+  document.getElementById('editPricingId').value = '';
+  document.getElementById('formPricingModel').value = '';
+  document.getElementById('formPricingModel').disabled = false;
+  document.getElementById('formPricingProvider').value = '*';
+  document.getElementById('formPricingInput1M').value = '';
+  document.getElementById('formPricingOutput1M').value = '';
+  document.getElementById('formPricingCached1M').value = '';
+  document.getElementById('formPricingDescription').value = '';
+  updatePricingPreview();
+  document.getElementById('pricingModal').classList.remove('hidden');
+}
+
+function openEditPricingModal(rule) {
+  document.getElementById('pricingModalTitle').innerHTML = '<i data-lucide="edit-3" class="text-accent w-5 h-5"></i> Edit Model Rate';
+  document.getElementById('editPricingId').value = rule.id || '';
+  document.getElementById('formPricingModel').value = rule.model;
+  document.getElementById('formPricingModel').disabled = true;
+  document.getElementById('formPricingProvider').value = rule.provider || '*';
+  document.getElementById('formPricingInput1M').value = rule.input_cost_per_1m;
+  document.getElementById('formPricingOutput1M').value = rule.output_cost_per_1m;
+  document.getElementById('formPricingCached1M').value = (rule.cached_input_cost_per_1m != null) ? rule.cached_input_cost_per_1m : '';
+  document.getElementById('formPricingDescription').value = rule.description || '';
+  updatePricingPreview();
+  document.getElementById('pricingModal').classList.remove('hidden');
+}
+
+function closePricingModal() {
+  document.getElementById('pricingModal').classList.add('hidden');
+}
+
+function updatePricingPreview() {
+  const inRate = parseFloat(document.getElementById('formPricingInput1M').value) || 0;
+  const outRate = parseFloat(document.getElementById('formPricingOutput1M').value) || 0;
+
+  document.getElementById('rateIn1kHint').textContent = `≈ $${(inRate / 1000).toFixed(6)} / 1K tokens`;
+  document.getElementById('rateOut1kHint').textContent = `≈ $${(outRate / 1000).toFixed(6)} / 1K tokens`;
+
+  // Sample: 100K in, 25K out
+  const estCost = ((100000 / 1000000) * inRate) + ((25000 / 1000000) * outRate);
+  document.getElementById('pricingPreviewBadge').textContent = `$${estCost.toFixed(4)}`;
+}
+
+async function savePricingRule(event) {
+  event.preventDefault();
+  const id = document.getElementById('editPricingId').value;
+  const model = document.getElementById('formPricingModel').value.trim();
+  const provider = document.getElementById('formPricingProvider').value;
+  const input_cost_per_1m = parseFloat(document.getElementById('formPricingInput1M').value);
+  const output_cost_per_1m = parseFloat(document.getElementById('formPricingOutput1M').value);
+  const cachedVal = document.getElementById('formPricingCached1M').value;
+  const cached_input_cost_per_1m = cachedVal !== '' ? parseFloat(cachedVal) : null;
+  const description = document.getElementById('formPricingDescription').value.trim() || null;
+
+  try {
+    let res;
+    if (id) {
+      res = await fetch(`/admin/pricing/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input_cost_per_1m,
+          output_cost_per_1m,
+          cached_input_cost_per_1m,
+          description,
+        }),
+      });
+    } else {
+      res = await fetch('/admin/pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          provider,
+          input_cost_per_1m,
+          output_cost_per_1m,
+          cached_input_cost_per_1m,
+          description,
+        }),
+      });
+    }
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Error saving pricing: ${err.detail || 'Request failed'}`);
+      return;
+    }
+
+    closePricingModal();
+    await loadSpendData();
+  } catch (err) {
+    console.error("Save pricing error:", err);
+    alert("Network error saving pricing rule.");
+  }
+}
+
+async function deletePricingRule(id) {
+  if (!confirm("Are you sure you want to delete this pricing rule? Future requests will fall back to catalog or provider defaults.")) {
+    return;
+  }
+  try {
+    const res = await fetch(`/admin/pricing/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Error deleting rule: ${err.detail || 'Request failed'}`);
+      return;
+    }
+    await loadSpendData();
+  } catch (err) {
+    console.error("Delete pricing error:", err);
+    alert("Network error deleting pricing rule.");
+  }
+}
+
+async function syncPricingCatalog() {
+  const btn = document.getElementById('btnSyncCatalog');
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Syncing...';
+
+  try {
+    const res = await fetch('/admin/pricing/sync-catalog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      alert("Failed to sync catalog.");
+    } else {
+      const data = await res.json();
+      await loadSpendData();
+    }
+  } catch (err) {
+    console.error("Sync catalog error:", err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadSpendData();
+  const pricingTbody = document.getElementById('pricingTbody');
+  if (pricingTbody) {
+    pricingTbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = parseInt(btn.dataset.id, 10);
+      if (action === 'edit-pricing') {
+        const rule = allPricingRules.find(r => r.id === id);
+        if (rule) openEditPricingModal(rule);
+      } else if (action === 'delete-pricing') {
+        deletePricingRule(id);
+      }
+    });
+  }
+});
 </script>
 {% endblock %}

@@ -64,6 +64,14 @@ async def register_backend(
             except Exception as fe:
                 logger.debug("Auto-discovery on backend register skipped: %s", fe)
 
+        # Auto-seed pricing catalog for this provider if known
+        try:
+            from ..services.pricing_catalog import auto_seed_pricing_for_provider
+            b_type = new_backend.backend_type.value if hasattr(new_backend.backend_type, "value") else str(new_backend.backend_type)
+            await auto_seed_pricing_for_provider(session, b_type)
+        except Exception as fe:
+            logger.debug("Auto-seeding pricing for backend skipped: %s", fe)
+
         # Email Alert
         from ..services.email_service import get_email_service
         try:

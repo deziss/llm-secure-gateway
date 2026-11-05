@@ -95,7 +95,7 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Arize Phoenix Multi-Tenant Project Isolation**: OpenInference-compliant distributed tracing with decoupled root spans (`gateway-{tenant}-{provider}`) for both OpenAI and native Anthropic `/v1/messages`.
 - **Prometheus & Metrics**: Native `/metrics` endpoint tracking request latency, token throughput, cache hits, error rates, and active connections.
 - **Token-Level Streaming Telemetry**: High-frequency async parser computing real-time prompt, completion, and total token usage on chunked responses.
-- **Spend & Quota Governance**: Per-tenant budget ceilings, token limits, and spend tracking with configurable webhooks and email notifications.
+- **Spend & Cost Governance**: Dynamic per-model token pricing (USD per 1M tokens), auto-detected provider costs when API keys are added (OpenAI, Anthropic, Gemini, Groq, DeepSeek), custom manual overrides, per-tenant budget ceilings, and monthly spend tracking.
 
 ---
 
