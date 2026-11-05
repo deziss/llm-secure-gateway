@@ -1,46 +1,33 @@
 {% extends "base.html" %} {% block title %}Dashboard - LLM Gateway{% endblock %}
+{% block main_class %}w-full flex-1 p-3.5 sm:p-5 lg:p-6 outline-none{% endblock %}
 {% block content %}
-<div class="mb-6">
-  <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
-    <i data-lucide="line-chart" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Dashboard
-  </h1>
-  <p class="text-ink-muted text-xs sm:text-sm mt-0.5">Live traffic, server health and model availability.</p>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3.5">
+  <div class="flex items-center gap-2">
+    <h1 class="text-lg sm:text-xl font-bold text-ink flex items-center gap-2">
+      <i data-lucide="line-chart" class="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-accent" aria-hidden="true"></i> Dashboard
+    </h1>
+    <span class="text-ink-muted text-xs hidden sm:inline">· Live traffic, cluster health &amp; telemetry</span>
+  </div>
 </div>
 {% if user_role in ['admin', 'manager'] %}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 mb-3.5">
   <!-- Active users Card -->
   <div class="relative">
     <div
-      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full"
+      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 flex flex-col justify-between h-full"
     >
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <h3
-            class="text-caption font-medium text-ink-muted"
-          >
-            Active users
-          </h3>
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-caption font-medium text-ink-muted">Active users</h3>
           <span class="flex h-2 w-2 relative" aria-hidden="true">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
-            ></span>
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
           <span class="sr-only">Active</span>
         </div>
-        <p
-          class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight"
-          id="stat-ips"
-          role="status"
-        >
-          0
-        </p>
+        <p class="text-2xl sm:text-3xl font-bold text-ink tracking-tight" id="stat-ips" role="status">0</p>
       </div>
-      <div
-        class="mt-4 flex items-center text-caption text-ok font-medium"
-      >
+      <div class="mt-2 flex items-center text-micro text-ok font-medium">
         <i class="fas fa-arrow-up mr-1" aria-hidden="true"></i> <span>Live traffic detected</span>
       </div>
     </div>
@@ -49,33 +36,21 @@
   <!-- Active Backends Card -->
   <div class="relative">
     <div
-      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full"
+      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 flex flex-col justify-between h-full"
     >
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <h3
-            class="text-caption font-medium text-ink-muted"
-          >
-            Model servers
-          </h3>
-          <i class="fas fa-server text-blue-600 dark:text-blue-400/50" aria-hidden="true"></i>
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-caption font-medium text-ink-muted">Model servers</h3>
+          <i class="fas fa-server text-blue-600 dark:text-blue-400/50 text-xs" aria-hidden="true"></i>
         </div>
         <div class="flex items-baseline gap-1">
-          <p
-            class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight"
-            id="stat-active-backends"
-            role="status"
-          >
-            0
-          </p>
-          <p class="text-lg text-ink-muted font-medium">
-            / <span id="stat-total-backends">0</span>
-          </p>
+          <p class="text-2xl sm:text-3xl font-bold text-ink tracking-tight" id="stat-active-backends" role="status">0</p>
+          <p class="text-sm text-ink-muted font-medium">/ <span id="stat-total-backends">0</span></p>
         </div>
       </div>
-      <div class="mt-4 flex items-center text-caption text-accent font-medium">
+      <div class="mt-2 flex items-center text-micro text-accent font-medium">
         <i class="fas fa-check-circle mr-1" aria-hidden="true"></i>
-        <span>Cluster health: Active</span>
+        <span>Cluster: Active</span>
       </div>
     </div>
   </div>
@@ -83,29 +58,17 @@
   <!-- Total Models Card -->
   <div class="relative">
     <div
-      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full"
+      class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 flex flex-col justify-between h-full"
     >
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <h3
-            class="text-caption font-medium text-ink-muted"
-          >
-            Available models
-          </h3>
-          <i class="fas fa-cubes text-violet-400/50" aria-hidden="true"></i>
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-caption font-medium text-ink-muted">Available models</h3>
+          <i class="fas fa-cubes text-violet-400/50 text-xs" aria-hidden="true"></i>
         </div>
-        <p
-          class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight"
-          id="stat-total-models"
-          role="status"
-        >
-          0
-        </p>
+        <p class="text-2xl sm:text-3xl font-bold text-ink tracking-tight" id="stat-total-models" role="status">0</p>
       </div>
-      <div
-        class="mt-4 flex items-center text-caption text-ink-muted font-medium"
-      >
-        <i class="fas fa-sync mr-1" aria-hidden="true"></i> <span>Auto-synced across cluster</span>
+      <div class="mt-2 flex items-center text-micro text-ink-muted font-medium">
+        <i class="fas fa-sync mr-1" aria-hidden="true"></i> <span>Auto-synced</span>
       </div>
     </div>
   </div>
@@ -113,15 +76,15 @@
   {% if user_role in ['admin', 'manager'] %}
   <!-- Spend Card -->
   <div class="relative">
-    <div class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full">
+    <div class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 flex flex-col justify-between h-full">
       <div>
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between mb-1">
           <h3 class="text-caption font-medium text-ink-muted">Spend this month</h3>
-          <i data-lucide="wallet" class="h-4 w-4 text-ink-muted" aria-hidden="true"></i>
+          <i data-lucide="wallet" class="h-3.5 w-3.5 text-ink-muted" aria-hidden="true"></i>
         </div>
-        <p class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-spend-month" role="status">–</p>
+        <p class="text-2xl sm:text-3xl font-bold text-ink tracking-tight tabular-nums" id="stat-spend-month" role="status">–</p>
       </div>
-      <div class="mt-4 flex flex-wrap items-center gap-x-2 text-caption font-medium text-ink-muted">
+      <div class="mt-2 flex flex-wrap items-center gap-x-2 text-micro font-medium text-ink-muted">
         <span>Today <span id="stat-spend-today" class="text-ink tabular-nums">–</span></span>
         <span id="stat-spend-delta" class="tabular-nums"></span>
       </div>
@@ -129,23 +92,23 @@
   </div>
 
   <!-- Tokens Card -->
-  <div class="relative sm:col-span-2 lg:col-span-2 xl:col-span-1">
-    <div class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6 flex flex-col justify-between h-full">
+  <div class="relative col-span-2 sm:col-span-1">
+    <div class="relative rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 flex flex-col justify-between h-full">
       <div>
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between mb-1">
           <h3 class="text-caption font-medium text-ink-muted">Tokens today</h3>
-          <i data-lucide="coins" class="h-4 w-4 text-ink-muted" aria-hidden="true"></i>
+          <i data-lucide="coins" class="h-3.5 w-3.5 text-ink-muted" aria-hidden="true"></i>
         </div>
-        <p class="text-3xl sm:text-4xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-tokens-today" role="status">–</p>
+        <p class="text-2xl sm:text-3xl font-bold text-ink tracking-tight tabular-nums" id="stat-tokens-today" role="status">–</p>
       </div>
-      <div class="mt-4">
-        <div class="flex h-1.5 overflow-hidden rounded-full bg-surface-inset" aria-hidden="true">
+      <div class="mt-2">
+        <div class="flex h-1 overflow-hidden rounded-full bg-surface-inset" aria-hidden="true">
           <span id="stat-tokens-in-bar" class="bg-accent" style="width:0%"></span>
           <span id="stat-tokens-out-bar" class="bg-ok" style="width:0%"></span>
         </div>
-        <p class="mt-2 flex flex-wrap gap-x-3 text-caption text-ink-muted">
-          <span><span class="inline-block h-2 w-2 rounded-full bg-accent mr-1"></span>In <span id="stat-tokens-in" class="text-ink tabular-nums">–</span></span>
-          <span><span class="inline-block h-2 w-2 rounded-full bg-ok mr-1"></span>Out <span id="stat-tokens-out" class="text-ink tabular-nums">–</span></span>
+        <p class="mt-1.5 flex flex-wrap gap-x-2 text-micro text-ink-muted">
+          <span><span class="inline-block h-1.5 w-1.5 rounded-full bg-accent mr-0.5"></span>In <span id="stat-tokens-in" class="text-ink tabular-nums">–</span></span>
+          <span><span class="inline-block h-1.5 w-1.5 rounded-full bg-ok mr-0.5"></span>Out <span id="stat-tokens-out" class="text-ink tabular-nums">–</span></span>
           <span id="stat-requests-today" class="tabular-nums"></span>
         </p>
       </div>
@@ -155,158 +118,162 @@
 
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-  <!-- Charts Section -->
-  <div
-    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6 min-w-0"
-  >
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
-      <h3 class="font-semibold text-lg sm:text-xl text-ink flex items-center gap-2">
-        <i class="fas fa-chart-line text-accent" aria-hidden="true"></i> Traffic Activity
-      </h3>
-      <div class="flex gap-2">
-        <span
-          class="px-2 py-0.5 rounded-control text-micro bg-accent/10 text-accent font-medium"
-          >Requests per minute</span
-        >
-      </div>
-    </div>
-    <div class="h-[300px] max-w-full relative">
-      <canvas id="trafficChart"></canvas>
-    </div>
-  </div>
-
-  <!-- Live IPs Table -->
-  <div
-    class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6 min-w-0"
-  >
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
-      <h3 class="font-semibold text-lg sm:text-xl text-ink flex items-center gap-2">
-        <i class="fas fa-satellite-dish text-ok" aria-hidden="true"></i> Edge Connectivity
-      </h3>
-      <span class="text-caption text-ink-muted font-medium"
-        >Real-time status</span
-      >
-    </div>
-    <div class="overflow-hidden rounded-panel border border-hairline">
-      <table class="w-full text-left text-sm">
-        <thead
-          class="bg-surface-inset text-ink-muted text-caption font-medium"
-        >
-          <tr>
-            <th class="p-4">Origin IP</th>
-            <th class="p-4">Last Activity</th>
-            <th class="p-4 text-right">Status</th>
-          </tr>
-        </thead>
-        <tbody id="ipTableBody" class="divide-y divide-hairline">
-          <tr>
-            <td colspan="3" class="p-8 text-center text-ink-muted italic">
-              Syncing edge data...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 {% if user_role in ['admin', 'manager'] %}
-<div id="dashSummary" class="mt-4 sm:mt-6 space-y-4 sm:space-y-6" aria-live="polite">
+<div id="dashSummary" class="space-y-3.5" aria-live="polite">
   <!-- 24-Hour Traffic Activity & Observability -->
-  <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6 min-w-0" aria-labelledby="dash-24h-traffic-h">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-      <div>
-        <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-          <i data-lucide="history" class="h-5 w-5 text-accent" aria-hidden="true"></i> <span id="dash-24h-traffic-h">24-Hour Traffic Activity &amp; Observability</span>
+  <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0" aria-labelledby="dash-24h-traffic-h">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+      <div class="flex items-center gap-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="history" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-24h-traffic-h">24-Hour Traffic Activity &amp; Observability</span>
         </h3>
-        <p class="text-caption text-ink-muted mt-0.5">Historical traffic volume breakdown, peak load, and latency distribution across the gateway.</p>
+        <span class="text-caption text-ink-muted hidden md:inline">· Hourly volume, peak load &amp; latency</span>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-caption">
+      <div class="flex flex-wrap items-center gap-1.5 text-micro">
+        <div class="inline-flex items-center gap-1 rounded border border-hairline bg-surface-inset px-2 py-0.5">
           <span class="text-ink-muted">24h Peak RPS:</span>
           <span id="dash24hPeakRps" class="font-bold text-ink tabular-nums">–</span>
         </div>
-        <div class="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-caption">
+        <div class="inline-flex items-center gap-1 rounded border border-hairline bg-surface-inset px-2 py-0.5">
           <span class="text-ink-muted">24h P50 TTFT:</span>
           <span id="dash24hP50Ttft" class="font-bold text-ink tabular-nums">–</span>
         </div>
-        <div class="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-caption">
+        <div class="inline-flex items-center gap-1 rounded border border-hairline bg-surface-inset px-2 py-0.5">
           <span class="text-ink-muted">Total Tokens:</span>
           <span id="dash24hTotalTokens" class="font-bold text-accent tabular-nums">–</span>
         </div>
-        <a href="/admin/observability" class="text-caption font-medium text-accent hover:underline ml-1">Observability &rarr;</a>
+        <a href="/admin/observability" class="font-medium text-accent hover:underline ml-1">Observability &rarr;</a>
       </div>
     </div>
-    <div class="h-[250px] max-w-full relative">
+    <div class="h-[160px] max-w-full relative">
       <canvas id="traffic24hChart" aria-label="24-Hour traffic activity and observability" role="img"></canvas>
     </div>
   </section>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-spend-h">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-        <i data-lucide="bar-chart-3" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-spend-h">Spend, last 14 days</span>
-      </h3><a href="/admin/view/spend" class="text-caption font-medium text-accent hover:underline">Spend details</a>
-    </div>
-      <div class="h-[200px] relative"><canvas id="spendChart" aria-label="Daily spend for the last 14 days" role="img"></canvas></div>
-    </section>
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-models-h">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-        <i data-lucide="trophy" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-models-h">Top models this month</span>
-      </h3><span class="text-caption text-ink-muted">by requests</span>
-    </div>
-      <ol id="dashTopModels" class="space-y-3"><p class="text-sm text-ink-muted">Loading…</p></ol>
-    </section>
-  </div>
-
-  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-alerts-h">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-        <i data-lucide="bell-ring" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-alerts-h">Needs attention</span>
-      </h3><span id="dashAlertCount" class="text-caption font-medium text-ink-muted"></span>
-    </div>
-      <ul id="dashAlerts" class="divide-y divide-hairline"><p class="text-sm text-ink-muted">Loading…</p></ul>
-    </section>
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-cache-h">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-        <i data-lucide="database-zap" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-cache-h">Response cache</span>
-      </h3>
-    </div>
-      <dl class="grid grid-cols-3 gap-3">
-        <div><dt class="text-caption text-ink-muted">Hits</dt><dd id="dashCacheHits" class="text-2xl font-bold text-ink tabular-nums">–</dd></div>
-        <div><dt class="text-caption text-ink-muted">Entries</dt><dd id="dashCacheEntries" class="text-2xl font-bold text-ink tabular-nums">–</dd></div>
-        <div><dt class="text-caption text-ink-muted">Tokens saved</dt><dd id="dashCacheSaved" class="text-2xl font-bold text-ok tabular-nums">–</dd></div>
-      </dl>
-      <p class="mt-3 text-caption text-ink-muted">Exact-match cache for non-streaming requests at temperature ≤ 0.1. Expired entries not counted.</p>
-    </section>
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 md:col-span-2 xl:col-span-1" aria-labelledby="dash-sec-h">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-        <i data-lucide="shield-alert" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-sec-h">Security, last 24h</span>
-      </h3><a href="/admin/view/audit" class="text-caption font-medium text-accent hover:underline">Audit history</a>
-    </div>
-      <div class="flex gap-6 mb-3">
-        <div><p class="text-caption text-ink-muted">Denied</p><p id="dashSecDenied" class="text-2xl font-bold text-ink tabular-nums">–</p></div>
-        <div><p class="text-caption text-ink-muted">Errors</p><p id="dashSecErrors" class="text-2xl font-bold text-ink tabular-nums">–</p></div>
+  <!-- Live Traffic Activity & Edge Connectivity (Side by Side) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+    <!-- Live Charts Section -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i class="fas fa-chart-line text-accent text-xs" aria-hidden="true"></i> Live Traffic
+        </h3>
+        <span class="px-2 py-0.5 rounded text-micro bg-accent/10 text-accent font-medium">Req / min (SSE)</span>
       </div>
-      <ul id="dashSecRecent" class="divide-y divide-hairline text-sm"></ul>
+      <div class="h-[145px] max-w-full relative">
+        <canvas id="trafficChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Live IPs Table -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0 flex flex-col justify-between">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i class="fas fa-satellite-dish text-ok text-xs" aria-hidden="true"></i> Edge Connectivity
+        </h3>
+        <span class="text-micro text-ink-muted font-medium">Active Origin IPs</span>
+      </div>
+      <div class="overflow-y-auto max-h-[145px] rounded border border-hairline custom-scrollbar">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-surface-inset text-ink-muted text-micro uppercase tracking-wider font-semibold sticky top-0">
+            <tr>
+              <th class="px-3 py-1.5">Origin IP</th>
+              <th class="px-3 py-1.5">Last Activity</th>
+              <th class="px-3 py-1.5 text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody id="ipTableBody" class="divide-y divide-hairline">
+            <tr>
+              <td colspan="3" class="p-3 text-center text-ink-muted italic">Syncing edge data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spend (Last 14 Days) & Top Models (This Month) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0" aria-labelledby="dash-spend-h">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="bar-chart-3" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-spend-h">Spend, last 14 days</span>
+        </h3>
+        <a href="/admin/view/spend" class="text-caption font-medium text-accent hover:underline">Spend details</a>
+      </div>
+      <div class="h-[140px] relative"><canvas id="spendChart" aria-label="Daily spend for the last 14 days" role="img"></canvas></div>
+    </section>
+    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-models-h">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="trophy" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-models-h">Top models this month</span>
+        </h3>
+        <span class="text-micro text-ink-muted">by requests</span>
+      </div>
+      <div class="overflow-y-auto max-h-[140px] custom-scrollbar pr-1">
+        <ol id="dashTopModels" class="space-y-2"><p class="text-xs text-ink-muted">Loading…</p></ol>
+      </div>
     </section>
   </div>
 
-  <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-health-h">
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
-        <i data-lucide="activity" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-health-h">Server health</span>
-      </h3><span class="text-caption text-ink-muted">From live traffic · <a href="/admin/view/servers" class="font-medium text-accent hover:underline">Manage</a></span>
-    </div>
-    <ul id="dashBackends" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2"><p class="text-sm text-ink-muted">Loading…</p></ul>
-  </section>
-  <p id="dashUpdated" class="text-caption text-ink-muted text-right"></p>
+  <!-- Operational Status Row (4 Columns on xl) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-alerts-h">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="bell-ring" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-alerts-h">Needs attention</span>
+        </h3>
+        <span id="dashAlertCount" class="text-micro font-medium text-ink-muted"></span>
+      </div>
+      <div class="overflow-y-auto max-h-[130px] custom-scrollbar">
+        <ul id="dashAlerts" class="divide-y divide-hairline text-xs"><p class="text-xs text-ink-muted">Loading…</p></ul>
+      </div>
+    </section>
+
+    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-cache-h">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="database-zap" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-cache-h">Response cache</span>
+        </h3>
+      </div>
+      <dl class="grid grid-cols-3 gap-2 py-1">
+        <div><dt class="text-micro text-ink-muted">Hits</dt><dd id="dashCacheHits" class="text-xl font-bold text-ink tabular-nums">–</dd></div>
+        <div><dt class="text-micro text-ink-muted">Entries</dt><dd id="dashCacheEntries" class="text-xl font-bold text-ink tabular-nums">–</dd></div>
+        <div><dt class="text-micro text-ink-muted">Tokens saved</dt><dd id="dashCacheSaved" class="text-xl font-bold text-ok tabular-nums">–</dd></div>
+      </dl>
+      <p class="mt-1 text-micro text-ink-muted line-clamp-2">Exact-match cache (temp &le; 0.1).</p>
+    </section>
+
+    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-sec-h">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="shield-alert" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-sec-h">Security (24h)</span>
+        </h3>
+        <a href="/admin/view/audit" class="text-micro font-medium text-accent hover:underline">Audit history</a>
+      </div>
+      <div class="flex gap-4 py-1">
+        <div><p class="text-micro text-ink-muted">Denied</p><p id="dashSecDenied" class="text-xl font-bold text-ink tabular-nums">–</p></div>
+        <div><p class="text-micro text-ink-muted">Errors</p><p id="dashSecErrors" class="text-xl font-bold text-ink tabular-nums">–</p></div>
+      </div>
+      <div class="overflow-y-auto max-h-[70px] custom-scrollbar">
+        <ul id="dashSecRecent" class="divide-y divide-hairline text-xs"></ul>
+      </div>
+    </section>
+
+    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-3.5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-health-h">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h3 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+          <i data-lucide="activity" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-health-h">Server health</span>
+        </h3>
+        <a href="/admin/view/servers" class="text-micro font-medium text-accent hover:underline">Manage</a>
+      </div>
+      <div class="overflow-y-auto max-h-[130px] custom-scrollbar">
+        <ul id="dashBackends" class="space-y-1.5 text-xs"><p class="text-xs text-ink-muted">Loading…</p></ul>
+      </div>
+    </section>
+  </div>
+
+  <p id="dashUpdated" class="text-micro text-ink-muted text-right"></p>
 </div>
 <script src="/static/js/dashboard-summary.js?v={{ asset_v }}"></script>
 {% endif %}

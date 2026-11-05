@@ -70,7 +70,7 @@
 
     <div class="flex min-h-screen flex-col md:pl-rail lg:pl-sidebar">
       {% include '_topbar.html' %}
-      <main id="main" tabindex="-1" class="mx-auto w-full max-w-screen-2xl flex-1 p-4 outline-none sm:p-6 lg:p-8">
+      <main id="main" tabindex="-1" class="{% block main_class %}mx-auto w-full max-w-screen-2xl flex-1 p-4 outline-none sm:p-6 lg:p-8{% endblock %}">
     {% else %}
     <main id="main" class="container mx-auto p-6">
     {% endif %}

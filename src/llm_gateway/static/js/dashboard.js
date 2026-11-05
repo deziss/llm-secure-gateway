@@ -37,16 +37,16 @@ async function loadMetrics() {
         tr.className = "group hover:bg-slate-800/30 transition-colors";
 
         const tdIp = document.createElement("td");
-        tdIp.className = "p-4 font-mono text-blue-400 font-medium";
+        tdIp.className = "px-3 py-1.5 font-mono text-blue-400 font-medium text-xs";
         tdIp.textContent = entry.ip;
 
         const tdTime = document.createElement("td");
-        tdTime.className = "p-4 text-slate-400 text-xs";
+        tdTime.className = "px-3 py-1.5 text-slate-400 text-xs";
         tdTime.textContent = entry.last_seen_seconds_ago + "s ago";
 
         const tdStatus = document.createElement("td");
-        tdStatus.className = "p-4 text-right";
-        tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-ok border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
+        tdStatus.className = "px-3 py-1.5 text-right text-xs";
+        tdStatus.innerHTML = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-ok border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>CONNECTED</span>`;
 
         tr.append(tdIp, tdTime, tdStatus);
         fragment.appendChild(tr);
@@ -79,14 +79,14 @@ function updateFromSSE(data) {
       const tr = document.createElement("tr");
       tr.className = "group hover:bg-slate-800/30 transition-colors";
       const tdIp = document.createElement("td");
-      tdIp.className = "p-4 font-mono text-blue-400 font-medium";
+      tdIp.className = "px-3 py-1.5 font-mono text-blue-400 font-medium text-xs";
       tdIp.textContent = entry.ip;
       const tdTime = document.createElement("td");
-      tdTime.className = "p-4 text-slate-400 text-xs";
+      tdTime.className = "px-3 py-1.5 text-slate-400 text-xs";
       tdTime.textContent = entry.last_seen_seconds_ago + "s ago";
       const tdStatus = document.createElement("td");
-      tdStatus.className = "p-4 text-right";
-      tdStatus.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-ok border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>CONNECTED</span>`;
+      tdStatus.className = "px-3 py-1.5 text-right text-xs";
+      tdStatus.innerHTML = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-micro font-bold bg-emerald-500/10 text-ok border border-emerald-500/20"><span class="w-1 h-1 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>CONNECTED</span>`;
       tr.append(tdIp, tdTime, tdStatus);
       fragment.appendChild(tr);
     });
