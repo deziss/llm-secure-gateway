@@ -1,13 +1,41 @@
-## [0.14.3] - 2026-11-04
+## [0.15.0] - 2026-11-05
 
 ### ✨ New
 
-- **Full Native Anthropic `/v1/messages` Instrumentation**: Claude Code CLI, Cursor, and Anthropic SDKs are now first-class citizens. Full OpenInference tracing (`openinference.span.kind = "LLM"`), TTFT tracking, token usage collection, spend accounting, and live dashboard tracking with bidirectional translation to OpenAI/vLLM backends.
-- **Arize Phoenix Per-Tenant Project Isolation**: Root spans decoupled from ambient ASGI traces (`PhoenixTraceManager.start_root_span`) automatically index traces under isolated projects (`gateway-<tenant>-<provider>`) in Arize Phoenix.
-- **Queue-Aware & Least-Busy Dynamic Load Balancing**: Real-time traffic balancing across model backend replicas based on active in-flight requests from `LiveStats`, capacity weights, and rolling latency.
-- **Multi-Dimensional Rate Limiting**: Added Concurrency Semaphores (`max_concurrency`) and Tokens-Per-Minute (`rate_limit_tpm`) sliding window rate limiting alongside Requests-Per-Minute (`rate_limit_rpm`) with atomic Redis synchronization and local fallback.
-- **One-Click Client Setup Snippets in Admin UI**: Interactive tabbed modal in Projects / API keys to instantly copy tested configurations for Claude Code CLI, Cursor, Continue.dev, Python SDK (OpenAI & Anthropic), and cURL. Added `/api/client-snippets` endpoint.
-- **Database Migration 008**: Added `rate_limit_tpm` and `max_concurrency` columns to the `apikey` table.
+- **Historical Telemetry Aggregation Engine (1s, 1m, 1h, 6h, 12h, 24h)**:
+  - Multi-scale historical aggregation across 1s (Live), 1m, 1h, 6h, 12h, and 24h horizons.
+  - In-memory `_MinuteBucket` ring buffering with background PostgreSQL UPSERT aggregation (`model_telemetry_rollup`, database migration 010).
+  - Adaptive timeseries downsampling and automatic 30-day retention pruning.
+  - New timeseries endpoint: `GET /admin/observability/history` with server and model query filtering.
+- **Interactive Multi-Scale Observability UI & Deep-Dive Modal**:
+  - Timeframe selector toolbar `[ 1s (Live) | 1m | 1h | 6h | 12h | 24h ]` on the Observability page with dynamic header metrics and multi-hour SVG trend sparklines.
+  - Model Telemetry Deep-Dive Modal with 4 interactive diagnostic charts: Traffic Volume & RPS, Latency Distribution (TTFT & ITL), Token Breakdown (Prompt vs. Completion), and Hardware/Cache Telemetry.
+- **24-Hour Traffic Activity & Observability Dashboard**:
+  - Executive 24-hour dual-axis bar and line timeline chart (`GET /admin/dashboard/traffic-24h`) displaying hourly request volume, RPS, peak load, P50 TTFT, and token consumption.
+  - Responsive, compact full-width layout with balanced spacing, edge connectivity health monitoring, and live client telemetry.
+- **Model Token Pricing & Cost Governance**:
+  - Custom per-token and per-1M input/output pricing management (`/admin/spend/pricing`).
+  - Provider cost auto-detection for OpenAI, Anthropic, Gemini, Groq, and DeepSeek backends.
+  - Live cost calculation and per-tenant monthly spend tracking.
+- **Full Native Anthropic `/v1/messages` Instrumentation**:
+  - First-class support for Claude Code CLI, Cursor, Continue.dev, and Anthropic SDKs.
+  - Bidirectional message translation to OpenAI and vLLM backends with OpenInference attributes (`openinference.span.kind = "LLM"`), TTFT, and token usage accounting.
+- **Arize Phoenix Per-Tenant Project Isolation**:
+  - Decoupled root spans (`PhoenixTraceManager.start_root_span`) automatically routing traces to dedicated per-tenant projects (`gateway-<tenant>-<provider>`).
+- **Queue-Aware & Least-Busy Dynamic Load Balancing**:
+  - Real-time traffic balancing across model backend replicas based on active in-flight requests from `LiveStats`, capacity weights, and rolling latency.
+- **Multi-Dimensional Rate Limiting**:
+  - Added Concurrency Semaphores (`max_concurrency`) and Tokens-Per-Minute (`rate_limit_tpm`) sliding window rate limiting alongside Requests-Per-Minute (`rate_limit_rpm`) with atomic Redis synchronization and local fallback (database migration 008).
+- **One-Click Client Setup Snippets in Admin UI**:
+  - Interactive tabbed modal in Projects / API keys to instantly copy tested configurations for Claude Code CLI, Cursor, Continue.dev, Python SDK (OpenAI & Anthropic), and cURL (`/api/client-snippets`).
+- **Automatic Admin Password Synchronization**:
+  - Automatically updates the default admin password hash in the database on boot whenever `DEFAULT_ADMIN_PASSWORD` changes in `.env`.
+
+### 🐛 Fixed
+
+- **Live Metrics Race Condition**: Resolved Temporal Dead Zone reference error in `dashboard.js` when `loadMetrics()` executed before chart initialization.
+- **Same-Origin Relative URL Transport**: Replaced absolute `BASE_URL` fetches in dashboard scripts with relative paths to prevent cross-origin cookie omission when accessing via alternative hostnames or reverse proxies.
+- **Target URL Path Deduplication**: Fixed URL normalization in proxy router to prevent duplicate segments during endpoint forwarding.
 
 ### 📜 License
 

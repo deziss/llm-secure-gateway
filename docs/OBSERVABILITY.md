@@ -27,15 +27,18 @@ database.
    ┌───────────────────────────────────────────────┐
    │ STORE                                          │
    │  LiveStats: 10 s / 60 s rings, in-process      │
+   │  Minute Rollups: _MinuteBucket (60 min buffer) │
+   │  PostgreSQL: model_telemetry_rollup (UPSERT)  │
    │  Redis (only if REDIS_URL): obs:live:{replica} │
    │  TTL 10 s, merged by /live for multi-replica   │
    └───────┬───────────────────────┬───────────────┘
            │                       │
            ▼                       ▼
-   EXPORT                    ADMIN PAGE
+   EXPORT                    ADMIN & TELEMETRY UI
    /metrics (Prometheus)     /admin/observability
-   OTLP sinks (OBS_EXPORTERS)  SSE /admin/observability/stream (3 s)
-   server + GPU gauges         fallback polling /admin/observability/live (5 s)
+   OTLP sinks (OBS_EXPORTERS)  Timeframe selector (1s, 1m, 1h, 6h, 12h, 24h)
+   server + GPU gauges         SSE stream (3 s) / History API
+                             /admin/dashboard (24h traffic timeline)
 ```
 
 Notes:
@@ -46,6 +49,30 @@ Notes:
   hold up the rest of the poll, because each tick has one overall deadline.
 - Sinks are independent. A failing sink shows its last error on the Integrations tab and never
   blocks a request.
+
+## Historical Timeseries & Aggregation Engine (v0.15.0)
+
+Since v0.15.0, the gateway stores multi-scale historical telemetry for every model and server behind it, enabling long-range analysis across **1s (Live)**, **1m**, **1h**, **6h**, **12h**, and **24h** horizons.
+
+### Rollup & Persistence Lifecycle
+1. **In-Memory Ring Buffering**: Every request, token increment, and latency measurement updates `LiveStats` and appends to an in-memory `_MinuteBucket` keyed by `(server, model, minute)`.
+2. **Atomic PostgreSQL UPSERT**: On each background poll tick (`poller.py`), minute rollups are drained and flushed to the `model_telemetry_rollup` table using an atomic `ON CONFLICT (server, model, bucket_time) DO UPDATE` query.
+3. **Automated Pruning**: Telemetry records older than 30 days are automatically pruned during the flush cycle.
+4. **Adaptive Downsampling**: The `GET /admin/observability/history` endpoint downsamples timeseries data into 24-48 clean buckets depending on the requested timeframe (1-minute buckets for 1h, 10-minute buckets for 6h, 15-minute buckets for 12h, 30-minute/1-hour buckets for 24h).
+
+### History API Endpoints
+
+- **`GET /admin/observability/history?timeframe={1s|1m|1h|6h|12h|24h}`**:
+  Returns aggregated timeseries for all models or a specific model (`server=...&model=...`), including total requests, tokens, average TTFT, peak RPS, and error counts.
+- **`GET /admin/dashboard/traffic-24h`**:
+  Returns 24 hourly buckets of request volume, token throughput, and latency distribution powering the executive dashboard timeline.
+
+### Model Telemetry Deep-Dive Modal
+Clicking any model row on the **Observability** page opens a multi-chart diagnostic modal:
+1. **Traffic & Throughput**: Request volume and requests-per-second (RPS) over time.
+2. **Latency Distribution**: P50/P90 Time-to-First-Token (TTFT) and Inter-Token Latency (ITL).
+3. **Token Volume**: Prompt vs. Completion token breakdown.
+4. **Server & GPU Telemetry**: Concurrency, KV cache usage, and VRAM attribution.
 
 ## Turning it on
 

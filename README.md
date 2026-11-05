@@ -1,11 +1,11 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.14.3-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-671%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-683%20passing-brightgreen.svg)](tests/)
 [![CI](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/deziss/llm-secure-gateway/actions/workflows/docker-publish.yml)
 
@@ -85,17 +85,18 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Per-Backend Circuit Breaking**: Automatically trips unhealthy backend endpoints after consecutive transport failures.
 
 ### 🧪 Built-in Playgrounds & Operations Dashboard
-- **Operations Dashboard**: Live traffic plus spend and token cards, a 14-day spend chart, top models, budget and key-expiry alerts, response-cache savings, security events from the audit log, and a backend health strip.
+- **Operations Dashboard (v0.15.0)**: 24-Hour Traffic Activity & Observability timeline, live 15-minute rolling chart, real-time edge connectivity monitoring, KPI cards for users, backends, models, spend, and tokens, 14-day spend analytics, top models, budget and key-expiry alerts, response-cache savings, security events from the audit log, and backend health status.
 - **API Tester**: Request history with one-click re-run, a timing bar (time to first byte and first token, tokens, tokens/s), Body / Headers / Stream tabs that surface the gateway's `X-Cache` and budget headers, and copy-as-code for cURL, Python (`openai` SDK) and JavaScript.
 - **Chat & Model Arena**: Markdown rendering with copy buttons, a live "thinking" panel that collapses when the answer starts, and per-message and per-conversation token and context usage.
 - **Embedding Playground**: PCA, t-SNE and UMAP layouts computed in a Web Worker; nearest-neighbour scores, a similarity matrix, semantic search and vector arithmetic; clustering; cosine, dot and euclidean metrics; sessions saved in the browser; JSON/CSV import and export.
 - **Audit History**: A filterable view of the persistent audit trail for admins and managers.
 
 ### 📊 Full-Stack Observability & Governance
+- **Historical Telemetry Aggregation Engine (v0.15.0)**: Multi-scale timeseries querying across 1s (Live), 1m, 1h, 6h, 12h, and 24h horizons with dynamic bucket downsampling, model deep-dive modal (Traffic, Latency TTFT/ITL, Token Throughput, Memory & KV Cache), and atomic PostgreSQL rollup persistence.
 - **Arize Phoenix Multi-Tenant Project Isolation**: OpenInference-compliant distributed tracing with decoupled root spans (`gateway-{tenant}-{provider}`) for both OpenAI and native Anthropic `/v1/messages`.
 - **Prometheus & Metrics**: Native `/metrics` endpoint tracking request latency, token throughput, cache hits, error rates, and active connections.
 - **Token-Level Streaming Telemetry**: High-frequency async parser computing real-time prompt, completion, and total token usage on chunked responses.
-- **Spend & Cost Governance**: Dynamic per-model token pricing (USD per 1M tokens), auto-detected provider costs when API keys are added (OpenAI, Anthropic, Gemini, Groq, DeepSeek), custom manual overrides, per-tenant budget ceilings, and monthly spend tracking.
+- **Spend & Cost Governance (v0.15.0)**: Dynamic per-model token pricing (USD per 1M tokens), auto-detected provider costs when API keys are added (OpenAI, Anthropic, Gemini, Groq, DeepSeek), custom manual overrides, per-tenant budget ceilings, and monthly spend tracking.
 
 ---
 
