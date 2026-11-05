@@ -213,6 +213,36 @@
 
 {% if user_role in ['admin', 'manager'] %}
 <div id="dashSummary" class="mt-4 sm:mt-6 space-y-4 sm:space-y-6" aria-live="polite">
+  <!-- 24-Hour Traffic Activity & Observability -->
+  <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-6 min-w-0" aria-labelledby="dash-24h-traffic-h">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div>
+        <h3 class="font-semibold text-base sm:text-lg text-ink flex items-center gap-2">
+          <i data-lucide="history" class="h-5 w-5 text-accent" aria-hidden="true"></i> <span id="dash-24h-traffic-h">24-Hour Traffic Activity &amp; Observability</span>
+        </h3>
+        <p class="text-caption text-ink-muted mt-0.5">Historical traffic volume breakdown, peak load, and latency distribution across the gateway.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-caption">
+          <span class="text-ink-muted">24h Peak RPS:</span>
+          <span id="dash24hPeakRps" class="font-bold text-ink tabular-nums">–</span>
+        </div>
+        <div class="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-caption">
+          <span class="text-ink-muted">24h P50 TTFT:</span>
+          <span id="dash24hP50Ttft" class="font-bold text-ink tabular-nums">–</span>
+        </div>
+        <div class="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-caption">
+          <span class="text-ink-muted">Total Tokens:</span>
+          <span id="dash24hTotalTokens" class="font-bold text-accent tabular-nums">–</span>
+        </div>
+        <a href="/admin/observability" class="text-caption font-medium text-accent hover:underline ml-1">Observability &rarr;</a>
+      </div>
+    </div>
+    <div class="h-[250px] max-w-full relative">
+      <canvas id="traffic24hChart" aria-label="24-Hour traffic activity and observability" role="img"></canvas>
+    </div>
+  </section>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
     <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-spend-h">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-4">

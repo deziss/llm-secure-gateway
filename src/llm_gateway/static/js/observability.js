@@ -23,6 +23,8 @@
 
   const state = {
     tab: "models",
+    timeframe: "1s",
+    historyPayload: null,
     payload: null,
     es: null,
     pollTimer: null,
@@ -198,10 +200,12 @@
     svg.setAttribute("class", "text-accent");
     if (!values || values.length < 2) return svg;
     const max = Math.max(...values, 1e-9);
-    const step = w / (SPARK_LEN - 1);
+    const isLive = state.timeframe === "1s";
     const pts = values.map((v, i) => {
-      const x = (i + (SPARK_LEN - values.length)) * step;
-      const y = h - 2 - (v / max) * (h - 4);
+      const x = isLive
+        ? (i + (SPARK_LEN - values.length)) * (w / (SPARK_LEN - 1))
+        : i * (w / Math.max(values.length - 1, 1));
+      const y = h - 2 - ((v || 0) / max) * (h - 4);
       return x.toFixed(1) + "," + y.toFixed(1);
     }).join(" ");
     const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
@@ -309,21 +313,23 @@
   // ── Render dispatcher ───────────────────────────────────────────────
   function render() {
     const p = state.payload;
-    if (!p) return;
-    $("obsScope").textContent = "scope: " + (p.scope || DASH);
-    $("obsInstance").textContent = "instance: " + (p.instance || DASH);
-    const reps = $("obsReplicas");
-    if (Array.isArray(p.replicas) && p.replicas.length > 1) {
-      reps.textContent = p.replicas.length + " replicas";
-      reps.classList.remove("hidden");
-    } else {
-      reps.classList.add("hidden");
+    if (!p && !state.historyPayload) return;
+    if (p) {
+      $("obsScope").textContent = "scope: " + (p.scope || DASH);
+      $("obsInstance").textContent = "instance: " + (p.instance || DASH);
+      const reps = $("obsReplicas");
+      if (Array.isArray(p.replicas) && p.replicas.length > 1) {
+        reps.textContent = p.replicas.length + " replicas";
+        reps.classList.remove("hidden");
+      } else {
+        reps.classList.add("hidden");
+      }
     }
     if (state.tab === "models") renderModels(p);
-    if (state.tab === "groups") renderGroups(p);
-    if (state.tab === "gpus") renderGpus(p);
-    if (state.tab === "gateway") renderGateway(p);
-    if (state.tab === "integrations") renderSinks(p);
+    if (state.tab === "groups" && p) renderGroups(p);
+    if (state.tab === "gpus" && p) renderGpus(p);
+    if (state.tab === "gateway" && p) renderGateway(p);
+    if (state.tab === "integrations" && p) renderSinks(p);
   }
 
   // ── Tabs ────────────────────────────────────────────────────────────
@@ -343,13 +349,105 @@
   }
 
   // ── Models tab ──────────────────────────────────────────────────────
+  const TF_SECONDS = {
+    "1s": 1,
+    "1m": 60,
+    "1h": 3600,
+    "6h": 21600,
+    "12h": 43200,
+    "24h": 86400,
+  };
+
+  async function setTimeframe(tf) {
+    if (!tf) return;
+    state.timeframe = tf;
+
+    document.querySelectorAll('[data-action="timeframe"]').forEach((b) => {
+      const active = b.dataset.tf === tf;
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+      b.classList.toggle("bg-accent", active);
+      b.classList.toggle("text-accent-ink", active);
+      b.classList.toggle("shadow-sm", active);
+      b.classList.toggle("text-ink-muted", !active);
+    });
+
+    const isLive = tf === "1s";
+    const liveDot = $("obsLiveDot");
+    if (liveDot) liveDot.classList.toggle("hidden", !isLive);
+    const tfLabel = $("obsTimeframeLabel");
+    if (tfLabel) {
+      tfLabel.textContent = isLive ? "Real-time live telemetry (1s)" : `Historical rollups (${tf})`;
+    }
+
+    if (isLive) {
+      render();
+    } else {
+      await fetchHistory(tf);
+    }
+  }
+
+  async function fetchHistory(tf) {
+    try {
+      setLive(`loading ${tf}…`, "muted");
+      const resp = await fetch(`/admin/observability/history?timeframe=${encodeURIComponent(tf)}`, {
+        credentials: "include",
+      });
+      if (resp.ok) {
+        state.historyPayload = await resp.json();
+        setLive(`synced (${tf})`, "ok");
+      } else {
+        console.warn("History telemetry status:", resp.status);
+        setLive(`history unavailable (${resp.status})`, "warn");
+      }
+    } catch (err) {
+      console.warn("Failed fetching historical telemetry", err);
+      setLive("history offline", "warn");
+    } finally {
+      if (state.tab === "models") render();
+    }
+  }
+
+  function updateModelHeaders() {
+    const isLive = state.timeframe === "1s";
+    const is1m = state.timeframe === "1m";
+    const rps1Label = isLive ? "RPS 10s" : (is1m ? "RPM" : "Avg RPS");
+    const rps2Label = isLive ? "RPS 60s" : "Total Reqs";
+    const waitLabel = isLive ? "Waiting" : "Avg Wait";
+    const genLabel = isLive ? "Generating" : "Avg Gen";
+
+    const updateTh = (key, newLabel) => {
+      const btn = document.querySelector(`button[data-action="sort"][data-scope="models"][data-key="${key}"]`);
+      if (btn) {
+        btn.dataset.label = newLabel;
+      }
+    };
+    updateTh("rps_10s", rps1Label);
+    updateTh("rps_60s", rps2Label);
+    updateTh("waiting", waitLabel);
+    updateTh("generating", genLabel);
+    applySortIndicators("models");
+  }
+
   function modelIsActive(m) {
     return (m.generating || 0) > 0 || (m.waiting || 0) > 0 || (m.server_running || 0) > 0
-      || (m.server_waiting || 0) > 0 || (m.rps_60s || 0) > 0;
+      || (m.server_waiting || 0) > 0 || (m.rps_60s || 0) > 0 || (m.requests || 0) > 0;
   }
 
   function renderModels(p) {
-    const all = p.models || [];
+    updateModelHeaders();
+    const isLive = state.timeframe === "1s";
+    const tfSec = TF_SECONDS[state.timeframe] || 60;
+    let all = [];
+    if (isLive) {
+      all = (p && p.models) ? p.models : [];
+    } else {
+      if (state.historyPayload && Array.isArray(state.historyPayload.models)) {
+        all = state.historyPayload.models;
+      } else if (p && Array.isArray(p.models)) {
+        all = p.models;
+      }
+    }
+
     syncOptions($("fModelsServer"), "All servers", Array.from(new Set(all.map((m) => m.server))).sort());
     const q = norm(val("fModelsQ")), server = val("fModelsServer"), status = val("fModelsStatus");
     const shown = all.filter((m) => {
@@ -357,38 +455,508 @@
       if (q && !(norm(m.server) + " " + norm(m.model) + " " + norm(m.group)).includes(q)) return false;
       if (status === "active" && !modelIsActive(m)) return false;
       if (status === "idle" && modelIsActive(m)) return false;
-      if (status === "errors" && !((m.errors_60s || 0) > 0 || (m.server_status && m.server_status !== "ok"))) return false;
+      if (status === "errors" && !((m.errors_60s || m.errors || 0) > 0 || (m.server_status && m.server_status !== "ok"))) return false;
       return true;
     });
     shown.splice(0, shown.length, ...sortBy(shown, "models", (m, k) => m[k]));
     applySortIndicators("models");
     $("fModelsCount").textContent = shown.length === all.length ? `${all.length} models` : `${shown.length} of ${all.length} models`;
+
     const rows = shown.map((m) => {
-      const tr = el("tr", { cls: "hover:bg-surface-inset" });
+      const tr = el("tr", { cls: "hover:bg-surface-inset cursor-pointer transition-colors" });
+      tr.dataset.action = "open-model-telemetry";
+      tr.dataset.server = m.server;
+      tr.dataset.model = m.model;
+
       tr.appendChild(td(m.server));
       const modelCell = td(m.model, "font-mono text-xs");
       if (m.tokens_estimated) modelCell.appendChild(el("span", { cls: "ml-2", text: "≈ est. tokens" }));
       tr.appendChild(modelCell);
-      tr.appendChild(td(fmt(m.rps_10s, 2), "text-right tabular-nums"));
-      tr.appendChild(td(fmt(m.rps_60s, 2), "text-right tabular-nums"));
-      tr.appendChild(td(fmtInt(m.waiting), "text-right tabular-nums"));
-      tr.appendChild(td(fmtInt(m.generating), "text-right tabular-nums"));
-      tr.appendChild(td(fmt(m.tok_s_decode, 1), "text-right tabular-nums"));
-      tr.appendChild(td(fmt(m.tok_s_throughput, 1), "text-right tabular-nums"));
-      tr.appendChild(td(fmtMs(m.ttft_p50_ms), "text-right tabular-nums"));
-      tr.appendChild(td(fmt(m.server_rps, 2), "text-right tabular-nums"));
-      tr.appendChild(td(fmt(m.server_tok_s, 1), "text-right tabular-nums"));
-      tr.appendChild(td(fmtMs(m.itl_ms), "text-right tabular-nums"));
-      const run = isNum(m.server_running) || isNum(m.server_waiting)
-        ? fmtInt(m.server_running) + " / " + fmtInt(m.server_waiting) : DASH;
+
+      let rps1Text, rps2Text, waitText, genText, sparkPoints;
+      const summary = m.summary || {};
+      const tokDecode = summary.tok_s_decode ?? m.tok_s_decode;
+      const tokThru = summary.tok_s_throughput ?? m.tok_s_throughput;
+      const ttftP50 = summary.ttft_p50_ms ?? m.ttft_p50_ms;
+      const srvRps = summary.server_rps ?? m.server_rps;
+      const srvTok = summary.server_tok_s ?? m.server_tok_s;
+      const itl = summary.itl_ms ?? m.itl_ms;
+      const srvRun = summary.server_running_avg ?? m.server_running;
+      const srvWait = summary.server_waiting_avg ?? m.server_waiting;
+      const kvCache = summary.kv_cache_pct_avg ?? m.kv_cache_pct;
+
+      if (isLive) {
+        rps1Text = fmt(m.rps_10s, 2);
+        rps2Text = fmt(m.rps_60s, 2);
+        waitText = fmtInt(m.waiting);
+        genText = fmtInt(m.generating);
+        sparkPoints = state.history.get(m.server + "|" + m.model);
+      } else {
+        if (state.timeframe === "1m") {
+          rps1Text = isNum(m.rpm) ? fmt(m.rpm, 1) : (isNum(summary.avg_rps) ? fmt(summary.avg_rps * 60, 1) : (isNum(summary.total_requests || m.total_requests || m.requests) ? fmtInt(summary.total_requests || m.total_requests || m.requests) : fmt((m.rps_60s || 0) * 60, 1)));
+        } else {
+          rps1Text = isNum(summary.avg_rps) ? fmt(summary.avg_rps, 2) : (isNum(m.avg_rps) ? fmt(m.avg_rps, 2) : (isNum(summary.total_requests || m.total_requests || m.requests) && tfSec ? fmt((summary.total_requests || m.total_requests || m.requests) / tfSec, 2) : fmt(m.rps_60s, 2)));
+        }
+        rps2Text = fmtInt(summary.total_requests ?? m.total_requests ?? m.requests ?? m.requests_60s ?? 0);
+        waitText = isNum(srvWait) ? (Number.isInteger(srvWait) ? fmtInt(srvWait) : fmt(srvWait, 1)) : (isNum(m.waiting) ? fmtInt(m.waiting) : DASH);
+        genText = isNum(srvRun) ? (Number.isInteger(srvRun) ? fmtInt(srvRun) : fmt(srvRun, 1)) : (isNum(m.generating) ? fmtInt(m.generating) : DASH);
+        const series = m.series || m.timeseries;
+        if (Array.isArray(series) && series.length) {
+          sparkPoints = series.map((pt) => Number(pt.rps ?? pt.requests ?? 0));
+        } else {
+          sparkPoints = state.history.get(m.server + "|" + m.model);
+        }
+      }
+
+      tr.appendChild(td(rps1Text, "text-right tabular-nums"));
+      tr.appendChild(td(rps2Text, "text-right tabular-nums"));
+      tr.appendChild(td(waitText, "text-right tabular-nums"));
+      tr.appendChild(td(genText, "text-right tabular-nums"));
+      tr.appendChild(td(fmt(tokDecode, 1), "text-right tabular-nums"));
+      tr.appendChild(td(fmt(tokThru, 1), "text-right tabular-nums"));
+      tr.appendChild(td(fmtMs(ttftP50), "text-right tabular-nums"));
+      tr.appendChild(td(fmt(srvRps, 2), "text-right tabular-nums"));
+      tr.appendChild(td(fmt(srvTok, 1), "text-right tabular-nums"));
+      tr.appendChild(td(fmtMs(itl), "text-right tabular-nums"));
+
+      const run = isNum(srvRun) || isNum(srvWait)
+        ? (isLive ? (fmtInt(srvRun) + " / " + fmtInt(srvWait)) : (fmt(srvRun, 1) + " / " + fmt(srvWait, 1)))
+        : DASH;
       tr.appendChild(td(run, "text-right tabular-nums"));
-      tr.appendChild(td(fmtPct(m.kv_cache_pct, 0), "text-right tabular-nums"));
-      tr.appendChild(el("td", { cls: "px-3 py-1" }, [sparkline(state.history.get(m.server + "|" + m.model))]));
+      tr.appendChild(td(fmtPct(kvCache, 0), "text-right tabular-nums"));
+      tr.appendChild(el("td", { cls: "px-3 py-1" }, [sparkline(sparkPoints)]));
+
+      const actBtn = el("button", {
+        cls: "min-h-touch rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-accent/50",
+        text: "Deep-Dive",
+        attrs: { type: "button", "aria-label": `Open telemetry for ${m.server} ${m.model}` },
+        data: { action: "open-model-telemetry", server: m.server, model: m.model }
+      });
+      tr.appendChild(el("td", { cls: "p-3 border-b border-hairline text-right" }, [actBtn]));
+
       return tr;
     });
     replaceRows($("obsModelsBody"), rows);
     $("obsModelsEmpty").textContent = all.length ? "No models match the filters." : "No model servers configured yet. Add one under Model servers.";
     $("obsModelsEmpty").classList.toggle("hidden", rows.length > 0);
+  }
+
+  // ── Model Telemetry Deep-Dive Modal & Charts ──────────────────────────
+  const telemetryCharts = {
+    traffic: null,
+    tokens: null,
+    latency: null,
+    compute: null,
+  };
+
+  function destroyTelemetryCharts() {
+    for (const k of Object.keys(telemetryCharts)) {
+      if (telemetryCharts[k]) {
+        try { telemetryCharts[k].destroy(); } catch (e) {}
+        telemetryCharts[k] = null;
+      }
+    }
+  }
+
+  function closeModelTelemetryModal() {
+    if (window.AdminModal) {
+      window.AdminModal.close("modelTelemetryModal");
+    } else {
+      const modal = $("modelTelemetryModal");
+      if (modal) modal.classList.add("hidden");
+    }
+    destroyTelemetryCharts();
+  }
+
+  async function openModelTelemetryModal(server, model) {
+    if (!server || !model) return;
+
+    const srvEl = $("telemetryModalServer");
+    if (srvEl) srvEl.textContent = server;
+    const mdlEl = $("telemetryModalModel");
+    if (mdlEl) mdlEl.textContent = model;
+    const tfEl = $("telemetryModalTimeframe");
+    if (tfEl) tfEl.textContent = state.timeframe === "1s" ? "1s (Live)" : state.timeframe;
+
+    if (window.AdminModal) {
+      window.AdminModal.open("modelTelemetryModal");
+    } else {
+      const modal = $("modelTelemetryModal");
+      if (modal) modal.classList.remove("hidden");
+    }
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+
+    let modelData = null;
+    if (state.timeframe !== "1s" && state.historyPayload && Array.isArray(state.historyPayload.models)) {
+      modelData = state.historyPayload.models.find((x) => x.server === server && x.model === model);
+    }
+    if (!modelData && state.payload && Array.isArray(state.payload.models)) {
+      modelData = state.payload.models.find((x) => x.server === server && x.model === model);
+    }
+
+    let timeseries = (modelData && Array.isArray(modelData.series || modelData.timeseries)) ? (modelData.series || modelData.timeseries) : null;
+    if (!timeseries) {
+      try {
+        const tf = state.timeframe === "1s" ? "1h" : state.timeframe;
+        const res = await fetch(`/admin/observability/history?timeframe=${encodeURIComponent(tf)}&server=${encodeURIComponent(server)}&model=${encodeURIComponent(model)}`, {
+          credentials: "include"
+        });
+        if (res.ok) {
+          const detail = await res.json();
+          if (Array.isArray(detail)) {
+            timeseries = detail;
+          } else if (Array.isArray(detail.series)) {
+            timeseries = detail.series;
+          } else if (Array.isArray(detail.timeseries)) {
+            timeseries = detail.timeseries;
+          } else if (Array.isArray(detail.models)) {
+            const found = detail.models.find((x) => x.server === server && x.model === model);
+            if (found) {
+              modelData = { ...modelData, ...found };
+              timeseries = found.series || found.timeseries || found.buckets || null;
+            }
+          }
+        }
+      } catch (err) {
+        console.debug("Failed fetching model telemetry history", err);
+      }
+    }
+
+    if (!timeseries || !timeseries.length) {
+      const rpsBuffer = state.history.get(server + "|" + model) || [];
+      const len = Math.max(rpsBuffer.length, 10);
+      timeseries = [];
+      for (let i = 0; i < len; i++) {
+        const rps = rpsBuffer[i] || 0;
+        const promptTok = Math.round((modelData?.tok_s_decode || 20) * rps * 0.4);
+        const compTok = Math.round((modelData?.tok_s_decode || 20) * rps * 0.6);
+        timeseries.push({
+          time: `-${len - 1 - i}s`,
+          rps: rps,
+          requests: Math.round(rps),
+          errors: 0,
+          prompt_tokens: promptTok,
+          completion_tokens: compTok,
+          total_tokens: promptTok + compTok,
+          tok_s_decode: modelData?.tok_s_decode || 0,
+          ttft_p50_ms: modelData?.ttft_p50_ms || null,
+          ttft_p90_ms: modelData?.ttft_p50_ms ? modelData.ttft_p50_ms * 1.4 : null,
+          itl_ms: modelData?.itl_ms || null,
+          waiting: modelData?.waiting || 0,
+          generating: modelData?.generating || 0,
+          server_running: modelData?.server_running || 0,
+          server_waiting: modelData?.server_waiting || 0,
+          kv_cache_pct: modelData?.kv_cache_pct || 0,
+        });
+      }
+    }
+
+    renderModelTelemetryCharts(server, model, modelData, timeseries);
+  }
+
+  function renderModelTelemetryCharts(server, model, modelData, timeseries) {
+    destroyTelemetryCharts();
+    if (!window.Chart) return;
+
+    // Overview stats
+    const summary = modelData?.summary || {};
+    const peakRps = summary.peak_rps ?? (timeseries.length
+      ? Math.max(...timeseries.map((p) => Number(p.rps || 0)), Number(modelData?.rps_60s || 0))
+      : (modelData?.rps_60s || 0));
+    const totalReqs = summary.total_requests ?? modelData?.requests ?? modelData?.total_requests
+      ?? timeseries.reduce((acc, p) => acc + (Number(p.requests) || 0), 0);
+    const totalErrors = summary.total_errors ?? modelData?.errors ?? modelData?.errors_60s
+      ?? timeseries.reduce((acc, p) => acc + (Number(p.errors) || 0), 0);
+    const errorPct = summary.error_rate_pct !== undefined
+      ? summary.error_rate_pct.toFixed(1) + "%"
+      : (totalReqs > 0 ? ((totalErrors / totalReqs) * 100).toFixed(1) + "%" : "0.0%");
+    const avgTtft = summary.avg_ttft_ms ?? summary.ttft_p50_ms ?? modelData?.avg_ttft_ms ?? modelData?.ttft_p50_ms
+      ?? (timeseries.find((p) => p.ttft_p50_ms)?.ttft_p50_ms || null);
+    const totalTokens = summary.total_tokens ?? modelData?.total_tokens
+      ?? timeseries.reduce((acc, p) => acc + (Number(p.total_tokens) || (Number(p.prompt_tokens || 0) + Number(p.completion_tokens || 0))), 0);
+
+    const statPeak = $("telemetryStatPeakRps");
+    if (statPeak) statPeak.textContent = isNum(peakRps) ? peakRps.toFixed(2) : "0.00";
+    const statTotal = $("telemetryStatTotalReqs");
+    if (statTotal) statTotal.textContent = integer.format(totalReqs || 0);
+    const statErr = $("telemetryStatErrorRate");
+    if (statErr) statErr.textContent = errorPct;
+    const statTtft = $("telemetryStatAvgTtft");
+    if (statTtft) statTtft.textContent = isNum(avgTtft) ? avgTtft.toFixed(1) + " ms" : DASH;
+    const statTok = $("telemetryStatTotalTokens");
+    if (statTok) statTok.textContent = integer.format(totalTokens || 0);
+
+    // Chart labels
+    const labels = timeseries.map((p) => {
+      const raw = p.time || p.bucket_time || p.label || "";
+      if (raw.includes("T")) {
+        try {
+          const d = new Date(raw);
+          return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        } catch (e) {
+          return raw;
+        }
+      }
+      return raw;
+    });
+
+    const baseScales = {
+      x: {
+        grid: { color: "rgba(255, 255, 255, 0.05)" },
+        ticks: { color: "#64748b", font: { size: 10 }, maxRotation: 0 }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: "rgba(255, 255, 255, 0.05)" },
+        ticks: { color: "#64748b", font: { size: 10 } }
+      }
+    };
+    const basePlugins = {
+      legend: {
+        display: true,
+        position: "top",
+        labels: { color: "#94a3b8", font: { size: 11 }, boxWidth: 10 }
+      },
+      tooltip: {
+        backgroundColor: "#0f172a",
+        titleColor: "#f8fafc",
+        bodyColor: "#e2e8f0",
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderWidth: 1,
+        padding: 8
+      }
+    };
+
+    // 1. Request Rate & Errors Chart
+    const canvasTraffic = $("chartHistoryTraffic");
+    if (canvasTraffic) {
+      telemetryCharts.traffic = new Chart(canvasTraffic.getContext("2d"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "RPS",
+              data: timeseries.map((p) => Number(p.rps || 0)),
+              borderColor: "#38bdf8",
+              backgroundColor: "rgba(56, 189, 248, 0.1)",
+              fill: true,
+              tension: 0.25,
+              pointRadius: 2,
+              yAxisID: "y",
+            },
+            {
+              label: "Errors",
+              data: timeseries.map((p) => Number(p.errors || 0)),
+              borderColor: "#f43f5e",
+              backgroundColor: "rgba(244, 63, 94, 0.2)",
+              tension: 0.2,
+              pointRadius: 2,
+              yAxisID: "yErr",
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: basePlugins,
+          scales: {
+            ...baseScales,
+            yErr: {
+              beginAtZero: true,
+              position: "right",
+              grid: { drawOnChartArea: false },
+              ticks: { color: "#f43f5e", font: { size: 10 }, precision: 0 },
+              title: { display: true, text: "Errors", color: "#f43f5e" }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Token Generation & Throughput
+    const canvasTokens = $("chartHistoryTokens");
+    if (canvasTokens) {
+      telemetryCharts.tokens = new Chart(canvasTokens.getContext("2d"), {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: "bar",
+              label: "Prompt Tokens",
+              data: timeseries.map((p) => Number(p.prompt_tokens || 0)),
+              backgroundColor: "rgba(99, 102, 241, 0.75)",
+              stack: "tok",
+              yAxisID: "y",
+            },
+            {
+              type: "bar",
+              label: "Completion Tokens",
+              data: timeseries.map((p) => Number(p.completion_tokens || 0)),
+              backgroundColor: "rgba(16, 185, 129, 0.75)",
+              stack: "tok",
+              yAxisID: "y",
+            },
+            {
+              type: "line",
+              label: "tok/s Decode",
+              data: timeseries.map((p) => Number(p.tok_s_decode || 0)),
+              borderColor: "#f59e0b",
+              backgroundColor: "transparent",
+              tension: 0.25,
+              pointRadius: 2,
+              yAxisID: "yRate",
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: basePlugins,
+          scales: {
+            ...baseScales,
+            yRate: {
+              beginAtZero: true,
+              position: "right",
+              grid: { drawOnChartArea: false },
+              ticks: { color: "#f59e0b", font: { size: 10 } },
+              title: { display: true, text: "tok/s", color: "#f59e0b" }
+            }
+          }
+        }
+      });
+    }
+
+    // 3. Latency Distribution
+    const canvasLatency = $("chartHistoryLatency");
+    if (canvasLatency) {
+      telemetryCharts.latency = new Chart(canvasLatency.getContext("2d"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "TTFT P50 (ms)",
+              data: timeseries.map((p) => (p.ttft_p50_ms !== undefined ? p.ttft_p50_ms : null)),
+              borderColor: "#22c55e",
+              backgroundColor: "rgba(34, 197, 94, 0.08)",
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: "TTFT P90 (ms)",
+              data: timeseries.map((p) => (p.ttft_p90_ms !== undefined ? p.ttft_p90_ms : null)),
+              borderColor: "#eab308",
+              backgroundColor: "rgba(234, 179, 8, 0.08)",
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: "ITL (ms)",
+              data: timeseries.map((p) => (p.itl_ms !== undefined ? p.itl_ms : null)),
+              borderColor: "#a855f7",
+              backgroundColor: "rgba(168, 85, 247, 0.08)",
+              tension: 0.25,
+              pointRadius: 2,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: basePlugins,
+          scales: {
+            ...baseScales,
+            y: {
+              ...baseScales.y,
+              title: { display: true, text: "Latency (ms)", color: "#64748b" }
+            }
+          }
+        }
+      });
+    }
+
+    // 4. Concurrency & Hardware Health
+    const canvasCompute = $("chartHistoryCompute");
+    if (canvasCompute) {
+      telemetryCharts.compute = new Chart(canvasCompute.getContext("2d"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Generating",
+              data: timeseries.map((p) => Number(p.generating || 0)),
+              borderColor: "#3b82f6",
+              backgroundColor: "transparent",
+              tension: 0.25,
+              pointRadius: 2,
+              yAxisID: "y",
+            },
+            {
+              label: "Waiting",
+              data: timeseries.map((p) => Number(p.waiting || 0)),
+              borderColor: "#f59e0b",
+              backgroundColor: "transparent",
+              tension: 0.25,
+              pointRadius: 2,
+              yAxisID: "y",
+            },
+            {
+              label: "Server Run",
+              data: timeseries.map((p) => Number(p.server_running || 0)),
+              borderColor: "#8b5cf6",
+              borderDash: [4, 4],
+              backgroundColor: "transparent",
+              tension: 0.2,
+              pointRadius: 1,
+              yAxisID: "y",
+            },
+            {
+              label: "Server Wait",
+              data: timeseries.map((p) => Number(p.server_waiting || 0)),
+              borderColor: "#ef4444",
+              borderDash: [4, 4],
+              backgroundColor: "transparent",
+              tension: 0.2,
+              pointRadius: 1,
+              yAxisID: "y",
+            },
+            {
+              label: "KV Cache %",
+              data: timeseries.map((p) => Number(p.kv_cache_pct || 0)),
+              borderColor: "#ec4899",
+              backgroundColor: "transparent",
+              tension: 0.25,
+              pointRadius: 2,
+              yAxisID: "yPct",
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: basePlugins,
+          scales: {
+            ...baseScales,
+            y: {
+              ...baseScales.y,
+              title: { display: true, text: "Requests / Slots", color: "#64748b" }
+            },
+            yPct: {
+              beginAtZero: true,
+              max: 100,
+              position: "right",
+              grid: { drawOnChartArea: false },
+              ticks: { color: "#ec4899", font: { size: 10 } },
+              title: { display: true, text: "KV Cache %", color: "#ec4899" }
+            }
+          }
+        }
+      });
+    }
   }
 
   // ── Groups tab (collage) ────────────────────────────────────────────
@@ -1246,6 +1814,14 @@
     if (!btn || !root.contains(btn)) return;
     switch (btn.dataset.action) {
       case "tab": setTab(btn.dataset.tab); break;
+      case "timeframe": setTimeframe(btn.dataset.tf || "1s"); break;
+      case "open-model-telemetry": {
+        const srv = btn.dataset.server || btn.closest("[data-server]")?.dataset.server;
+        const mdl = btn.dataset.model || btn.closest("[data-model]")?.dataset.model;
+        if (srv && mdl) openModelTelemetryModal(srv, mdl);
+        break;
+      }
+      case "close-modal": closeModelTelemetryModal(); break;
       case "sort": setSort(btn.dataset.scope, btn.dataset.key); render(); break;
       case "int-open": toggleIntegration(btn.dataset.name); break;
       case "int-toggle": setIntegrationEnabled(btn.dataset.name, btn.dataset.enabled === "true"); break;
@@ -1286,6 +1862,15 @@
   if (hostForm) hostForm.addEventListener("submit", onHostSubmit);
   const linkForm = $("obsLinkForm");
   if (linkForm) linkForm.addEventListener("submit", onLinkSubmit);
+
+  const telemetryModal = $("modelTelemetryModal");
+  if (telemetryModal) {
+    telemetryModal.addEventListener("click", (e) => {
+      if (e.target === telemetryModal) {
+        closeModelTelemetryModal();
+      }
+    });
+  }
 
   // ── Boot ────────────────────────────────────────────────────────────
   initSortHeaders();

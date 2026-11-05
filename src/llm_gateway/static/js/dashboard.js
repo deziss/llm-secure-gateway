@@ -135,6 +135,8 @@ document.addEventListener("visibilitychange", () => {
 // then upgrade to SSE for live updates.
 loadMetrics();
 startSSE();
+init24hTrafficChart();
+load24hTraffic();
 
 // Traffic chart — updated with real data from /admin/metrics
 const ctx = document.getElementById("trafficChart").getContext("2d");
@@ -179,4 +181,177 @@ function updateTrafficChart(traffic) {
   trafficChart.data.labels = traffic.map(t => t.label);
   trafficChart.data.datasets[0].data = traffic.map(t => t.count);
   trafficChart.update();
+}
+
+// --- 24-Hour Traffic Activity & Observability ---
+let traffic24hChart = null;
+
+function init24hTrafficChart() {
+  const canvas = document.getElementById("traffic24hChart");
+  if (!canvas || !window.Chart) return;
+  const ctx24 = canvas.getContext("2d");
+  traffic24hChart = new Chart(ctx24, {
+    data: {
+      labels: [],
+      datasets: [
+        {
+          type: "bar",
+          label: "Requests",
+          data: [],
+          backgroundColor: "rgba(99, 102, 241, 0.75)",
+          borderColor: "rgb(99, 102, 241)",
+          borderWidth: 1,
+          borderRadius: 3,
+          yAxisID: "y",
+        },
+        {
+          type: "line",
+          label: "RPS",
+          data: [],
+          borderColor: "rgb(56, 189, 248)",
+          backgroundColor: "rgba(56, 189, 248, 0.1)",
+          tension: 0.3,
+          pointRadius: 2,
+          yAxisID: "yRps",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      plugins: {
+        legend: {
+          display: true,
+          position: "top",
+          labels: { color: "#94a3b8", font: { size: 11 }, boxWidth: 10 },
+        },
+        tooltip: {
+          backgroundColor: "#0f172a",
+          titleColor: "#f8fafc",
+          bodyColor: "#e2e8f0",
+          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderWidth: 1,
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          ticks: { color: "#64748b", font: { size: 10 } },
+          title: { display: true, text: "Requests", color: "#64748b" },
+        },
+        yRps: {
+          beginAtZero: true,
+          position: "right",
+          grid: { drawOnChartArea: false },
+          ticks: { color: "#64748b", font: { size: 10 } },
+          title: { display: true, text: "RPS", color: "#64748b" },
+        },
+        x: {
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          ticks: { color: "#64748b", font: { size: 10 }, maxRotation: 0 },
+        },
+      },
+    },
+  });
+}
+
+async function load24hTraffic() {
+  const canvas = document.getElementById("traffic24hChart");
+  if (!canvas) return;
+  try {
+    let resp = await fetch(BASE_URL + "/admin/dashboard/traffic-24h", { credentials: "include" });
+    if (!resp.ok) {
+      resp = await fetch(BASE_URL + "/admin/observability/history?timeframe=24h", { credentials: "include" });
+    }
+    if (!resp.ok) return;
+    const data = await resp.json();
+    render24hTraffic(data);
+  } catch (e) {
+    console.debug("24h traffic telemetry unavailable", e);
+  }
+}
+
+function render24hTraffic(data) {
+  if (!data) return;
+  const peakRpsEl = document.getElementById("dash24hPeakRps");
+  const p50TtftEl = document.getElementById("dash24hP50Ttft");
+  const totalTokensEl = document.getElementById("dash24hTotalTokens");
+
+  let buckets = [];
+  if (Array.isArray(data)) {
+    buckets = data;
+  } else if (Array.isArray(data.hourly)) {
+    buckets = data.hourly;
+  } else if (Array.isArray(data.traffic)) {
+    buckets = data.traffic;
+  } else if (Array.isArray(data.series)) {
+    buckets = data.series;
+  } else if (Array.isArray(data.buckets)) {
+    buckets = data.buckets;
+  } else if (Array.isArray(data.models)) {
+    const bucketMap = new Map();
+    for (const m of data.models) {
+      for (const pt of (m.series || m.timeseries || m.buckets || [])) {
+        const timeKey = pt.bucket_time || pt.time || pt.label;
+        if (!timeKey) continue;
+        const cur = bucketMap.get(timeKey) || { label: timeKey, count: 0, rps: 0, tokens: 0, ttfts: [] };
+        cur.count += (Number(pt.requests) || 0);
+        cur.rps += (Number(pt.rps) || 0);
+        cur.tokens += (Number(pt.total_tokens) || ((Number(pt.prompt_tokens) || 0) + (Number(pt.completion_tokens) || 0)));
+        if (pt.ttft_p50_ms !== undefined && pt.ttft_p50_ms !== null) cur.ttfts.push(Number(pt.ttft_p50_ms));
+        bucketMap.set(timeKey, cur);
+      }
+    }
+    buckets = Array.from(bucketMap.values());
+  }
+
+  // Calculate metrics
+  let peakRps = data.peak_rps ?? data.summary?.peak_rps;
+  if (peakRps === undefined && buckets.length) {
+    peakRps = Math.max(...buckets.map(b => Number(b.rps || ((b.requests || b.count) ? (b.requests || b.count) / 3600 : 0))), 0);
+  }
+
+  let p50Ttft = data.avg_ttft_ms ?? data.p50_ttft_ms ?? data.summary?.p50_ttft_ms;
+  if (p50Ttft === undefined && buckets.length) {
+    const allTtfts = buckets.flatMap(b => b.ttfts || (b.ttft_p50_ms !== undefined ? [Number(b.ttft_p50_ms)] : (b.avg_ttft_ms !== undefined ? [Number(b.avg_ttft_ms)] : [])));
+    if (allTtfts.length) {
+      allTtfts.sort((a, b) => a - b);
+      p50Ttft = allTtfts[Math.floor(allTtfts.length / 2)];
+    }
+  }
+
+  let totalTokens = data.total_tokens ?? data.summary?.total_tokens;
+  if (totalTokens === undefined && buckets.length) {
+    totalTokens = buckets.reduce((s, b) => s + (Number(b.tokens || b.total_tokens || 0)), 0);
+  } else if (totalTokens === undefined && Array.isArray(data.models)) {
+    totalTokens = data.models.reduce((s, m) => s + (Number(m.total_tokens || 0)), 0);
+  }
+
+  if (peakRpsEl) peakRpsEl.textContent = (typeof peakRps === "number" && Number.isFinite(peakRps)) ? peakRps.toFixed(2) + " RPS" : "—";
+  if (p50TtftEl) p50TtftEl.textContent = (typeof p50Ttft === "number" && Number.isFinite(p50Ttft)) ? p50Ttft.toFixed(1) + " ms" : "—";
+  if (totalTokensEl) totalTokensEl.textContent = (typeof totalTokens === "number" && Number.isFinite(totalTokens)) ? new Intl.NumberFormat().format(totalTokens) : "—";
+
+  if (traffic24hChart && buckets.length) {
+    const labels = buckets.map(b => {
+      const lbl = b.label || b.time || b.bucket_time || "";
+      if (lbl.includes("T")) {
+        try {
+          const d = new Date(lbl);
+          return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        } catch (e) {
+          return lbl;
+        }
+      }
+      return lbl;
+    });
+    const reqCounts = buckets.map(b => Number(b.requests ?? b.count ?? 0));
+    const rpsValues = buckets.map(b => Number(b.rps ?? ((b.requests || b.count) ? (b.requests || b.count) / 3600 : 0)));
+
+    traffic24hChart.data.labels = labels;
+    traffic24hChart.data.datasets[0].data = reqCounts;
+    traffic24hChart.data.datasets[1].data = rpsValues;
+    traffic24hChart.update();
+  }
 }
