@@ -53,6 +53,16 @@ async def create_default_admin() -> None:
             session.add(new_admin)
             await session.commit()
             logging.getLogger(__name__).info(f"Created default admin user: {admin_email}")
+        else:
+            # Sync password if DEFAULT_ADMIN_PASSWORD was updated in .env
+            from fastapi_users.password import PasswordHelper
+            helper = PasswordHelper()
+            verified, _ = helper.verify_and_update(admin_password, admin_user.hashed_password)
+            if not verified:
+                admin_user.hashed_password = helper.hash(admin_password)
+                session.add(admin_user)
+                await session.commit()
+                logging.getLogger(__name__).info("Updated default admin password to match environment config.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
