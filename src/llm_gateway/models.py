@@ -3,7 +3,7 @@ from typing import Optional, List, Dict
 from sqlalchemy import DateTime
 from sqlmodel import SQLModel, Field, Column, Relationship
 from pydantic import computed_field, model_validator
-from sqlalchemy import JSON, UniqueConstraint
+from sqlalchemy import JSON, UniqueConstraint, Index
 from datetime import datetime, timezone
 
 # All timestamp columns in this database are `TIMESTAMP WITHOUT TIME ZONE` and
@@ -339,6 +339,58 @@ class ModelPricing(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
     updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
 
+
+class ModelTelemetryRollup(SQLModel, table=True):
+    """1-minute aggregated telemetry rollup per (server, model)."""
+    __tablename__ = "model_telemetry_rollups"
+    __table_args__ = (
+        UniqueConstraint("bucket_time", "server", "model", name="uq_telemetry_bucket_server_model"),
+        Index("ix_telemetry_bucket_time", "bucket_time"),
+        Index("ix_telemetry_server_model", "server", "model"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    bucket_time: datetime = Field(index=True, sa_type=DateTime(timezone=False), description="UTC minute bucket (truncated to minute)")
+    server: str = Field(index=True, max_length=64)
+    server_type: str = Field(default="unknown", max_length=32)
+    model: str = Field(index=True, max_length=128)
+
+    # Traffic counts
+    requests: int = Field(default=0)
+    errors: int = Field(default=0)
+
+    # Token volume
+    prompt_tokens: int = Field(default=0)
+    completion_tokens: int = Field(default=0)
+    total_tokens: int = Field(default=0)
+
+    # Latency aggregates
+    ttft_sum_ms: float = Field(default=0.0)
+    ttft_count: int = Field(default=0)
+    ttft_p50_ms: Optional[float] = Field(default=None)
+    ttft_p90_ms: Optional[float] = Field(default=None)
+    itl_sum_ms: float = Field(default=0.0)
+    itl_count: int = Field(default=0)
+    duration_sum_ms: float = Field(default=0.0)
+
+    # Throughput aggregates
+    decode_tps_sum: float = Field(default=0.0)
+    decode_n: int = Field(default=0)
+
+    # Gateway concurrency / queue samples (average = sum / samples_count)
+    waiting_sum: int = Field(default=0)
+    generating_sum: int = Field(default=0)
+    samples_count: int = Field(default=0)
+
+    # Server-reported telemetry (from backend scrape)
+    server_rps_sum: float = Field(default=0.0)
+    server_tok_s_sum: float = Field(default=0.0)
+    server_running_sum: int = Field(default=0)
+    server_waiting_sum: int = Field(default=0)
+    kv_cache_pct_sum: float = Field(default=0.0)
+    server_scrape_count: int = Field(default=0)
+
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 # Pre-v0.13 names, kept so existing imports and plugins keep working.

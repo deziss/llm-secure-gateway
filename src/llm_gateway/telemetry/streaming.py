@@ -265,7 +265,10 @@ async def stream_with_telemetry(
         )
         track_done(
             tracker, success=success, cancelled=cancelled,
-            output_tokens=usage.completion_tokens, estimated=estimated, decode_seconds=decode_s,
+            output_tokens=usage.completion_tokens,
+            prompt_tokens=usage.prompt_tokens,
+            total_tokens=usage.total_tokens,
+            estimated=estimated, decode_seconds=decode_s,
         )
         set_llm_attributes(
             span,

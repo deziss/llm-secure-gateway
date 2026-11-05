@@ -19,13 +19,15 @@ import logging
 import os
 import socket
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Awaitable, Callable
 
 import httpx
+from sqlalchemy import delete, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from ...models import GpuHost, ModelServer
+from ...models import GpuHost, ModelServer, ModelTelemetryRollup
 from ...proxy_helpers import get_circuit_breaker
 from . import gpu as gpu_mod
 from .groups import group_key, load_overrides
@@ -278,6 +280,147 @@ async def poll_once(interval: float | None = None, client: httpx.AsyncClient | N
 
     # Attribution is pure (no I/O). It mutates the process dicts shared with _hosts.
     gpu_mod.attribute_processes(targets, list(_hosts.values()))
+    record_poll_metrics()
+
+
+# --------------------------------------------------------------------------- #
+# Telemetry Rollups Persistence & Pruning
+# --------------------------------------------------------------------------- #
+_last_prune = 0.0
+
+
+def record_poll_metrics() -> None:
+    """Record concurrency samples and model server scrape metrics into in-memory LiveStats."""
+    from ..store import get_live_stats
+
+    store = get_live_stats()
+    store.sample_concurrency()
+    for t in _targets:
+        srv_name = t.get("name")
+        srv_type = t.get("server_type", "unknown")
+        s_data = _servers.get(srv_name)
+        if not s_data:
+            continue
+        model_stats = s_data.get("model_stats") or {}
+        models = list(t.get("models") or [])
+        if model_stats:
+            for m, mstat in model_stats.items():
+                store.record_server_scrape(
+                    server=srv_name,
+                    server_type=srv_type,
+                    model=m,
+                    server_rps=mstat.get("rps"),
+                    server_tok_s=mstat.get("out_tok_s"),
+                    server_running=mstat.get("running"),
+                    server_waiting=mstat.get("waiting"),
+                    kv_cache_pct=mstat.get("kv_cache_pct"),
+                )
+        elif models:
+            for m in models:
+                store.record_server_scrape(
+                    server=srv_name,
+                    server_type=srv_type,
+                    model=m,
+                    server_rps=None,
+                    server_tok_s=s_data.get("gen_tok_s"),
+                    server_running=s_data.get("running"),
+                    server_waiting=s_data.get("waiting"),
+                    kv_cache_pct=s_data.get("kv_cache_pct"),
+                )
+
+
+def _get_insert_stmt(session: AsyncSession, model_cls):
+    dialect_name = ""
+    try:
+        bind = session.get_bind()
+        if bind and hasattr(bind, "dialect"):
+            dialect_name = getattr(bind.dialect, "name", "")
+    except Exception:
+        pass
+    if "sqlite" in dialect_name:
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+        return sqlite_insert(model_cls)
+    else:
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        return pg_insert(model_cls)
+
+
+async def flush_telemetry_rollups(session: AsyncSession | None = None) -> int:
+    """Flush in-memory minute rollups from LiveStats into model_telemetry_rollups table."""
+    from ..store import get_live_stats
+
+    rollups = get_live_stats().drain_minute_rollups()
+    if not rollups:
+        return 0
+
+    async def _do_flush(sess: AsyncSession) -> int:
+        count = 0
+        for r in rollups:
+            data = {k: v for k, v in r.items() if k != "ttft_list"}
+            insert_stmt = _get_insert_stmt(sess, ModelTelemetryRollup)
+            stmt = insert_stmt.values(**data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["bucket_time", "server", "model"],
+                set_={
+                    "server_type": stmt.excluded.server_type,
+                    "requests": ModelTelemetryRollup.requests + stmt.excluded.requests,
+                    "errors": ModelTelemetryRollup.errors + stmt.excluded.errors,
+                    "prompt_tokens": ModelTelemetryRollup.prompt_tokens + stmt.excluded.prompt_tokens,
+                    "completion_tokens": ModelTelemetryRollup.completion_tokens + stmt.excluded.completion_tokens,
+                    "total_tokens": ModelTelemetryRollup.total_tokens + stmt.excluded.total_tokens,
+                    "ttft_sum_ms": ModelTelemetryRollup.ttft_sum_ms + stmt.excluded.ttft_sum_ms,
+                    "ttft_count": ModelTelemetryRollup.ttft_count + stmt.excluded.ttft_count,
+                    "ttft_p50_ms": func.coalesce(stmt.excluded.ttft_p50_ms, ModelTelemetryRollup.ttft_p50_ms),
+                    "ttft_p90_ms": func.coalesce(stmt.excluded.ttft_p90_ms, ModelTelemetryRollup.ttft_p90_ms),
+                    "itl_sum_ms": ModelTelemetryRollup.itl_sum_ms + stmt.excluded.itl_sum_ms,
+                    "itl_count": ModelTelemetryRollup.itl_count + stmt.excluded.itl_count,
+                    "duration_sum_ms": ModelTelemetryRollup.duration_sum_ms + stmt.excluded.duration_sum_ms,
+                    "decode_tps_sum": ModelTelemetryRollup.decode_tps_sum + stmt.excluded.decode_tps_sum,
+                    "decode_n": ModelTelemetryRollup.decode_n + stmt.excluded.decode_n,
+                    "waiting_sum": ModelTelemetryRollup.waiting_sum + stmt.excluded.waiting_sum,
+                    "generating_sum": ModelTelemetryRollup.generating_sum + stmt.excluded.generating_sum,
+                    "samples_count": ModelTelemetryRollup.samples_count + stmt.excluded.samples_count,
+                    "server_rps_sum": ModelTelemetryRollup.server_rps_sum + stmt.excluded.server_rps_sum,
+                    "server_tok_s_sum": ModelTelemetryRollup.server_tok_s_sum + stmt.excluded.server_tok_s_sum,
+                    "server_running_sum": ModelTelemetryRollup.server_running_sum + stmt.excluded.server_running_sum,
+                    "server_waiting_sum": ModelTelemetryRollup.server_waiting_sum + stmt.excluded.server_waiting_sum,
+                    "kv_cache_pct_sum": ModelTelemetryRollup.kv_cache_pct_sum + stmt.excluded.kv_cache_pct_sum,
+                    "server_scrape_count": ModelTelemetryRollup.server_scrape_count + stmt.excluded.server_scrape_count,
+                },
+            )
+            await sess.execute(stmt)
+            count += 1
+        await sess.commit()
+        return count
+
+    if session is not None:
+        return await _do_flush(session)
+    else:
+        from ...database import get_session_context
+
+        async with get_session_context() as sess:
+            return await _do_flush(sess)
+
+
+async def prune_old_telemetry_rollups(session: AsyncSession | None = None, days: int = 30) -> int:
+    """Prune rollup rows older than `days` days."""
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+    stmt = delete(ModelTelemetryRollup).where(ModelTelemetryRollup.bucket_time < cutoff)
+
+    async def _do_prune(sess: AsyncSession) -> int:
+        res = await sess.execute(stmt)
+        await sess.commit()
+        return res.rowcount or 0
+
+    if session is not None:
+        return await _do_prune(session)
+    else:
+        from ...database import get_session_context
+
+        async with get_session_context() as sess:
+            return await _do_prune(sess)
 
 
 # --------------------------------------------------------------------------- #
@@ -358,6 +501,7 @@ async def read_replica_payloads() -> dict[str, dict] | None:
 # --------------------------------------------------------------------------- #
 async def poller_loop() -> None:
     """Forever. Started from the app lifespan; cancel on shutdown."""
+    global _last_prune
     interval = _interval()
     client = httpx.AsyncClient(timeout=httpx.Timeout(READ_TIMEOUT_S, connect=CONNECT_TIMEOUT_S))
     try:
@@ -375,6 +519,20 @@ async def poller_loop() -> None:
                 raise
             except Exception as e:
                 logger.debug("observability: replica publish skipped: %s", e)
+            try:
+                await flush_telemetry_rollups()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.debug("observability: rollup flush skipped: %s", e)
+            if _clock() - _last_prune > 3600:
+                _last_prune = _clock()
+                try:
+                    await prune_old_telemetry_rollups()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.debug("observability: retention prune skipped: %s", e)
             await asyncio.sleep(max(0.5, interval - (_clock() - started)))
     finally:
         await client.aclose()

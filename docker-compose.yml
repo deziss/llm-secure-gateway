@@ -80,6 +80,7 @@ services:
     - ./alembic:/app/alembic
     - ./alembic.ini:/app/alembic.ini
     - ./pyproject.toml:/app/pyproject.toml
+    - ./tests:/app/tests
     extra_hosts:
     - "host.docker.internal:host-gateway"
     restart: unless-stopped
