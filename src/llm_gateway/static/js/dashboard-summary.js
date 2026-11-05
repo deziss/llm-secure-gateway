@@ -242,7 +242,7 @@
     if (inflight) return;
     inflight = true;
     try {
-      const res = await fetch(BASE_URL + "/admin/dashboard/summary", { credentials: "include" });
+      const res = await fetch("/admin/dashboard/summary", { credentials: "include" });
       if (res.status === 401) return typeof handleSessionExpiry === "function" ? handleSessionExpiry() : undefined;
       if (!res.ok) throw new Error("HTTP " + res.status);
       const d = await res.json();
