@@ -17,21 +17,32 @@ from .manager import SECRET
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
 
 
-def build_cookie_transport() -> CookieTransport:
+SESSION_SECONDS = 3600
+REMEMBER_SECONDS = config.REMEMBER_ME_DAYS * 24 * 3600
+
+
+def build_cookie_transport(max_age: int = SESSION_SECONDS) -> CookieTransport:
     # fastapi-users defaults cookie_secure=True, which browsers drop on plain
     # HTTP from any host but localhost. Only dev mode turns it off.
     return CookieTransport(
-        cookie_max_age=3600,
+        cookie_max_age=max_age,
         cookie_samesite="lax",
         cookie_secure=not config.ALLOW_INSECURE_HTTP,
     )
 
 
 cookie_transport = build_cookie_transport()
+# "Remember me": same cookie name, longer cookie and token lifetime. Reading the cookie
+# needs nothing extra: the cookie backend verifies the token's own exp claim.
+remember_cookie_transport = build_cookie_transport(REMEMBER_SECONDS)
 
 # Strategy
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=SECRET, lifetime_seconds=SESSION_SECONDS)
+
+
+def get_remember_jwt_strategy() -> JWTStrategy:
+    return JWTStrategy(secret=SECRET, lifetime_seconds=REMEMBER_SECONDS)
 
 # Backends
 auth_backend_bearer = AuthenticationBackend(
@@ -44,6 +55,14 @@ auth_backend_cookie = AuthenticationBackend(
     name="cookie",
     transport=cookie_transport,
     get_strategy=get_jwt_strategy,
+)
+
+# Login-only backend for "Remember me" (mounted at /auth/cookie-remember). Not listed in
+# FastAPIUsers below: auth_backend_cookie already reads the same cookie.
+auth_backend_cookie_remember = AuthenticationBackend(
+    name="cookie-remember",
+    transport=remember_cookie_transport,
+    get_strategy=get_remember_jwt_strategy,
 )
 
 # FastAPI Users Instance

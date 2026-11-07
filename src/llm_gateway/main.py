@@ -125,7 +125,7 @@ app.add_middleware(PolicyMiddleware)
 app.add_middleware(AuthMiddleware)
 
 # Auth Routes
-from .auth.users import fastapi_users, auth_backend_bearer, auth_backend_cookie
+from .auth.users import fastapi_users, auth_backend_bearer, auth_backend_cookie, auth_backend_cookie_remember
 from .auth.schemas import UserRead, UserCreate
 
 app.include_router(
@@ -136,6 +136,11 @@ app.include_router(
 app.include_router(
     fastapi_users.get_auth_router(auth_backend_cookie),
     prefix="/auth/cookie",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend_cookie_remember),
+    prefix="/auth/cookie-remember",
     tags=["auth"],
 )
 app.include_router(

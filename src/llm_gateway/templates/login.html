@@ -112,6 +112,15 @@ endblock %} {% set hide_header = true %} {% block content %}
         </div>
       </div>
 
+      <label for="login-remember" class="flex items-center gap-3 ml-1 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          id="login-remember"
+          class="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500/50"
+        />
+        <span class="text-sm text-slate-600 dark:text-slate-300">Remember me for {{ remember_days }} days</span>
+      </label>
+
       <button
         type="submit"
         id="submitBtn"
@@ -184,6 +193,9 @@ endblock %} {% set hide_header = true %} {% block content %}
 </style>
 
 <script>
+  // Keep the last choice; only the preference is stored, never the password.
+  try { document.getElementById("login-remember").checked = localStorage.getItem("login.remember") === "1"; } catch (err) { /* private mode */ }
+
   (() => {
     const notice = document.getElementById("insecureHttpNotice");
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
@@ -202,9 +214,11 @@ endblock %} {% set hide_header = true %} {% block content %}
     errorEl.classList.add("hidden");
 
     const formData = new FormData(e.target);
+    const remember = document.getElementById("login-remember").checked;
+    try { localStorage.setItem("login.remember", remember ? "1" : "0"); } catch (err) { /* private mode */ }
 
     try {
-      const response = await fetchWithCsrf(BASE_URL + "/auth/cookie/login", {
+      const response = await fetchWithCsrf(BASE_URL + (remember ? "/auth/cookie-remember/login" : "/auth/cookie/login"), {
         method: "POST",
         body: formData,
         credentials: "include",
