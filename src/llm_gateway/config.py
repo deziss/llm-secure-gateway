@@ -21,3 +21,14 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "superadmin@example.com")
 # HSTS is not sent -- session cookies and passwords then travel unencrypted.
 # Never enable in production; put a TLS reverse proxy in front instead.
 ALLOW_INSECURE_HTTP = os.getenv("ALLOW_INSECURE_HTTP", "false").lower() == "true"
+
+
+def _remember_days() -> int:
+    try:
+        return max(1, min(365, int(os.getenv("REMEMBER_ME_DAYS", "30"))))
+    except ValueError:
+        return 30
+
+
+# "Remember me" on the login page keeps the session this long (default 30 days).
+REMEMBER_ME_DAYS = _remember_days()

@@ -63,8 +63,8 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
     """Rate-limit login attempts per IP to prevent brute-force attacks.
 
     After MAX_ATTEMPTS failed logins within WINDOW_SECONDS, block the IP
-    for LOCKOUT_SECONDS.  Only applies to POST /auth/cookie/login and
-    POST /auth/jwt/login.
+    for LOCKOUT_SECONDS.  Only applies to the login endpoints (cookie, remember-me
+    cookie and JWT).
     """
 
     MAX_ATTEMPTS = 10
@@ -85,7 +85,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         is_login = (
             request.method == "POST"
-            and request.url.path in ("/auth/cookie/login", "/auth/jwt/login")
+            and request.url.path in ("/auth/cookie/login", "/auth/cookie-remember/login", "/auth/jwt/login")
         )
         if not is_login:
             return await call_next(request)

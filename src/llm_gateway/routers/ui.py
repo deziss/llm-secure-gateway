@@ -76,7 +76,9 @@ def get_template_context(user=None) -> dict:
 async def login_page(request: Request, user=Depends(optional_current_user)):
     if user:
         return RedirectResponse("/admin/dashboard")
-    return templates.TemplateResponse(request, "login.html", context=get_template_context())
+    from ..config import REMEMBER_ME_DAYS
+    return templates.TemplateResponse(request, "login.html",
+                                      context={**get_template_context(), "remember_days": REMEMBER_ME_DAYS})
 
 @router.get("/auth/register")
 async def register_page(request: Request, user=Depends(optional_current_user)):
