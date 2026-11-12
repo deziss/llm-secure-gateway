@@ -124,7 +124,8 @@ async def direct_proxy(
     headers = await build_backend_auth_headers(request, backend, session, owner_id, provider)
 
     tracker = None  # live-stats handle, set once the request is dispatched
-    span = PhoenixTraceManager.start_root_span(owner_id, provider, "llm_request_direct")
+    span_name = f"direct {model}" if model else "llm_request_direct"
+    span = PhoenixTraceManager.start_root_span(owner_id, provider, span_name)
     try:
         span.set_attribute("openinference.span.kind", "LLM")
         if model:
@@ -147,9 +148,16 @@ async def direct_proxy(
 
         if isinstance(body, dict):
             messages = body.get("messages", [])
+            prompt = body.get("prompt")
             if messages:
-                span.set_attribute("llm.input_messages", json.dumps(messages))
-            params = {k: v for k, v in body.items() if k not in ("messages", "model")}
+                input_val = json.dumps(messages) if isinstance(messages, (list, dict)) else str(messages)
+                span.set_attribute("llm.input_messages", input_val)
+                span.set_attribute("input.value", input_val)
+                span.set_attribute("input.mime_type", "application/json")
+            elif prompt:
+                span.set_attribute("input.value", str(prompt))
+                span.set_attribute("input.mime_type", "text/plain")
+            params = {k: v for k, v in body.items() if k not in ("messages", "model", "prompt")}
             if params:
                 span.set_attribute("llm.invocation_parameters", json.dumps(params))
 
@@ -474,7 +482,8 @@ async def dynamic_proxy(
 
     tenant_tracer = PhoenixTraceManager.get_tracer(owner_id, provider)
     tracker = None  # live-stats handle, set once the request is dispatched
-    span = PhoenixTraceManager.start_root_span(owner_id, provider, "llm_request")
+    span_name = f"chat {model}" if model else "llm_request"
+    span = PhoenixTraceManager.start_root_span(owner_id, provider, span_name)
 
     try:
         span.set_attribute("openinference.span.kind", "LLM")
@@ -507,11 +516,14 @@ async def dynamic_proxy(
             messages = body.get("messages", [])
             prompt = body.get("prompt", "")
             if messages:
-                span.set_attribute("llm.input_messages", json.dumps(messages))
-                span.set_attribute("input.value", json.dumps(messages))
+                input_val = json.dumps(messages) if isinstance(messages, (list, dict)) else str(messages)
+                span.set_attribute("llm.input_messages", input_val)
+                span.set_attribute("input.value", input_val)
+                span.set_attribute("input.mime_type", "application/json")
             elif prompt:
-                span.set_attribute("input.value", prompt)
-            params = {k: v for k, v in body.items() if k not in ("messages", "model")}
+                span.set_attribute("input.value", str(prompt))
+                span.set_attribute("input.mime_type", "text/plain")
+            params = {k: v for k, v in body.items() if k not in ("messages", "model", "prompt")}
             if params:
                 span.set_attribute("llm.invocation_parameters", json.dumps(params))
 

@@ -495,6 +495,7 @@ async def stream_with_telemetry(
 
                 span.set_attribute("llm.output_messages", json.dumps(output_messages))
                 span.set_attribute("output.value", full_content[:10000])
+                span.set_attribute("output.mime_type", "text/plain")
             else:
                 # Fallback: try to parse from raw response
                 try:
@@ -506,16 +507,19 @@ async def stream_with_telemetry(
                             output_messages = [{"role": msg.get('role', 'assistant'), "content": msg.get('content', '')[:10000]}]
                             span.set_attribute("llm.output_messages", json.dumps(output_messages))
                             span.set_attribute("output.value", msg.get('content', '')[:10000])
+                            span.set_attribute("output.mime_type", "text/plain")
                         elif 'choices' in response_json and response_json['choices']:
                             msg = response_json['choices'][0].get('message', {})
                             output_messages = [{"role": msg.get('role', 'assistant'), "content": msg.get('content', '')[:10000]}]
                             span.set_attribute("llm.output_messages", json.dumps(output_messages))
                             span.set_attribute("output.value", msg.get('content', '')[:10000])
+                            span.set_attribute("output.mime_type", "text/plain")
                     except (json.JSONDecodeError, KeyError, TypeError):
                         span.set_attribute("output.value", full_body[:10000])
                         span.set_attribute("output.mime_type", "application/json")
                 except Exception:
                     span.set_attribute("output.value", "<binary or decode error>")
+                    span.set_attribute("output.mime_type", "text/plain")
 
         span.end()
         try:

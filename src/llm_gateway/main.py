@@ -111,6 +111,9 @@ app = FastAPI(
     description="A secure gateway for Ollama/vLLM with API Key and SPIFFE authentication.",
     version=_VERSION,
     lifespan=lifespan,
+    # Disable FastAPI internal HTTP request / dependency / serialization telemetry
+    # so Phoenix and OTLP collectors only receive clean LLM model traces without HTTP polling spam.
+    telemetry={"tracing": False, "operation_spans": False, "metrics": False, "logs": False},
 )
 
 # Setup Telemetry immediately

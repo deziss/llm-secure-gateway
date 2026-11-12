@@ -183,7 +183,8 @@ async def anthropic_messages_endpoint(
     provider_id = provider if provider else (backend.backend_type.value if hasattr(backend.backend_type, "value") else str(backend.backend_type))
 
     # Tenant root span decoupled from ambient parent context
-    span = PhoenixTraceManager.start_root_span(owner_id, provider_id, "anthropic_messages")
+    span_name = f"messages {model}" if model else "anthropic_messages"
+    span = PhoenixTraceManager.start_root_span(owner_id, provider_id, span_name)
     tracker = None
 
     try:
@@ -208,9 +209,25 @@ async def anthropic_messages_endpoint(
         span.set_attribute("agent.client", agent_name)
         span.set_attribute("agent.version", agent_version)
 
+        input_val = None
         if isinstance(body, dict):
             messages = body.get("messages", [])
-            if messages:
+            system_prompt = body.get("system")
+            input_items = []
+
+            if system_prompt:
+                if isinstance(system_prompt, list):
+                    sys_text = "\n".join(part.get("text", "") for part in system_prompt if isinstance(part, dict) and part.get("type") == "text")
+                    sys_content = sys_text if sys_text else json.dumps(system_prompt)
+                elif isinstance(system_prompt, str):
+                    sys_content = system_prompt
+                else:
+                    sys_content = str(system_prompt)
+                span.set_attribute("llm.system_prompt", sys_content)
+                input_items.append({"role": "system", "content": sys_content})
+
+            if isinstance(messages, list):
+                input_items.extend(messages)
                 flat_attrs = flatten_attributes(messages, prefix="llm.input_messages")
                 for k, v in flat_attrs.items():
                     span.set_attribute(k, v)
@@ -219,15 +236,10 @@ async def anthropic_messages_endpoint(
                 except Exception:
                     pass
 
-            system_prompt = body.get("system")
-            if system_prompt:
-                if isinstance(system_prompt, list):
-                    sys_text = "\n".join(part.get("text", "") for part in system_prompt if isinstance(part, dict) and part.get("type") == "text")
-                    span.set_attribute("llm.system_prompt", sys_text if sys_text else json.dumps(system_prompt))
-                elif isinstance(system_prompt, str):
-                    span.set_attribute("llm.system_prompt", system_prompt)
-                else:
-                    span.set_attribute("llm.system_prompt", str(system_prompt))
+            if input_items:
+                input_val = json.dumps(input_items)
+                span.set_attribute("input.value", input_val)
+                span.set_attribute("input.mime_type", "application/json")
 
             params = {k: v for k, v in body.items() if k not in ("messages", "model", "system")}
             if params:
@@ -244,6 +256,8 @@ async def anthropic_messages_endpoint(
             server_name=backend.name,
             server_type=backend_type_name(backend),
             user_id=owner_id,
+            input_value=input_val,
+            input_mime_type="application/json" if input_val else None,
         )
 
         start_time = time.time()
@@ -668,9 +682,10 @@ async def _proxy_request_core(
     # Get tenant-specific tracer (by owner and provider)
     tenant_tracer = PhoenixTraceManager.get_tracer(owner_id, provider_id)
 
-    # Manual Span Management - llm_request as root
+    # Manual Span Management - model-named root span
     tracker = None  # live-stats handle, set once the request is dispatched
-    span = PhoenixTraceManager.start_root_span(owner_id, provider_id, "llm_request")
+    span_name = f"chat {model}" if model else "llm_request"
+    span = PhoenixTraceManager.start_root_span(owner_id, provider_id, span_name)
     
     try:
         # OpenInference attributes
@@ -695,15 +710,28 @@ async def _proxy_request_core(
         span.set_attribute("backend.fallback_urls", json.dumps(getattr(backend, "fallback_urls", []) or []))
         span.set_attribute("backend.type", str(backend.backend_type.value) if hasattr(backend.backend_type, 'value') else str(backend.backend_type))
         
-        # Extract and flatten input messages and parameters if available
+        # Extract and set input messages, prompts, and parameters
+        input_val = None
+        input_mime = "text/plain"
         if isinstance(body, dict):
             messages = body.get("messages", [])
+            prompt = body.get("prompt")
             if messages:
+                input_val = json.dumps(messages) if isinstance(messages, (list, dict)) else str(messages)
+                input_mime = "application/json"
+                span.set_attribute("input.value", input_val)
+                span.set_attribute("input.mime_type", input_mime)
+                span.set_attribute("llm.input_messages", input_val)
                 flat_attrs = flatten_attributes(messages, prefix="llm.input_messages")
                 for k, v in flat_attrs.items():
                     span.set_attribute(k, v)
+            elif prompt:
+                input_val = str(prompt)
+                input_mime = "text/plain"
+                span.set_attribute("input.value", input_val)
+                span.set_attribute("input.mime_type", input_mime)
                     
-            params = {k: v for k, v in body.items() if k not in ("messages", "model")}
+            params = {k: v for k, v in body.items() if k not in ("messages", "model", "prompt")}
             if params:
                  span.set_attribute("llm.invocation_parameters", json.dumps(params))
 
@@ -717,6 +745,7 @@ async def _proxy_request_core(
         set_llm_attributes(
             span, model=model or "unknown", provider=provider_id, operation="chat",
             server_name=backend.name, server_type=backend_type_name(backend), user_id=owner_id,
+            input_value=input_val, input_mime_type=input_mime,
         )
         tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown")
 
