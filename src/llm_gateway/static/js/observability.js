@@ -23,8 +23,10 @@
 
   const state = {
     tab: "models",
-    timeframe: "1s",
+    timeframe: "1h",
     historyPayload: null,
+    _historyFetching: false,
+    _lastHistoryFetch: 0,
     payload: null,
     es: null,
     pollTimer: null,
@@ -236,6 +238,12 @@
     state.failures = 0;
     state.payload = p;
     recordHistory(p);
+    if (state.timeframe !== "1s" && !state._historyFetching) {
+      const now = Date.now();
+      if (!state._lastHistoryFetch || (now - state._lastHistoryFetch > 30000)) {
+        fetchHistory(state.timeframe);
+      }
+    }
     render();
   }
 
@@ -358,9 +366,30 @@
     "24h": 86400,
   };
 
+  async function fetchHistory1sSeed() {
+    try {
+      const resp = await fetch("/admin/observability/history?timeframe=1s", { credentials: "include" });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data.models)) {
+          for (const m of data.models) {
+            const key = m.server + "|" + m.model;
+            if (Array.isArray(m.series) && m.series.length) {
+              const pts = m.series.map((pt) => Number(pt.rps ?? pt.requests ?? 0));
+              state.history.set(key, pts);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.debug("Failed seeding 1s history", e);
+    }
+  }
+
   async function setTimeframe(tf) {
     if (!tf) return;
     state.timeframe = tf;
+    store.set("obs.timeframe", tf);
 
     document.querySelectorAll('[data-action="timeframe"]').forEach((b) => {
       const active = b.dataset.tf === tf;
@@ -376,10 +405,11 @@
     if (liveDot) liveDot.classList.toggle("hidden", !isLive);
     const tfLabel = $("obsTimeframeLabel");
     if (tfLabel) {
-      tfLabel.textContent = isLive ? "Real-time live telemetry (1s)" : `Historical rollups (${tf})`;
+      tfLabel.textContent = isLive ? "Live telemetry stream (1s window)" : `Historical rollups (${tf}) · Auto-persisted`;
     }
 
     if (isLive) {
+      await fetchHistory1sSeed();
       render();
     } else {
       await fetchHistory(tf);
@@ -388,12 +418,14 @@
 
   async function fetchHistory(tf) {
     try {
+      state._historyFetching = true;
       setLive(`loading ${tf}…`, "muted");
       const resp = await fetch(`/admin/observability/history?timeframe=${encodeURIComponent(tf)}`, {
         credentials: "include",
       });
       if (resp.ok) {
         state.historyPayload = await resp.json();
+        state._lastHistoryFetch = Date.now();
         setLive(`synced (${tf})`, "ok");
       } else {
         console.warn("History telemetry status:", resp.status);
@@ -403,6 +435,7 @@
       console.warn("Failed fetching historical telemetry", err);
       setLive("history offline", "warn");
     } finally {
+      state._historyFetching = false;
       if (state.tab === "models") render();
     }
   }
@@ -491,6 +524,12 @@
         waitText = fmtInt(m.waiting);
         genText = fmtInt(m.generating);
         sparkPoints = state.history.get(m.server + "|" + m.model);
+        if (!sparkPoints || sparkPoints.length < 2) {
+          const series = m.series || m.timeseries;
+          if (Array.isArray(series) && series.length) {
+            sparkPoints = series.map((pt) => Number(pt.rps ?? pt.requests ?? 0));
+          }
+        }
       } else {
         if (state.timeframe === "1m") {
           rps1Text = isNum(m.rpm) ? fmt(m.rpm, 1) : (isNum(summary.avg_rps) ? fmt(summary.avg_rps * 60, 1) : (isNum(summary.total_requests || m.total_requests || m.requests) ? fmtInt(summary.total_requests || m.total_requests || m.requests) : fmt((m.rps_60s || 0) * 60, 1)));
@@ -1546,8 +1585,12 @@
   function integrationState(it) {
     if (it.builtin) return it.enabled ? "active" : "disabled";
     if (it.configured && it.enabled && it.error) return "failing";
-    if (it.active && it.status && it.status.last_error && !it.status.last_ok) return "failing";
-    if (it.active && it.status && it.status.failed > 0 && (!it.status.last_ok || it.status.last_error)) return "failing";
+    if (it.active && it.status) {
+      if (it.status.last_ok && !it.status.last_error) return "active";
+      if (it.status.last_error && !it.status.last_ok) return "failing";
+      if (it.status.last_error) return "failing";
+      return "active";
+    }
     if (it.active) return "active";
     if (it.configured) return "disabled";
     return "unconfigured";
@@ -1876,5 +1919,7 @@
   initSortHeaders();
   applySortIndicators("models");
   setTab("models");
+  const bootTf = store.get("obs.timeframe", "1h");
+  setTimeframe(bootTf);
   startStream();
 })();

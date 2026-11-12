@@ -76,6 +76,7 @@ class SinkStatus:
         with self._lock:
             self.exported += n
             self.last_ok = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            self.last_error = None
 
     def fail(self, n: int, err: str) -> None:
         with self._lock:
