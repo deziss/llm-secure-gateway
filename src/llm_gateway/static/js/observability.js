@@ -496,7 +496,10 @@
     $("fModelsCount").textContent = shown.length === all.length ? `${all.length} models` : `${shown.length} of ${all.length} models`;
 
     const rows = shown.map((m) => {
-      const tr = el("tr", { cls: "hover:bg-surface-inset cursor-pointer transition-colors" });
+      const tr = el("tr", {
+        cls: "hover:bg-surface-inset cursor-pointer transition-colors",
+        attrs: { title: `Click to view telemetry for ${m.server} · ${m.model}` }
+      });
       tr.dataset.action = "open-model-telemetry";
       tr.dataset.server = m.server;
       tr.dataset.model = m.model;
@@ -564,14 +567,6 @@
       tr.appendChild(td(run, "text-right tabular-nums"));
       tr.appendChild(td(fmtPct(kvCache, 0), "text-right tabular-nums"));
       tr.appendChild(el("td", { cls: "px-3 py-1" }, [sparkline(sparkPoints)]));
-
-      const actBtn = el("button", {
-        cls: "min-h-touch rounded-control border border-hairline bg-surface-inset px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-accent/50",
-        text: "Deep-Dive",
-        attrs: { type: "button", "aria-label": `Open telemetry for ${m.server} ${m.model}` },
-        data: { action: "open-model-telemetry", server: m.server, model: m.model }
-      });
-      tr.appendChild(el("td", { cls: "p-3 border-b border-hairline text-right" }, [actBtn]));
 
       return tr;
     });
