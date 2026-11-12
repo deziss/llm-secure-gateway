@@ -83,6 +83,9 @@ services:
     - ./tests:/app/tests
     extra_hosts:
     - "host.docker.internal:host-gateway"
+    networks:
+    - default
+    - phoenix_net
     restart: unless-stopped
 
   # ── PostgreSQL ──────────────────────────────────────────────────────
@@ -118,3 +121,5 @@ volumes:
 networks:
   default:
     name: llm_secure_gateway_default_net
+  phoenix_net:
+    external: true

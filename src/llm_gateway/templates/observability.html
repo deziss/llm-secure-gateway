@@ -15,6 +15,9 @@
     <div class="flex flex-wrap items-center gap-2 text-caption">
       <span id="obsScope" class="rounded-control border border-hairline px-2 py-1 text-ink-muted">scope: —</span>
       <span id="obsInstance" class="rounded-control border border-hairline px-2 py-1 text-ink-muted">instance: —</span>
+      <span id="obsStorage" class="rounded-control border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-medium text-emerald-400 flex items-center gap-1.5" title="Background telemetry worker actively persists rollups to PostgreSQL">
+        <i data-lucide="database" class="h-3 w-3" aria-hidden="true"></i> DB Rollups Active
+      </span>
       <span id="obsReplicas" class="rounded-control border border-hairline px-2 py-1 text-ink-muted hidden"></span>
       <span id="obsLive" class="rounded-control px-2 py-1 font-medium text-ink-muted" role="status">connecting…</span>
     </div>
@@ -40,17 +43,17 @@
       <div class="flex items-center gap-2">
         <span class="text-caption font-semibold text-ink-muted uppercase tracking-wider">Timeframe:</span>
         <div class="inline-flex rounded-control border border-hairline bg-surface-inset p-0.5" role="group" aria-label="Observability timeframe">
-          <button type="button" data-action="timeframe" data-tf="1s" class="min-h-touch rounded px-3 py-1 text-xs font-semibold bg-accent text-accent-ink shadow-sm" aria-pressed="true">1s (Live)</button>
+          <button type="button" data-action="timeframe" data-tf="1s" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1s (Live)</button>
           <button type="button" data-action="timeframe" data-tf="1m" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1m</button>
-          <button type="button" data-action="timeframe" data-tf="1h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1h</button>
+          <button type="button" data-action="timeframe" data-tf="1h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold bg-accent text-accent-ink shadow-sm" aria-pressed="true">1h</button>
           <button type="button" data-action="timeframe" data-tf="6h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">6h</button>
           <button type="button" data-action="timeframe" data-tf="12h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">12h</button>
           <button type="button" data-action="timeframe" data-tf="24h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">24h</button>
         </div>
       </div>
       <div class="text-caption text-ink-muted flex items-center gap-1.5" id="obsTimeframeIndicator">
-        <span id="obsLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
-        <span id="obsTimeframeLabel">Real-time live telemetry (1s)</span>
+        <span id="obsLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 hidden" aria-hidden="true"></span>
+        <span id="obsTimeframeLabel">Historical rollups (1h) · Auto-persisted</span>
       </div>
     </div>
 
