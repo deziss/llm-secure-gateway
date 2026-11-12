@@ -9,12 +9,16 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import socket
 import statistics
+import time
 from datetime import datetime, timezone, timedelta
 from typing import List, Literal, Optional
 from urllib.parse import urlparse
+
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -737,6 +741,7 @@ async def create_gpu_host(body: GpuHostIn, session: AsyncSession = Depends(get_s
     row = GpuHost(name=body.name, url=body.url, source=body.source, enabled=body.enabled)
     session.add(row)
     await session.commit()
+    poller._backoff.pop(f"gpu:{body.name}", None)
     return _host_out(row)
 
 
@@ -752,7 +757,41 @@ async def update_gpu_host(name: str, body: GpuHostUpdate, session: AsyncSession 
             setattr(row, field, value)
     session.add(row)
     await session.commit()
+    poller._backoff.pop(f"gpu:{name}", None)
     return _host_out(row)
+
+
+@router.post("/gpu-hosts/{name}/test")
+async def test_gpu_host(name: str, session: AsyncSession = Depends(get_session),
+                        user=Depends(require_admin)) -> dict:
+    row = await session.get(GpuHost, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="GPU host not found")
+    host_dict = {"name": row.name, "url": row.url, "source": row.source, "enabled": row.enabled}
+    token = os.getenv("GPU_AGENT_TOKEN") or None
+    t0 = time.monotonic()
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=3.0)) as client:
+        try:
+            result = await poller._fetch_host(client, host_dict, token)
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:160]}"}
+    elapsed_ms = round((time.monotonic() - t0) * 1000, 1)
+    if result.get("status") == "ok":
+        poller._backoff.pop(f"gpu:{name}", None)
+        poller._hosts[name] = {**host_dict, **result, "fetched_at": poller._iso()}
+        return {
+            "ok": True,
+            "status": "ok",
+            "gpus_count": len(result.get("gpus", [])),
+            "latency_ms": elapsed_ms,
+            "message": f"Connected to {name}: {len(result.get('gpus', []))} GPUs detected ({elapsed_ms}ms)",
+        }
+    return {
+        "ok": False,
+        "status": result.get("status"),
+        "error": result.get("error") or "Host probe failed",
+        "latency_ms": elapsed_ms,
+    }
 
 
 @router.delete("/gpu-hosts/{name}")

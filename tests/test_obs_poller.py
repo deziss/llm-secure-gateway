@@ -198,3 +198,38 @@ async def test_disabled_host_is_not_polled(monkeypatch):
     await poller.poll_once(interval=1.0, client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
     assert hits["n"] == 0
     assert poller.get_snapshot()["gpu_hosts"][0]["status"] == "disabled"
+
+
+async def test_gpu_host_preserves_previous_gpus_on_failure(monkeypatch):
+    monkeypatch.setenv("GPU_AGENT_TOKEN", "tok-123")
+    state = {"fail": False}
+
+    async def handler(request):
+        if state["fail"]:
+            raise httpx.ReadTimeout("timed out")
+        return httpx.Response(200, json={"gpus": [{
+            "index": 0, "uuid": "GPU-0", "name": "H100", "vendor": "nvidia", "util_pct": 50,
+            "mem_used_mib": 40000, "mem_total_mib": 81920,
+            "processes": [],
+        }]})
+
+    hosts = [{"name": "wardha-test", "url": "http://wardha-test.invalid:9835", "source": "agent", "enabled": True}]
+    monkeypatch.setattr(poller, "_read_config", _config([], hosts))
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    # Tick 1: Success
+    await poller.poll_once(interval=1.0, client=client)
+    snap1 = poller.get_snapshot()["gpu_hosts"][0]
+    assert snap1["status"] == "ok"
+    assert len(snap1["gpus"]) == 1
+    orig_fetched_at = snap1["fetched_at"]
+
+    # Tick 2: Transient failure (timeout)
+    state["fail"] = True
+    await poller.poll_once(interval=1.0, client=client)
+    snap2 = poller.get_snapshot()["gpu_hosts"][0]
+    assert snap2["status"] == "unreachable"
+    assert snap2["error"] == "timeout"
+    assert len(snap2["gpus"]) == 1  # GPUs are preserved!
+    assert snap2["fetched_at"] == orig_fetched_at  # Last successful fetched_at is preserved!
+    await client.aclose()

@@ -1166,10 +1166,33 @@
   // ── GPUs tab ────────────────────────────────────────────────────────
   function stalenessBadge(h) {
     const age = ageSeconds(h.fetched_at);
-    if (h.status && h.status !== "ok") return badge(h.status, "down");
+    if (h.status && h.status !== "ok") {
+      const extra = age !== null ? " · " + fmtAge(h.fetched_at) : "";
+      return badge(h.status + extra, "down");
+    }
     if (age === null) return badge("no data yet", "muted");
     if (age > 30) return badge("stale · " + fmtAge(h.fetched_at), "warn");
     return badge("fresh · " + fmtAge(h.fetched_at), "ok");
+  }
+
+  async function testGpuHost(name, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Testing…"; }
+    try {
+      const res = await fetchWithCsrf("/admin/observability/gpu-hosts/" + encodeURIComponent(name) + "/test", {
+        method: "POST"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        showToast("GPU host " + name, data.error || data.message || "Host probe failed", "error");
+      } else {
+        showToast("GPU host " + name, data.message || "Connection successful");
+      }
+      pollOnce();
+    } catch (err) {
+      showToast("GPU host " + name, String(err.message || err), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Test / Retry"; }
+    }
   }
 
   function renderGpus(p) {
@@ -1189,7 +1212,16 @@
         el("h2", { cls: "text-sm font-bold text-ink break-all", text: h.name }),
         el("p", { cls: "text-caption text-ink-muted", text: `${h.source} · ${h.url}` }),
       ]),
-      el("div", { cls: "flex items-center gap-2" }, [stalenessBadge(h), h.enabled === false ? badge("disabled", "muted") : null]),
+      el("div", { cls: "flex items-center gap-2" }, [
+        stalenessBadge(h),
+        h.enabled === false ? badge("disabled", "muted") : null,
+        IS_ADMIN ? el("button", {
+          cls: "text-caption px-2 py-0.5 rounded border border-hairline hover:bg-surface-inset text-ink-muted hover:text-ink transition-colors",
+          text: "Test / Retry",
+          attrs: { type: "button", title: "Immediately probe this GPU host and clear backoff" },
+          on: { click: (e) => testGpuHost(h.name, e.currentTarget) }
+        }) : null
+      ]),
     ]);
     if (h.error) head.appendChild(el("p", { cls: "w-full text-caption text-down break-all", text: "Error: " + h.error }));
 
@@ -1220,7 +1252,10 @@
         td(power, "text-right tabular-nums"),
       ]));
     });
-    if (!gpus.length) tbody.appendChild(emptyRow(6, "No GPU samples yet."));
+    if (!gpus.length) {
+      const emptyMsg = h.error ? `Unable to reach host (${h.error}). Retrying...` : "No GPU samples yet.";
+      tbody.appendChild(emptyRow(6, emptyMsg));
+    }
     table.appendChild(tbody);
 
     const procs = gpus.map((g) => {
