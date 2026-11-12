@@ -36,9 +36,9 @@ from .servers import scrape_server
 logger = logging.getLogger(__name__)
 
 MAX_CONCURRENCY = 8
-MAX_BACKOFF_S = 60.0
-CONNECT_TIMEOUT_S = 1.5
-READ_TIMEOUT_S = 2.0
+MAX_BACKOFF_S = 30.0
+CONNECT_TIMEOUT_S = 2.5
+READ_TIMEOUT_S = 3.5
 LIVE_KEY_PREFIX = "obs:live:"
 LIVE_TTL_S = 10
 
@@ -134,13 +134,19 @@ async def _fetch_host(client: httpx.AsyncClient, host: dict, token: str | None) 
     if src == "agent":
         if not token:
             return {"status": "unsupported", "error": "GPU_AGENT_TOKEN is not set on the gateway", "gpus": []}
-        r = await client.get(_agent_url(host["url"]), headers={"Authorization": f"Bearer {token}"})
+        try:
+            r = await client.get(_agent_url(host["url"]), headers={"Authorization": f"Bearer {token}"})
+        except httpx.NetworkError:
+            r = await client.get(_agent_url(host["url"]), headers={"Authorization": f"Bearer {token}"})
         if r.status_code in (401, 403):
             return {"status": "unreachable", "error": f"agent rejected token (HTTP {r.status_code})", "gpus": []}
         r.raise_for_status()
         gpus = gpu_mod.parse_agent(r.json(), host["name"])
     elif src in gpu_mod.PARSERS:
-        r = await client.get(_metrics_url(host["url"]))
+        try:
+            r = await client.get(_metrics_url(host["url"]))
+        except httpx.NetworkError:
+            r = await client.get(_metrics_url(host["url"]))
         r.raise_for_status()
         gpus = gpu_mod.PARSERS[src](r.text, host["name"])
     else:
@@ -174,7 +180,7 @@ async def _run_job(key: str, kind: str, name: str, url: str | None, base: dict,
     now = _clock()
     bo = _backoff.get(key)
     prev = store.get(name, {})
-    if bo and now < bo["next_at"]:
+    if bo and (now + 0.3) < bo["next_at"]:
         store[name] = _carry(base, prev, "backoff", bo["error"], kind)
         return
     if url and get_circuit_breaker().is_open(url):
@@ -187,6 +193,11 @@ async def _run_job(key: str, kind: str, name: str, url: str | None, base: dict,
             failures = (bo["failures"] if bo else 0) + 1
             delay = min(MAX_BACKOFF_S, _interval() * (2 ** min(failures - 1, 6)))
             _backoff[key] = {"failures": failures, "next_at": _clock() + delay, "error": result.get("error")}
+            if kind == "gpu":
+                if prev.get("gpus"):
+                    result["gpus"] = prev["gpus"]
+                if prev.get("fetched_at"):
+                    result["fetched_at"] = prev["fetched_at"]
         else:
             _backoff.pop(key, None)
         store[name] = result
@@ -218,7 +229,7 @@ async def poll_once(interval: float | None = None, client: httpx.AsyncClient | N
     """One tick. Safe to call directly from tests."""
     global _overrides, _targets
     interval = interval or _interval()
-    deadline = 0.8 * interval
+    deadline = max(3.5, 0.85 * interval) if interval >= 4.0 else 0.8 * interval
     try:
         targets, hosts, overrides = await _read_config()
     except Exception:
