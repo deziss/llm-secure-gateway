@@ -32,6 +32,8 @@ def set_llm_attributes(
     total_tokens: Optional[int] = None,
     input_value: Optional[str] = None,
     output_value: Optional[str] = None,
+    input_mime_type: Optional[str] = None,
+    output_mime_type: Optional[str] = None,
 ) -> None:
     """Write LLM semantic attributes onto ``span``. No-op when the span is not recording."""
     try:
@@ -50,8 +52,12 @@ def set_llm_attributes(
         _set(span, "llm.token_count.completion", int(output_tokens))
     if total_tokens is not None:
         _set(span, "llm.token_count.total", int(total_tokens))
-    _set(span, "input.value", input_value[:10000] if isinstance(input_value, str) else input_value)
-    _set(span, "output.value", output_value[:10000] if isinstance(output_value, str) else output_value)
+    if input_value is not None:
+        _set(span, "input.value", input_value[:10000] if isinstance(input_value, str) else input_value)
+        _set(span, "input.mime_type", input_mime_type or ("application/json" if str(input_value).startswith(("[", "{")) else "text/plain"))
+    if output_value is not None:
+        _set(span, "output.value", output_value[:10000] if isinstance(output_value, str) else output_value)
+        _set(span, "output.mime_type", output_mime_type or ("application/json" if str(output_value).startswith(("[", "{")) else "text/plain"))
 
     # OpenTelemetry GenAI
     _set(span, "gen_ai.system", provider)

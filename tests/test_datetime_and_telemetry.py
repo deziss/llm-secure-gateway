@@ -191,3 +191,45 @@ class TestPhoenixProjectTracing:
         assert "gateway-tenant-c-vllm" not in PhoenixTraceManager._tracers
         assert PhoenixTraceManager.get_tracer_count() == 0
 
+    def test_set_llm_attributes_records_input_output_and_mime_types(self):
+        """Verify set_llm_attributes sets input.value, input.mime_type, output.value, and output.mime_type."""
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from llm_gateway.observability.export.semconv import set_llm_attributes
+
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer("test")
+
+        with tracer.start_as_current_span("chat test-model") as span:
+            set_llm_attributes(
+                span,
+                model="test-model",
+                provider="vllm",
+                operation="chat",
+                input_value='[{"role": "user", "content": "hi"}]',
+                input_mime_type="application/json",
+                output_value="Hello there!",
+                output_mime_type="text/plain",
+            )
+
+        finished = exporter.get_finished_spans()
+        assert len(finished) == 1
+        attrs = finished[0].attributes
+        assert attrs["openinference.span.kind"] == "LLM"
+        assert attrs["llm.model_name"] == "test-model"
+        assert attrs["input.value"] == '[{"role": "user", "content": "hi"}]'
+        assert attrs["input.mime_type"] == "application/json"
+        assert attrs["output.value"] == "Hello there!"
+        assert attrs["output.mime_type"] == "text/plain"
+
+    def test_fastapi_app_disables_internal_telemetry(self):
+        """FastAPI app instance must have internal HTTP and operation tracing disabled."""
+        from llm_gateway.main import app
+        assert hasattr(app, "_telemetry")
+        assert app._telemetry.get("tracing") is False
+        assert app._telemetry.get("operation_spans") is False
+
+
