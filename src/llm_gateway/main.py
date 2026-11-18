@@ -97,6 +97,16 @@ async def lifespan(app: FastAPI):
         integ_task = asyncio.create_task(integrations_loop())
     except ImportError as exc:
         logging.getLogger(__name__).warning("integrations manager unavailable: %s", exc)
+
+    # Licencia licensing initialization & periodic check-in loop
+    lic_task = None
+    try:
+        from .licensing.manager import start_licensing, licencia_checkin_loop
+        await start_licensing()
+        lic_task = asyncio.create_task(licencia_checkin_loop())
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Licencia manager startup error: %s", exc)
+
     try:
         yield
     finally:
@@ -104,6 +114,13 @@ async def lifespan(app: FastAPI):
         for t in (poll_task, integ_task):
             if t is not None:
                 t.cancel()
+        if lic_task is not None:
+            lic_task.cancel()
+        try:
+            from .licensing.manager import stop_licensing
+            await stop_licensing()
+        except Exception as exc:
+            logging.getLogger(__name__).debug("Licencia shutdown error: %s", exc)
         from .proxy_helpers import close_all_clients
         await close_all_clients()
 
