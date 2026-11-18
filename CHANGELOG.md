@@ -1,3 +1,25 @@
+## [0.15.1] - 2026-11-18
+
+### 🐛 Fixed & Resilient Networking
+
+- **Upstream Connection Keep-Alive & ReadError Resilience**:
+  - Proactive keep-alive connection expiration (`keepalive_expiry=15.0s`) on persistent HTTPX client pools, preventing socket reuse races where upstream vLLM/Uvicorn servers close idle TCP connections.
+  - Comprehensive transport exception handling in `try_backend_with_fallback`: catches `httpx.ReadError`, `httpx.RemoteProtocolError`, `httpx.WriteError`, `httpx.WriteTimeout`, `httpx.PoolTimeout`, and all `httpx.TransportError` subclasses.
+  - Automatic client pool eviction (`_reset_client`): immediately purges and closes dead pooled connections upon transport failure, guaranteeing subsequent attempts and retries establish a clean TCP handshake.
+  - Contextual diagnostic logging on `httpx.ReadError` capturing target URL, HTTP method, backend name, attempt count, and elapsed duration before header failure.
+  - Automatic transient recovery: allows at least 2 attempts by default (and up to 3 with exponential backoff when `ENABLE_RETRY_BACKOFF=true`), preventing transient keepalive resets from surfacing as 502 Bad Gateway to clients.
+  - Configurable upstream request timeout (`UPSTREAM_TIMEOUT`, default 120.0s) to support long reasoning / thinking token generation.
+
+- **Arize Phoenix & OpenTelemetry Model Tracing**:
+  - Suppressed internal FastAPI framework HTTP route spans (`GET /v1/models`, `GET /admin/dashboard`) from cluttering the default Arize Phoenix project.
+  - Captured full prompt messages in OpenInference span `input.value` and `input.mime_type = "application/json"`, restoring visibility of user inputs in the Phoenix UI.
+  - Standardized OpenInference span names to `chat {model}` for clean multi-model trace observability.
+
+- **GPU & Observability UI Fixes**:
+  - Prevented GPU host polling timeouts from blocking cluster metrics by maintaining cached GPU states with exponential backoff on unreachable hosts.
+  - Removed redundant Deep-Dive Telemetry column from the Observability models table, consolidating telemetry views into row click actions.
+  - Added "Remember me" extended session option on the admin login page.
+
 ## [0.15.0] - 2026-11-05
 
 ### ✨ New
