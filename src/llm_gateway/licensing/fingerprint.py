@@ -8,6 +8,8 @@ def generate_hardware_id() -> str:
     host = platform.node()
     return hashlib.sha256(f"{host}:{node}".encode("utf-8")).hexdigest()
 
-def is_localhost_bypass(hardware_id: str) -> bool:
+def is_localhost_bypass(hardware_id: str | None) -> bool:
     """Check if the hardware ID represents a local development / community bypass."""
-    return hardware_id.lower() in ("localhost", "127.0.0.1", "::1")
+    if not hardware_id or not isinstance(hardware_id, str):
+        return False
+    return hardware_id.strip().lower() in ("localhost", "127.0.0.1", "::1")
