@@ -23,7 +23,13 @@ def test_hardware_fingerprint_deterministic():
 def test_localhost_bypass():
     assert is_localhost_bypass("localhost") is True
     assert is_localhost_bypass("127.0.0.1") is True
+    assert is_localhost_bypass("::1") is True
+    assert is_localhost_bypass("  localhost  ") is True
+    assert is_localhost_bypass("  127.0.0.1\n") is True
     assert is_localhost_bypass("abc1234567890") is False
+    assert is_localhost_bypass(None) is False
+    assert is_localhost_bypass(12345) is False
+    assert is_localhost_bypass("") is False
 
 def test_licencia_models_serialization():
     req = LicenciaValidateRequest(
