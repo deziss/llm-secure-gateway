@@ -50,7 +50,10 @@ class LicenciaClient:
         self.api_key = api_key if api_key is not None else LICENCIA_API_KEY
         self.license_key = license_key if license_key is not None else LICENCIA_LICENSE_KEY
         self.lease_file = lease_file or LICENCIA_LEASE_FILE or "/tmp/gateway_license_lease.json"
-        self.state = LicenseState()
+        if self.license_key and self.api_key:
+            self.state = LicenseState(is_community=False)
+        else:
+            self.state = LicenseState(is_community=True)
 
     def _mask_key(self, key: str) -> str:
         if not key or len(key) < 12:
@@ -78,7 +81,7 @@ class LicenciaClient:
         return self.state
 
     async def validate(self) -> LicenseState:
-        """Validate license with Licencia server, falling back to local cached lease."""
+        """Validate license with Licencia server, falling back to local cached lease only on network errors."""
         if not self.license_key or not self.api_key:
             logger.info("No Licencia credentials configured. Running in Community mode.")
             return self._apply_community_defaults()
@@ -137,21 +140,24 @@ class LicenciaClient:
                         self._save_lease_cache(data)
                         logger.info("Licencia validated successfully. Tier: %s", tier_val.value)
                         return self.state
-                logger.warning("Licencia rejected key with status %d", res.status_code)
+                    else:
+                        logger.warning("Licencia rejected key: valid=False")
+                        return self._apply_community_defaults()
+                else:
+                    logger.warning("Licencia rejected key with status %d", res.status_code)
+                    return self._apply_community_defaults()
         except Exception as exc:
             logger.warning("Licencia API unreachable (%s), attempting offline lease load", exc)
-
-        # Attempt offline lease fallback
-        cached = self._load_lease_cache()
-        if cached:
-            return cached
+            cached = self._load_lease_cache()
+            if cached:
+                return cached
 
         logger.warning("No valid offline lease found. Falling back to Community mode.")
         return self._apply_community_defaults()
 
     async def deactivate(self) -> bool:
         """Gracefully release license seat on shutdown."""
-        if not self.license_key or not self.api_key:
+        if not self.license_key or not self.api_key or self.state.is_community:
             return True
         try:
             hw_id = generate_hardware_id()
