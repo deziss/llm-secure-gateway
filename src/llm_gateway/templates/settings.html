@@ -32,6 +32,7 @@
          ('performance', 'Caching', 'database', True),
          ('compliance', 'Compliance', 'clipboard-check', True),
          ('scope', 'Scope policy', 'network', True),
+         ('license', 'License', 'shield-check', True),
          ('bots', 'Bots', 'bot', False),
        ] if is_admin or not admin_only %}
     <button type="button" role="tab" id="tab-{{ key }}" data-tab="{{ key }}"
@@ -551,6 +552,92 @@
     </table>
   </div>
 
+</div>
+
+<!-- License & Subscription Section -->
+<div id="settingsLicense" data-settings-tab="license" role="tabpanel" aria-labelledby="tab-license" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-accent/10 rounded-control flex items-center justify-center text-accent border border-accent/20">
+        <i data-lucide="shield-check" class="w-5 h-5" aria-hidden="true"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-bold text-ink">License & Subscription</h2>
+        <p class="text-xs text-ink-muted mt-0.5">Manage Licencia enterprise seat activation, offline leases, and plan entitlements.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <button id="btnRefreshLicense" type="button" class="min-h-touch px-4 py-2 bg-accent text-accent-ink rounded-control font-medium text-xs flex items-center gap-2 hover:bg-accent/90 transition shadow-sm">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh Lease Now
+      </button>
+      <button id="btnDeactivateLicense" type="button" class="min-h-touch px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-control font-medium text-xs flex items-center gap-2 transition">
+        <i data-lucide="power" class="w-4 h-4"></i>Deactivate Seat
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Card (Flex/Grid) -->
+  <div class="bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <span class="block text-caption text-ink-muted font-medium mb-1.5">Current Tier</span>
+        <span id="licTierBadge" class="px-2.5 py-1 text-xs font-semibold rounded-control inline-flex items-center bg-surface-base text-ink-muted border border-hairline">Community</span>
+      </div>
+      <div>
+        <span class="block text-caption text-ink-muted font-medium mb-1.5">License Key</span>
+        <code id="licKeyMasked" class="text-xs font-mono bg-surface-inset px-2 py-1 rounded border border-hairline text-ink">COMMUNITY-EDITION</code>
+      </div>
+      <div>
+        <span class="block text-caption text-ink-muted font-medium mb-1.5">Hardware Fingerprint</span>
+        <div class="flex items-center gap-2">
+          <span id="licHardwareId" class="text-xs font-mono truncate max-w-[200px] text-ink" title="">...</span>
+          <button type="button" id="btnCopyHardwareId" class="text-ink-muted hover:text-ink transition p-1" title="Copy Hardware ID">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+      <div>
+        <span class="block text-caption text-ink-muted font-medium mb-1.5">Lease Expiry</span>
+        <span id="licLeaseExpiry" class="text-xs text-ink-muted">Perpetual / Offline</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entitlements Grid (4 blocks) -->
+  <div>
+    <h3 class="text-sm font-bold text-ink mb-3">Plan Entitlements</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-surface-inset p-4 rounded-panel border border-hairline">
+        <span class="block text-caption text-ink-muted font-medium mb-1">Backends Quota</span>
+        <span id="licBackendsQuota" class="text-ink font-bold text-base">2 max</span>
+      </div>
+      <div class="bg-surface-inset p-4 rounded-panel border border-hairline">
+        <span class="block text-caption text-ink-muted font-medium mb-1">API Keys Quota</span>
+        <span id="licKeysQuota" class="text-ink font-bold text-base">5 max</span>
+      </div>
+      <div class="bg-surface-inset p-4 rounded-panel border border-hairline sm:col-span-2">
+        <span class="block text-caption text-ink-muted font-medium mb-2">Active Features</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" id="licFeaturesList">
+          <div class="flex items-center gap-2" id="licFeatSemanticCache">
+            <i data-lucide="x-circle" class="w-4 h-4 text-ink-muted feature-icon"></i>
+            <span class="text-ink">Semantic Cache</span>
+          </div>
+          <div class="flex items-center gap-2" id="licFeatComplexityRouting">
+            <i data-lucide="x-circle" class="w-4 h-4 text-ink-muted feature-icon"></i>
+            <span class="text-ink">Complexity Router</span>
+          </div>
+          <div class="flex items-center gap-2" id="licFeatLiveTraces">
+            <i data-lucide="x-circle" class="w-4 h-4 text-ink-muted feature-icon"></i>
+            <span class="text-ink">Live Waterfall Traces</span>
+          </div>
+          <div class="flex items-center gap-2" id="licFeatAuditLogs">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-ok feature-icon"></i>
+            <span class="text-ink">Audit Log Persistence</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endif %}
 
