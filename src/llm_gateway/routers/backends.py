@@ -35,6 +35,11 @@ async def register_backend(
     user = Depends(require_manager)
 ) -> LLMBackend:
     try:
+        # Check Licencia backend quota
+        from ..licensing.entitlements import check_backend_quota
+        existing_backends = await service.list_backends(session)
+        check_backend_quota(len(existing_backends))
+
         # Sanitize inputs
         backend.name = backend.name.strip()
         backend.base_url = backend.base_url.strip().rstrip("/")

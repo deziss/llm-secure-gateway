@@ -48,8 +48,13 @@ async def create_api_key(
         if not owner_obj or owner_obj.user_id != str(user.id):
             raise HTTPException(status_code=403, detail="Not authorized for this owner")
 
-    # Enforce max_keys limit
+    # Check Licencia global key quota
+    from ..licensing.entitlements import check_key_quota
     from sqlalchemy import select as sa_select, func
+    total_keys_res = await session.execute(sa_select(func.count()).select_from(APIKey).where(APIKey.is_active == True))
+    check_key_quota(total_keys_res.scalar() or 0)
+
+    # Enforce max_keys limit
     owner_check = await session.execute(sa_select(Owner).where(Owner.id == key_data.owner))
     owner_record = owner_check.scalars().first()
     if owner_record:

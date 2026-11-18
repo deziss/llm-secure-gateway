@@ -160,6 +160,11 @@ async def test_client_server_rejection_falls_back_to_community_without_cached_le
             assert state.tier == LicenseTier.COMMUNITY
             assert state.is_community is True
             assert client_401.is_feature_enabled("semantic_cache") is False
+            assert not os.path.exists(lease_path)
+
+        # Re-create cached lease for valid: False test
+        with open(lease_path, "w") as f:
+            json.dump(cached_payload, f)
 
         # 2. Test 200 OK with valid: False rejection
         client_invalid = LicenciaClient(
@@ -181,6 +186,85 @@ async def test_client_server_rejection_falls_back_to_community_without_cached_le
             assert state.tier == LicenseTier.COMMUNITY
             assert state.is_community is True
             assert client_invalid.is_feature_enabled("semantic_cache") is False
+            assert not os.path.exists(lease_path)
+    finally:
+        if os.path.exists(lease_path):
+            os.remove(lease_path)
+
+
+@pytest.mark.asyncio
+async def test_client_server_error_falls_back_to_offline_lease():
+    lease_path = "/tmp/test_500_lease.json"
+    cached_payload = {
+        "valid": True,
+        "licenseId": "lic-cached-500",
+        "entitlements": {
+            "product": "llm-secure-gateway",
+            "tier": "enterprise",
+            "features": {"semantic_cache": True},
+            "limits": {"max_backends": 0},
+        },
+        "leaseToken": "cached-token",
+        "leaseExpiresAt": "2029-01-01T00:00:00Z",
+        "checkInInterval": 6,
+        "onlineGracePeriod": 168,
+    }
+    with open(lease_path, "w") as f:
+        json.dump(cached_payload, f)
+
+    try:
+        client_500 = LicenciaClient(
+            url="http://mock-licencia",
+            api_key="lic_valid_api_key",
+            license_key="LIC-500",
+            lease_file=lease_path,
+        )
+        mock_resp_500 = MagicMock(status_code=500)
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_resp_500
+            state = await client_500.validate()
+            assert state.is_valid is True
+            assert state.tier == LicenseTier.ENTERPRISE
+            assert state.is_community is False
+            assert client_500.is_feature_enabled("semantic_cache") is True
+            # Lease file should still exist
+            assert os.path.exists(lease_path)
+    finally:
+        if os.path.exists(lease_path):
+            os.remove(lease_path)
+
+
+@pytest.mark.asyncio
+async def test_client_offline_lease_naive_datetime():
+    lease_path = "/tmp/test_naive_lease.json"
+    cached_payload = {
+        "valid": True,
+        "licenseId": "lic-naive",
+        "entitlements": {
+            "product": "llm-secure-gateway",
+            "tier": "pro",
+            "features": {"audit_logs": True},
+            "limits": {"max_backends": 5},
+        },
+        "leaseToken": "naive-token",
+        "leaseExpiresAt": "2029-01-01T00:00:00",
+        "checkInInterval": 6,
+        "onlineGracePeriod": 168,
+    }
+    with open(lease_path, "w") as f:
+        json.dump(cached_payload, f)
+
+    try:
+        client = LicenciaClient(
+            url="http://offline-licencia:9999",
+            api_key="lic_key",
+            license_key="LIC-NAIVE",
+            lease_file=lease_path,
+        )
+        state = await client.validate()
+        assert state.is_valid is True
+        assert state.tier == LicenseTier.PRO
+        assert client.is_feature_enabled("audit_logs") is True
     finally:
         if os.path.exists(lease_path):
             os.remove(lease_path)
