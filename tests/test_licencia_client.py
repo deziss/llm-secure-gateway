@@ -112,10 +112,79 @@ def test_singleton_get_licencia_client():
     assert isinstance(c1, LicenciaClient)
 
 @pytest.mark.asyncio
-async def test_client_deactivate_noop_without_credentials():
-    client = LicenciaClient(url="http://mock-licencia", api_key="", license_key="")
-    success = await client.deactivate()
-    assert success is True
+async def test_client_deactivate_noop_when_community_mode():
+    client = LicenciaClient(
+        url="http://mock-licencia",
+        api_key="lic_live_test_api_key",
+        license_key="LIC-1111-2222-3333-4444",
+    )
+    client.state.is_community = True
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        success = await client.deactivate()
+        assert success is True
+        mock_post.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_client_server_rejection_falls_back_to_community_without_cached_lease():
+    lease_path = "/tmp/test_rejection_lease.json"
+    cached_payload = {
+        "valid": True,
+        "licenseId": "lic-cached-valid",
+        "entitlements": {
+            "product": "llm-secure-gateway",
+            "tier": "enterprise",
+            "features": {"semantic_cache": True},
+            "limits": {"max_backends": 0},
+        },
+        "leaseToken": "cached-token",
+        "leaseExpiresAt": "2029-01-01T00:00:00Z",
+        "checkInInterval": 6,
+        "onlineGracePeriod": 168,
+    }
+    with open(lease_path, "w") as f:
+        json.dump(cached_payload, f)
+
+    try:
+        # 1. Test HTTP 401 rejection
+        client_401 = LicenciaClient(
+            url="http://mock-licencia",
+            api_key="lic_invalid_api_key",
+            license_key="LIC-REVOKED",
+            lease_file=lease_path,
+        )
+        mock_resp_401 = MagicMock(status_code=401)
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_resp_401
+            state = await client_401.validate()
+            assert state.is_valid is True
+            assert state.tier == LicenseTier.COMMUNITY
+            assert state.is_community is True
+            assert client_401.is_feature_enabled("semantic_cache") is False
+
+        # 2. Test 200 OK with valid: False rejection
+        client_invalid = LicenciaClient(
+            url="http://mock-licencia",
+            api_key="lic_valid_api_key",
+            license_key="LIC-REVOKED-2",
+            lease_file=lease_path,
+        )
+        mock_resp_invalid = MagicMock()
+        mock_resp_invalid.status_code = 200
+        mock_resp_invalid.json.return_value = {
+            "valid": False,
+            "error": "License key revoked or suspended",
+        }
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_resp_invalid
+            state = await client_invalid.validate()
+            assert state.is_valid is True
+            assert state.tier == LicenseTier.COMMUNITY
+            assert state.is_community is True
+            assert client_invalid.is_feature_enabled("semantic_cache") is False
+    finally:
+        if os.path.exists(lease_path):
+            os.remove(lease_path)
+
 
 @pytest.mark.asyncio
 async def test_client_expired_lease_falls_back_to_community():
