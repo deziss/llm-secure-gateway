@@ -285,3 +285,84 @@ class TestCheckOwnerPermissions:
 
         # Should NOT raise — owner endpoint field is no longer enforced
         await check_owner_permissions(session, "user:alice", backend, "v1/chat/completions", "llama3")
+
+
+# ---------------------------------------------------------------------------
+# try_backend_with_fallback & ReadError handling
+# ---------------------------------------------------------------------------
+
+class TestTryBackendReadErrorHandling:
+    @pytest.mark.asyncio
+    async def test_recovers_from_read_error_on_retry(self):
+        """When attempt 1 raises httpx.ReadError (e.g. stale keepalive closed by server),
+        the gateway evicts the dead client and attempt 2 succeeds."""
+        import httpx
+        from llm_gateway.proxy_helpers import try_backend_with_fallback, _backend_clients
+
+        backend = MagicMock()
+        backend.base_url = "http://backend-test:8000"
+        backend.fallback_urls = []
+        backend.name = "vllm-test"
+
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 200
+
+        # Simulate attempt 1 raising httpx.ReadError, attempt 2 returning 200
+        mock_client = AsyncMock()
+        mock_client.build_request = MagicMock(return_value=MagicMock())
+        mock_client.send = AsyncMock(side_effect=[
+            httpx.ReadError("Connection closed before response headers received"),
+            mock_resp,
+        ])
+        mock_client.is_closed = False
+
+        with patch("llm_gateway.proxy_helpers._get_client", return_value=mock_client):
+            with patch("llm_gateway.proxy_helpers._reset_client", new_callable=AsyncMock) as mock_reset:
+                r, used_url, _ = await try_backend_with_fallback(
+                    backend, "v1/chat/completions", "POST", {}, {"model": "qwen"}, None,
+                    enable_retry=False
+                )
+                assert r.status_code == 200
+                assert used_url == "http://backend-test:8000"
+                assert mock_client.send.call_count == 2
+                assert mock_reset.call_count == 1
+                mock_reset.assert_awaited_with("http://backend-test:8000")
+
+    @pytest.mark.asyncio
+    async def test_read_error_exhausts_and_raises(self):
+        """When all attempts raise httpx.ReadError, records circuit failure and raises ReadError."""
+        import httpx
+        from llm_gateway.proxy_helpers import try_backend_with_fallback, _circuit_breaker
+
+        backend = MagicMock()
+        backend.base_url = "http://backend-failing:8000"
+        backend.fallback_urls = []
+        backend.name = "vllm-failing"
+
+        mock_client = AsyncMock()
+        mock_client.build_request = MagicMock(return_value=MagicMock())
+        mock_client.send = AsyncMock(side_effect=httpx.ReadError("Broken pipe"))
+        mock_client.is_closed = False
+
+        with patch("llm_gateway.proxy_helpers._get_client", return_value=mock_client):
+            with patch("llm_gateway.proxy_helpers._reset_client", new_callable=AsyncMock) as mock_reset:
+                with pytest.raises(httpx.ReadError):
+                    await try_backend_with_fallback(
+                        backend, "v1/chat/completions", "POST", {}, {"model": "qwen"}, None,
+                        enable_retry=False
+                    )
+                assert mock_client.send.call_count == 2
+                assert mock_reset.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_reset_client_closes_and_removes(self):
+        """_reset_client closes and removes client from pooled dictionary."""
+        from llm_gateway.proxy_helpers import _backend_clients, _reset_client
+
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        _backend_clients["http://test-pool:8000"] = mock_client
+
+        await _reset_client("http://test-pool:8000")
+        assert "http://test-pool:8000" not in _backend_clients
+        assert mock_client.aclose.called
