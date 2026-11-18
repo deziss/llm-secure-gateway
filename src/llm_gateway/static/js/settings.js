@@ -437,7 +437,7 @@ async function loadLicenseStatus() {
       } else if (tier === "pro") {
         badge.classList.add("bg-cyan-500/10", "text-cyan-400", "border", "border-cyan-500/20");
       } else {
-        badge.classList.add("bg-slate-500/10", "text-slate-400", "border", "border-slate-500/20");
+        badge.classList.add("bg-surface-base", "text-ink-muted", "border", "border-hairline");
       }
     }
 
@@ -499,7 +499,7 @@ async function loadLicenseStatus() {
       if (icon) {
         if (enabled) {
           icon.setAttribute("data-lucide", "check-circle-2");
-          icon.className = "w-4 h-4 text-emerald-400 feature-icon";
+          icon.className = "w-4 h-4 text-ok feature-icon";
         } else {
           icon.setAttribute("data-lucide", "x-circle");
           icon.className = "w-4 h-4 text-ink-muted feature-icon";
