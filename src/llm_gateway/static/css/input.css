@@ -20,7 +20,7 @@
  */
 @layer base {
   :root {
-    /* Surfaces, back to front */
+    /* Surfaces, back to front — Clean, high-contrast enterprise canvas */
     --surface-base: 248 250 252;     /* slate-50   page canvas      */
     --surface-raised: 255 255 255;   /* white      panels, sidebar  */
     --surface-inset: 241 245 249;    /* slate-100  rows, inputs     */
@@ -30,27 +30,28 @@
     --ink: 15 23 42;                 /* slate-900  primary          */
     --ink-muted: 100 116 139;        /* slate-500  secondary        */
 
-    /* Brand */
-    --accent: 79 70 229;             /* indigo-600 */
+    /* Brand — Enterprise Precision Security Cyan / Sapphire */
+    --accent: 14 116 144;            /* cyan-700   authoritative    */
     --accent-ink: 255 255 255;
 
-    /* Status — the one place this UI is allowed to be loud */
+    /* Status — High-visibility semantic signals */
     --ok: 5 150 105;                 /* emerald-600 */
     --warn: 217 119 6;               /* amber-600   */
     --down: 225 29 72;               /* rose-600    */
   }
 
   .dark {
-    --surface-base: 2 6 23;          /* slate-950 */
-    --surface-raised: 15 23 42;      /* slate-900 */
-    --surface-inset: 30 41 59;       /* slate-800 */
-    --hairline: 30 41 59;            /* slate-800 */
+    /* Deep titanium slate canvas for high precision & minimal eye fatigue */
+    --surface-base: 10 14 23;        /* dark titanium canvas        */
+    --surface-raised: 16 23 38;      /* slate-900 precision surface */
+    --surface-inset: 27 37 54;       /* elevated rows, inputs       */
+    --hairline: 35 48 71;            /* fine structural borders     */
 
-    --ink: 241 245 249;              /* slate-100 */
-    --ink-muted: 148 163 184;        /* slate-400 */
+    --ink: 243 244 246;              /* slate-100 crisp text        */
+    --ink-muted: 156 163 175;        /* slate-400 secondary text    */
 
-    --accent: 99 102 241;            /* indigo-500 */
-    --accent-ink: 255 255 255;
+    --accent: 56 189 248;            /* sky-400 cyber cyan          */
+    --accent-ink: 10 14 23;
 
     --ok: 16 185 129;                /* emerald-500 */
     --warn: 245 158 11;              /* amber-500   */

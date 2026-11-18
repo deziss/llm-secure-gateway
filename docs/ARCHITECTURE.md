@@ -273,7 +273,7 @@ Each backend can configure `fallback_urls`. The gateway manages persistent poole
 
 - **Transport & Network Failure Recovery**: Catches `ConnectError`, `ConnectTimeout`, `ReadTimeout`, `ReadError`, `RemoteProtocolError`, `WriteError`, and all `TransportError` exceptions.
 - **Client Pool Eviction**: On transport error or unexpected connection reset before headers, the dead pooled client is evicted and cleanly closed via `_reset_client(base_url)` so subsequent attempts establish a clean TCP handshake.
-- **Retry & Backoff**: Up to 3 attempts with exponential backoff (1s → 2s → 4s) when `ENABLE_RETRY_BACKOFF=true`, and at least 2 attempts by default to seamlessly recover from stale keep-alive drops without user-facing 502 errors.
+- **Retry & Backoff**: Up to 3 attempts with exponential backoff (1s → 2s → 4s) when `ENABLE_RETRY_BACKOFF=true`, and at least 2 attempts by default to recover from stale keep-alive drops without user-facing 502 errors.
 - **Failover**: If all attempts on a URL fail, it falls back to the next configured URL in `fallback_urls`, and trips the circuit breaker on repeated failures.
 - **Configurable Upstream Timeout**: Defaults to 120.0s (`UPSTREAM_TIMEOUT` environment variable) to support extended reasoning / thinking token generation.
 

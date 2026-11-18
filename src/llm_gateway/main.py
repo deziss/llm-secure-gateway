@@ -39,8 +39,11 @@ async def create_default_admin() -> None:
         result = await session.execute(select(User).where(User.email == admin_email))
         admin_user = result.scalars().first()
 
+        from fastapi_users.password import PasswordHelper
+        helper = PasswordHelper()
+
         if not admin_user:
-            hashed = bcrypt.hashpw(admin_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            hashed = helper.hash(admin_password)
             new_admin = User(
                 id=uuid.uuid4(),
                 email=admin_email,
@@ -55,8 +58,6 @@ async def create_default_admin() -> None:
             logging.getLogger(__name__).info(f"Created default admin user: {admin_email}")
         else:
             # Sync password if DEFAULT_ADMIN_PASSWORD was updated in .env
-            from fastapi_users.password import PasswordHelper
-            helper = PasswordHelper()
             verified, _ = helper.verify_and_update(admin_password, admin_user.hashed_password)
             if not verified:
                 admin_user.hashed_password = helper.hash(admin_password)

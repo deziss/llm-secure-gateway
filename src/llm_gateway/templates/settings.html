@@ -5,7 +5,7 @@
 >
   <div>
     <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
-      <i data-lucide="cpu" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> Core Orchestration
+      <i data-lucide="cpu" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Core Orchestration
     </h1>
     <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       Configure global gateway behavior, experimental features, and access
@@ -46,18 +46,18 @@
 <!-- User Preferences (available to all users) -->
 <div id="settingsPreferences" data-settings-tab="general" role="tabpanel" aria-labelledby="tab-general" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
-    <div class="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-500 border border-sky-500/20">
+    <div class="w-10 h-10 bg-sky-500/10 rounded-control flex items-center justify-center text-sky-500 border border-sky-500/20">
       <i data-lucide="palette" class="w-5 h-5" aria-hidden="true"></i>
     </div>
     <h2 class="text-xl font-bold text-ink">User Preferences</h2>
   </div>
 
-  <div class="flex flex-col sm:flex-row items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
+  <div class="flex flex-col sm:flex-row items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4">
     <div>
       <h3 class="font-bold text-ink text-sm">Theme</h3>
       <p class="text-xs text-ink-muted mt-1">Choose your preferred color scheme for the interface.</p>
     </div>
-    <div id="themeToggle" role="group" aria-label="Theme" class="flex bg-slate-200 dark:bg-slate-700 rounded-xl p-1 gap-1 flex-shrink-0 max-w-full">
+    <div id="themeToggle" role="group" aria-label="Theme" class="flex bg-hairline rounded-control p-1 gap-1 flex-shrink-0 max-w-full">
       <button type="button" data-theme="light" class="theme-btn min-h-touch px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5" title="Light mode">
         <i data-lucide="sun" class="w-3.5 h-3.5" aria-hidden="true"></i> Light
       </button>
@@ -79,7 +79,7 @@
   >
     <div class="flex items-center gap-3 mb-6">
       <div
-        class="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-500/20"
+        class="w-10 h-10 bg-indigo-500/10 rounded-control flex items-center justify-center text-accent border border-indigo-500/20"
       >
         <i data-lucide="fingerprint" class="w-5 h-5" aria-hidden="true"></i>
       </div>
@@ -87,7 +87,7 @@
     </div>
 
     <div
-      class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+      class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
     >
       <div>
         <h3 class="font-bold text-ink text-sm">
@@ -105,7 +105,7 @@
           class="sr-only peer"
         />
         <div
-          class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"
+          class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"
         ></div>
       </label>
     </div>
@@ -117,7 +117,7 @@
   >
     <div class="flex items-center gap-3 mb-6">
       <div
-        class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 border border-amber-500/20"
+        class="w-10 h-10 bg-amber-500/10 rounded-control flex items-center justify-center text-amber-500 border border-amber-500/20"
       >
         <i data-lucide="brain" class="w-5 h-5" aria-hidden="true"></i>
       </div>
@@ -126,7 +126,7 @@
 
     <div class="space-y-4">
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">Model Federation</h3>
@@ -142,13 +142,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -166,13 +166,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -190,13 +190,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -214,13 +214,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -238,7 +238,7 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
           ></div>
         </label>
       </div>
@@ -251,7 +251,7 @@
   >
     <div class="flex items-center gap-3 mb-6">
       <div
-        class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-500 border border-cyan-500/20"
+        class="w-10 h-10 bg-cyan-500/10 rounded-control flex items-center justify-center text-cyan-500 border border-cyan-500/20"
       >
         <i data-lucide="database" class="w-5 h-5" aria-hidden="true"></i>
       </div>
@@ -260,7 +260,7 @@
 
     <div class="space-y-4">
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -278,13 +278,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -302,7 +302,7 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"
           ></div>
         </label>
       </div>
@@ -315,7 +315,7 @@
   >
     <div class="flex items-center gap-3 mb-6">
       <div
-        class="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-500/20"
+        class="w-10 h-10 bg-rose-500/10 rounded-control flex items-center justify-center text-rose-500 border border-rose-500/20"
       >
         <i data-lucide="shield-alert" class="w-5 h-5" aria-hidden="true"></i>
       </div>
@@ -323,7 +323,7 @@
     </div>
 
     <div
-      class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4"
+      class="flex items-start justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4"
     >
       <div>
         <h3 class="font-bold text-ink text-sm">
@@ -341,7 +341,7 @@
           class="sr-only peer"
         />
         <div
-          class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
+          class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
         ></div>
       </label>
     </div>
@@ -353,7 +353,7 @@
   >
     <div class="flex items-center gap-3 mb-6">
       <div
-        class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 border border-emerald-500/20"
+        class="w-10 h-10 bg-emerald-500/10 rounded-control flex items-center justify-center text-emerald-500 border border-emerald-500/20"
       >
         <i data-lucide="flask-conical" class="w-5 h-5" aria-hidden="true"></i>
       </div>
@@ -362,7 +362,7 @@
 
     <div class="space-y-4">
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">Mission Control</h3>
@@ -380,13 +380,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -406,13 +406,13 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
           ></div>
         </label>
       </div>
 
       <div
-        class="flex items-start justify-between bg-surface-inset p-4 rounded-2xl border border-hairline gap-4"
+        class="flex items-start justify-between bg-surface-inset p-4 rounded-panel border border-hairline gap-4"
       >
         <div>
           <h3 class="font-bold text-ink text-sm">
@@ -432,7 +432,7 @@
             class="sr-only peer"
           />
           <div
-            class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
+            class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
           ></div>
         </label>
       </div>
@@ -442,7 +442,7 @@
 <!-- Compliance & Audit -->
 <div id="settingsCompliance" data-settings-tab="compliance" role="tabpanel" aria-labelledby="tab-compliance" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
-    <div class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+    <div class="w-10 h-10 bg-cyan-500/10 rounded-control flex items-center justify-center text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
       <i data-lucide="clipboard-check" class="w-5 h-5" aria-hidden="true"></i>
     </div>
     <h2 class="text-xl font-bold text-ink">Compliance & Audit</h2>
@@ -450,7 +450,7 @@
 
   <div class="space-y-4">
     <!-- Audit DB Toggle -->
-    <div class="flex items-center justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
+    <div class="flex items-center justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4">
       <div>
         <h3 class="font-bold text-ink text-sm">Persistent Audit Trail</h3>
         <p class="text-xs text-ink-muted mt-1">
@@ -459,12 +459,12 @@
       </div>
       <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
         <input type="checkbox" id="enableAuditDbToggle" aria-label="Persistent audit trail" data-key="ENABLE_AUDIT_DB" class="sr-only peer" />
-        <div class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+        <div class="w-11 h-6 bg-hairline peer-focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
       </label>
     </div>
 
     <!-- Key Rotation Policy -->
-    <div class="flex items-center justify-between bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
+    <div class="flex items-center justify-between bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4">
       <div>
         <h3 class="font-bold text-ink text-sm">API Key Auto-Rotation</h3>
         <p class="text-xs text-ink-muted mt-1">
@@ -473,14 +473,14 @@
       </div>
       <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 flex-shrink-0">
         <input type="number" id="keyExpiryDaysInput" min="0" max="365" value="0"
-          aria-label="API key expiry in days" class="w-20 bg-surface-base border border-hairline rounded-xl min-h-touch px-3 py-2 text-ink text-center text-sm font-bold focus:ring-2 focus:ring-cyan-500/50 outline-none transition"
+          aria-label="API key expiry in days" class="w-20 bg-surface-base border border-hairline rounded-control min-h-touch px-3 py-2 text-ink text-center text-sm font-bold focus:ring-2 focus:ring-cyan-500/50 outline-none transition"
         />
         <span class="text-xs text-ink-muted font-medium">days</span>
       </div>
     </div>
 
     <!-- Webhook URL -->
-    <div class="bg-surface-inset p-4 sm:p-5 rounded-2xl border border-hairline gap-4">
+    <div class="bg-surface-inset p-4 sm:p-5 rounded-panel border border-hairline gap-4">
       <div class="flex items-center justify-between mb-3">
         <div>
           <h3 class="font-bold text-ink text-sm">Webhook Notifications</h3>
@@ -490,7 +490,7 @@
         </div>
       </div>
       <input type="text" id="webhookUrlInput" aria-label="Webhook URL" inputmode="url" autocomplete="off" placeholder="https://hooks.example.com/alerts"
-        class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 min-h-touch text-ink text-sm font-mono focus:ring-2 focus:ring-cyan-500/50 outline-none transition placeholder:text-ink-muted"
+        class="w-full bg-surface-base border border-hairline rounded-control px-4 py-3 min-h-touch text-ink text-sm font-mono focus:ring-2 focus:ring-cyan-500/50 outline-none transition placeholder:text-ink-muted"
       />
     </div>
   </div>
@@ -499,7 +499,7 @@
 <!-- Scope Policy Rules -->
 <div id="settingsScope" data-settings-tab="scope" role="tabpanel" aria-labelledby="tab-scope" class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-8 mb-8">
   <div class="flex items-center gap-3 mb-6">
-    <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400 border border-violet-500/20">
+    <div class="w-10 h-10 bg-violet-500/10 rounded-control flex items-center justify-center text-violet-400 border border-violet-500/20">
       <i data-lucide="network" class="w-5 h-5" aria-hidden="true"></i>
     </div>
     <div>
@@ -509,7 +509,7 @@
   </div>
 
   <!-- Add custom rule form -->
-  <div class="bg-surface-inset p-4 sm:p-6 rounded-2xl border border-hairline mb-6">
+  <div class="bg-surface-inset p-4 sm:p-6 rounded-panel border border-hairline mb-6">
     <h3 class="text-ink font-bold text-sm flex items-center gap-2 mb-4">
       <i data-lucide="plus-circle" class="text-violet-400 w-4 h-4" aria-hidden="true"></i> Add Custom Rule
     </h3>
@@ -517,25 +517,25 @@
       <div class="flex-1 min-w-0">
         <label for="newRulePrefix" class="block text-caption font-medium text-ink-muted mb-2">Endpoint Prefix</label>
         <input type="text" id="newRulePrefix" placeholder="/v2/custom/endpoint"
-          class="w-full bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
+          class="w-full bg-surface-base border border-hairline rounded-control px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
       </div>
       <div class="flex-1 min-w-0">
         <label for="newRuleScope" class="block text-caption font-medium text-ink-muted mb-2">Required Scope</label>
         <select id="newRuleScope"
-          class="w-full min-h-touch bg-surface-base border border-hairline rounded-xl px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition">
+          class="w-full min-h-touch bg-surface-base border border-hairline rounded-control px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition">
           <option value="" disabled selected>Select a scope…</option>
           {% for value, help in scope_options %}
           <option value="{{ value }}">{{ value }}{% if help %} — {{ help }}{% endif %}</option>
           {% endfor %}
         </select>
       </div>
-      <button onclick="addScopeRule()" class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl transition whitespace-nowrap">
+      <button onclick="addScopeRule()" class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-control transition whitespace-nowrap">
         <i data-lucide="plus" class="w-4 h-4 mr-1" aria-hidden="true"></i> Add
       </button>
     </div>
   </div>
   <!-- Active rules table -->
-  <div class="bg-surface-inset rounded-2xl border border-hairline overflow-hidden">
+  <div class="bg-surface-inset rounded-panel border border-hairline overflow-hidden">
     <table class="w-full text-left text-xs">
       <thead class="bg-surface-inset text-ink-muted text-micro font-medium">
         <tr>
@@ -566,7 +566,7 @@
     </h2>
     <button
       onclick="generateInvite()"
-      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-white text-xs flex items-center gap-2"
+      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-control transition-all font-bold text-white text-xs flex items-center gap-2"
     >
       <i data-lucide="sparkles" class="w-4 h-4" aria-hidden="true"></i>
       Generate Single Token

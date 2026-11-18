@@ -151,7 +151,7 @@
         <div id="chainTargetsContainer" role="group" aria-labelledby="chainTargetsLabel" class="space-y-2.5">
           <!-- Dynamically added targets -->
         </div>
-        <p class="text-caption text-ink-muted mt-1.5">If Target #1 fails with 429/5xx, the proxy seamlessly cascades to Target #2, and so forth.</p>
+        <p class="text-caption text-ink-muted mt-1.5">If Target #1 fails with 429 or 5xx, the proxy automatically falls back to Target #2.</p>
       </div>
 
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
