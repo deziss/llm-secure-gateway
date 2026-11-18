@@ -192,7 +192,7 @@ def test_settings_tabs_follow_role():
     """Admin-only sections stay out of the page for managers, and so do their tabs."""
     admin = _render("settings", "admin")
     manager = _render("settings", "manager")
-    assert re.findall(r'data-tab="(\w+)"', admin) == ["general", "access", "routing", "performance", "compliance", "scope", "bots"]
+    assert re.findall(r'data-tab="(\w+)"', admin) == ["general", "access", "routing", "performance", "compliance", "scope", "license", "bots"]
     assert re.findall(r'data-tab="(\w+)"', manager) == ["general", "access", "bots"]
     # every tab has at least one section, and every section belongs to a tab
     for html in (admin, manager):
