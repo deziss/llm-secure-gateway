@@ -61,7 +61,7 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Universal Provider Support**: Route requests to Ollama, vLLM clusters, llama.cpp servers, OpenAI, Anthropic, Google Gemini, Groq, or custom self-hosted endpoints.
 - **Queue-Aware & Least-Busy Dynamic Routing**: Real-time traffic balancing across model replicas factoring in in-flight request counts from `LiveStats`, capacity weights, and rolling latency.
 - **Native Anthropic Protocol**: Direct `/v1/messages` and `/messages` endpoint supporting Claude Code, Cursor, Cline, and Anthropic SDKs with bidirectional translation to OpenAI/vLLM backends.
-- **Protocol Translation**: Seamlessly translates requests between OpenAI and Anthropic formats, including automatic `<think>` reasoning tag stripping.
+- **Protocol Translation**: Bidirectionally converts between OpenAI and Anthropic formats, including automatic `<think>` reasoning tag filtering.
 - **Model Federation**: Aggregates distributed backend models into unified `/v1/models` and `/api/tags` endpoints.
 - **Native Ollama Protocol**: Full `/api/chat`, `/api/generate`, `/api/tags`, and `/api/version` compatibility for drop-in use with OpenWebUI and the Ollama CLI.
 

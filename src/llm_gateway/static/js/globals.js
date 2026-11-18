@@ -11,7 +11,7 @@ window.getCsrfToken = function () {
   return match ? match.split('=')[1] : '';
 };
 
-// Robust error message formatter (handles strings, objects, and FastAPI 422 arrays)
+// Formats error messages from strings, objects, and FastAPI 422 validation arrays
 window.formatErrorMessage = function (err, fallback = 'Operation failed') {
   if (!err) return fallback;
   if (typeof err === 'string') return err;
