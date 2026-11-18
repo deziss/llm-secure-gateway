@@ -9,6 +9,7 @@ from .models import (
     LicenseState,
 )
 from .client import LicenciaClient, get_licencia_client
+from .entitlements import check_backend_quota, check_key_quota, require_feature
 
 __all__ = [
     "generate_hardware_id",
@@ -20,4 +21,7 @@ __all__ = [
     "LicenseState",
     "LicenciaClient",
     "get_licencia_client",
+    "check_backend_quota",
+    "check_key_quota",
+    "require_feature",
 ]

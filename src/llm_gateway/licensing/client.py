@@ -20,7 +20,7 @@ except ImportError:
     LICENCIA_LICENSE_KEY = os.getenv("LICENCIA_LICENSE_KEY", "")
     LICENCIA_LEASE_FILE = os.getenv("LICENCIA_LEASE_FILE", "/tmp/gateway_license_lease.json")
 
-from .fingerprint import generate_hardware_id, is_localhost_bypass
+from .fingerprint import generate_hardware_id
 from .models import (
     LicenseState,
     LicenseTier,
@@ -120,6 +120,8 @@ class LicenciaClient:
                         if validated.leaseExpiresAt:
                             try:
                                 exp_dt = datetime.fromisoformat(validated.leaseExpiresAt.replace("Z", "+00:00"))
+                                if exp_dt.tzinfo is None:
+                                    exp_dt = exp_dt.replace(tzinfo=timezone.utc)
                                 grace_dt = exp_dt + timedelta(hours=validated.onlineGracePeriod or 168)
                                 grace_expires_at = grace_dt.isoformat()
                             except Exception:
@@ -142,9 +144,20 @@ class LicenciaClient:
                         return self.state
                     else:
                         logger.warning("Licencia rejected key: valid=False")
+                        self._remove_lease_file()
                         return self._apply_community_defaults()
-                else:
+                elif 400 <= res.status_code < 500:
                     logger.warning("Licencia rejected key with status %d", res.status_code)
+                    self._remove_lease_file()
+                    return self._apply_community_defaults()
+                elif res.status_code >= 500:
+                    logger.warning("Licencia server error %d, attempting offline lease fallback", res.status_code)
+                    cached = self._load_lease_cache()
+                    if cached:
+                        return cached
+                    return self._apply_community_defaults()
+                else:
+                    logger.warning("Licencia returned unexpected status %d", res.status_code)
                     return self._apply_community_defaults()
         except Exception as exc:
             logger.warning("Licencia API unreachable (%s), attempting offline lease load", exc)
@@ -184,6 +197,13 @@ class LicenciaClient:
             return 0
         return self.state.limits.get(limit_name, default)
 
+    def _remove_lease_file(self) -> None:
+        if os.path.exists(self.lease_file):
+            try:
+                os.remove(self.lease_file)
+            except OSError as exc:
+                logger.debug("Failed to remove lease file %s: %s", self.lease_file, exc)
+
     def _save_lease_cache(self, data: dict) -> None:
         try:
             parent = os.path.dirname(self.lease_file)
@@ -203,6 +223,8 @@ class LicenciaClient:
             validated = LicenciaValidateResponse(**data)
             if validated.valid and validated.leaseExpiresAt:
                 exp = datetime.fromisoformat(validated.leaseExpiresAt.replace("Z", "+00:00"))
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
                 grace = timedelta(hours=validated.onlineGracePeriod or 168)
                 now = datetime.now(timezone.utc)
                 if now <= (exp + grace):
