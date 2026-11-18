@@ -154,16 +154,28 @@ def get_backend_in_flight(
 # Persistent HTTPX client pool — one client per backend base_url.
 # ---------------------------------------------------------------------------
 _backend_clients: dict[str, httpx.AsyncClient] = {}
-_DEFAULT_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20)
+_DEFAULT_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=15.0)
+
+DEFAULT_UPSTREAM_TIMEOUT = float(os.getenv("UPSTREAM_TIMEOUT", "120.0"))
 
 
 def _get_client(base_url: str) -> httpx.AsyncClient:
     """Return (or create) a persistent AsyncClient for the given base URL."""
     client = _backend_clients.get(base_url)
     if client is None or client.is_closed:
-        client = httpx.AsyncClient(limits=_DEFAULT_LIMITS, timeout=60.0)
+        client = httpx.AsyncClient(limits=_DEFAULT_LIMITS, timeout=DEFAULT_UPSTREAM_TIMEOUT)
         _backend_clients[base_url] = client
     return client
+
+
+async def _reset_client(base_url: str) -> None:
+    """Evict and cleanly close a pooled client (e.g. after transport or connection drop)."""
+    client = _backend_clients.pop(base_url, None)
+    if client is not None and not client.is_closed:
+        try:
+            await client.aclose()
+        except Exception:
+            pass
 
 
 async def close_all_clients() -> None:
@@ -614,7 +626,7 @@ async def try_backend_with_fallback(
     headers: dict,
     body: Optional[dict],
     raw_body: Optional[bytes],
-    timeout: float = 60.0,
+    timeout: float = DEFAULT_UPSTREAM_TIMEOUT,
     enable_retry: bool = False,
 ) -> Tuple[httpx.Response, str, Optional[httpx.AsyncClient]]:
     """Try the primary URL, then each fallback URL on connection failure.
@@ -634,14 +646,15 @@ async def try_backend_with_fallback(
             continue
 
         target_url = clean_target_url(base_url, path)
-        client = _get_client(base_url)
 
-        max_attempts = 3 if enable_retry else 1
+        # Allow at least 2 attempts so transient drops on stale pooled sockets recover immediately
+        max_attempts = 3 if enable_retry else 2
         attempt = 0
         backoff = 1.0
 
         while attempt < max_attempts:
             attempt += 1
+            client = _get_client(base_url)
             t0 = time.time()
             try:
                 req = client.build_request(
@@ -652,7 +665,19 @@ async def try_backend_with_fallback(
                     content=raw_body if not body else None,
                     timeout=timeout,
                 )
-                r = await client.send(req, stream=True)
+                try:
+                    r = await client.send(req, stream=True)
+                except httpx.ReadError as e:
+                    logger.exception(
+                        "Upstream ReadError occurred. URL=%s, Method=%s, Backend=%s, Attempt=%d/%d, Elapsed=%.2fs",
+                        target_url,
+                        method,
+                        backend.name,
+                        attempt,
+                        max_attempts,
+                        time.time() - t0,
+                    )
+                    raise
 
                 if enable_retry and r.status_code >= 500:
                     cb.record_failure(base_url, backend.name)
@@ -668,16 +693,42 @@ async def try_backend_with_fallback(
                 if idx > 0 or attempt > 1:
                     logger.info(f"Request succeeded: using {base_url} (URL {idx+1}/{len(urls)}, Attempt {attempt}/{max_attempts})")
                 return r, base_url, None
-            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as exc:
+            except (
+                httpx.ConnectError,
+                httpx.ConnectTimeout,
+                httpx.ReadTimeout,
+                httpx.ReadError,
+                httpx.WriteError,
+                httpx.WriteTimeout,
+                httpx.PoolTimeout,
+                httpx.RemoteProtocolError,
+                httpx.TransportError,
+            ) as exc:
                 last_exc = exc
                 cb.record_failure(base_url, backend.name)
-                if enable_retry and attempt < max_attempts:
-                    logger.warning(f"Backend {base_url} failed ({type(exc).__name__}), retrying (attempt {attempt}/{max_attempts})...")
+                # Purge and close client to discard broken keepalive sockets from the pool
+                await _reset_client(base_url)
+                if attempt < max_attempts:
+                    logger.warning(
+                        "Backend %s failed (%s: %s), retrying (attempt %d/%d) in %.1fs...",
+                        base_url,
+                        type(exc).__name__,
+                        exc,
+                        attempt,
+                        max_attempts,
+                        backoff,
+                    )
                     await asyncio.sleep(backoff)
                     backoff *= 2.0
                     continue
                 else:
-                    logger.warning(f"Backend {base_url} failed ({type(exc).__name__}), trying next URL...")
+                    logger.warning(
+                        "Backend %s failed (%s: %s) after %d attempt(s), trying next URL...",
+                        base_url,
+                        type(exc).__name__,
+                        exc,
+                        attempt,
+                    )
                     break
 
     raise last_exc  # type: ignore[misc]
@@ -777,7 +828,7 @@ async def try_with_cross_provider_fallback(
     session: AsyncSession,
     service: ConfigService,
     fallback_chain_id: Optional[int] = None,
-    timeout: float = 60.0,
+    timeout: float = DEFAULT_UPSTREAM_TIMEOUT,
     enable_retry: bool = False,
 ) -> Tuple[httpx.Response, str, LLMBackend, Optional[httpx.AsyncClient]]:
     """Try primary backend. If it returns 429/5xx or connection fails, try fallback chain targets."""
