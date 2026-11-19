@@ -620,10 +620,12 @@ def clean_target_url(base_url: str, path: str) -> str:
 
 
 def _get_all_urls(backend: LLMBackend) -> List[str]:
-    """Return [base_url] + fallback_urls for a backend."""
-    urls = [backend.base_url]
+    """Return [base_url] + fallback_urls for a backend, filtering empty strings."""
+    urls = []
+    if getattr(backend, "base_url", None):
+        urls.append(backend.base_url)
     if hasattr(backend, "fallback_urls") and backend.fallback_urls:
-        urls.extend(backend.fallback_urls)
+        urls.extend([u for u in backend.fallback_urls if u])
     return urls
 
 
@@ -648,11 +650,18 @@ async def try_backend_with_fallback(
 
     cb = _circuit_breaker
 
-    for idx, base_url in enumerate(urls):
-        # Skip URLs with open circuit breaker
-        if cb.is_open(base_url):
-            logger.info(f"Circuit OPEN for {base_url}, skipping to next URL")
-            continue
+    # Filter out URLs whose circuit is open. If ALL URLs are open, allow the primary
+    # URL to act as a probe (half-open fallback) rather than failing immediately without trying.
+    candidate_urls = [u for u in urls if not cb.is_open(u)]
+    if not candidate_urls and urls:
+        logger.warning(
+            "Circuit breaker OPEN for all URLs of backend '%s'; forcing half-open probe on %s",
+            backend.name,
+            urls[0],
+        )
+        candidate_urls = [urls[0]]
+
+    for idx, base_url in enumerate(candidate_urls):
 
         target_url = clean_target_url(base_url, path)
 
@@ -739,7 +748,11 @@ async def try_backend_with_fallback(
                     )
                     break
 
-    raise last_exc  # type: ignore[misc]
+    if last_exc is None:
+        last_exc = httpx.ConnectError(
+            f"No healthy upstream URLs available for backend '{backend.name}' (configured URLs: {urls})"
+        )
+    raise last_exc
 
 
 # ---------------------------------------------------------------------------
