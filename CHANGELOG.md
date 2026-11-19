@@ -1,5 +1,21 @@
 ## [0.16.2] - 2026-11-19
 
+### 🌐 Unified Local Timezone Rendering & UTC Standardization
+
+- **Global Client-Side Timezone Utilities (`globals.js`)**:
+  - Implemented `window.parseIsoDate()`, `window.formatTime()`, `window.formatDate()`, `window.formatDateTime()`, and `window.formatRelTime()` across the admin application.
+  - Resolved UTC vs local timezone display discrepancy where Live Traces previously sliced raw UTC strings (`t.timestamp.split("T")[1].substring(0, 8)`), showing UTC instead of the operator's local time (e.g. IST / UTC+05:30).
+  - Protected against ECMAScript local date parsing hazards by automatically normalizing naive ISO strings without timezone offsets to UTC (`+ "Z"`), and parsing calendar date-only strings without cross-day timezone shifts.
+
+- **Unified UI Component Localization**:
+  - **Live Traces Table**: Formatted timestamp column to 24-hour local time (`HH:mm:ss`) with localized full date/time tooltips on hover.
+  - **Trace Waterfall Drawer**: Displayed localized timestamps in drawer headers and error diagnostic summaries.
+  - **Dashboard & Charts**: Localized 24-hour traffic and spend chart X-axis labels and last updated badges.
+  - **Users, Audit, Owners & Settings**: Localized `Joined`, `Last Login`, audit events, API key dates, invite tokens, and lease expirations.
+
+- **Explicit Backend UTC Serialization**:
+  - Enforced explicit UTC serialization with `Z` or `+00:00` across `users.py` and `observability/api.py`.
+
 ### 📚 Documentation, Troubleshooting & Diagnostics
 
 - **Comprehensive Upstream `httpx.ReadError` & Connection Reset Troubleshooting**:

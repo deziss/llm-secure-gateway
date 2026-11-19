@@ -280,3 +280,8 @@ Virtual model names decouple client code from specific provider infrastructure.
   - The circuit breaker auto-recovers via half-open probe requests once the backend stabilizes.
   - Model quarantines expire automatically after 30 seconds for 5xx errors or 60 seconds for timeouts.
 
+### Timestamps & Local Timezone Rendering
+- **Behavior**: All gateway database records, audit logs, and API responses persist and transmit timestamps in unambiguous UTC ISO 8601 (`+00:00` or `Z`).
+- **UI Localization**: The gateway admin interface automatically parses all UTC timestamps via `window.parseIsoDate()` and renders them in the viewer's local browser timezone (e.g. `13:36:40` in IST / UTC+05:30) across Live Traces, Trace Waterfall details, Dashboard charts, Users (`Joined`, `Last Login`), Audit history, and Settings. Hovering over any timestamp reveals the complete localized date and time tooltip.
+
+
