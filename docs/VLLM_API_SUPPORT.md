@@ -333,6 +333,8 @@ ENABLE_RETRY_BACKOFF=false
     - *Resolution*: The gateway automatically strips non-standard reasoning fields and formats stringified `tool_calls` into standard lists in `normalize_backend_payload()`.
   - **Cause 3: Hop-by-Hop Header Poisoning**: Client requests carrying `Connection: close` or hop-by-hop headers can break upstream persistent HTTP connection pools.
     - *Resolution*: The gateway strips all hop-by-hop headers per RFC 7230/9110 before upstream transmission.
+  - **Cause 4: Upstream Uvicorn Keepalive Timeout (5s)**: vLLM's default uvicorn server closes idle keep-alive connections after 5 seconds. If connection pools hold idle sockets longer, the next request on an idle socket fails with `httpx.ReadError`.
+    - *Resolution*: The gateway configures `keepalive_expiry=4.0s` to close idle sockets before upstream terminates them, and retries dropped sockets with fresh connections.
 - Verify backend URL is reachable (`curl -v http://<vllm-host>:<port>/health`)
 - Check circuit breaker status in logs (`Circuit breaker OPEN for backend...`)
 - Confirm firewall allows connection

@@ -338,6 +338,17 @@ See **[TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md)** for Phoenix projects, per-tenan
 
 ---
 
+## Troubleshooting & Health Checks
+
+- **Upstream Connection Resets / `502 Bad Gateway`**: If requests fail with `httpx.ReadError` in 20ms–50ms, ensure non-ASCII characters and thinking histories from coding agents are properly handled. The gateway automatically applies ASCII escaping and strips non-standard reasoning fields. Test connectivity with:
+  ```bash
+  docker exec -it llm-gateway curl -v http://<backend-host>:<port>/health
+  ```
+- **Admin UI Tables Empty**: If tables on `/admin/view/servers` or `/admin/view/projects` render without rows, perform a hard refresh (`Ctrl+Shift+R` / `Cmd+Shift+R`) to bust cached older static assets.
+- **Detailed Troubleshooting**: Comprehensive guides are available in **[USER_GUIDE.md#10-troubleshooting-common-issues](USER_GUIDE.md#10-troubleshooting-common-issues)** and **[docs/VLLM_API_SUPPORT.md](docs/VLLM_API_SUPPORT.md)**.
+
+---
+
 ## Documentation Directory
 
 | Document | Purpose |

@@ -316,6 +316,13 @@ llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes * 100
 
 ## Troubleshooting
 
+- **Live Traces show "500 Upstream Err" with low duration (20ms–50ms) and 0 tokens:**
+  - Upstream LLM backend (e.g. vLLM or llama.cpp) aborted the TCP socket immediately before responding.
+  - Check for non-ASCII typographical characters (`—`, `“`, `”`, `→`) or replayed agent thinking fields (`reasoning`, `cot_id`). The Gateway automatically escapes characters via `ensure_ascii=True` and sanitizes agent histories.
+  - Verify upstream engine health via `curl http://<backend-host>:<port>/health`.
+- **Admin tables (Servers, Projects, Users) show headers but no rows:**
+  - Browser is holding stale cached scripts prior to the zero-dependency `GatewayTable` update.
+  - Perform a hard refresh (**Ctrl+Shift+R** / **Cmd+Shift+R**) to download the latest cache-busted asset bundle (`?v={{ asset_v }}`).
 - **Models tab empty:** no traffic has passed this replica since restart. Send a request.
 - **Groups show "Not attributed":** the server has no GPU link. Pin it on the GPUs tab, or run an agent
   with `--pid=host`.
