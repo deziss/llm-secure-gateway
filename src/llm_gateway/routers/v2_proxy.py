@@ -256,7 +256,7 @@ async def direct_proxy(
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
             duration = time.time() - start_time
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=502, error_type="upstream_failure")
             record_request_metrics(
                 backend_url=backend.base_url, model=model or "unknown",
                 endpoint_uri=path, user_name=owner_id, success=False, request_duration=duration,
@@ -271,7 +271,7 @@ async def direct_proxy(
 
     except Exception as e:
         if tracker is not None and not tracker.finished:
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=500, error_type="upstream_failure")
             record_request_metrics(
                 backend_url=backend.base_url, model=model or "unknown", endpoint_uri=path,
                 user_name=owner_id, success=False, request_duration=time.time() - start_time,
@@ -644,7 +644,7 @@ async def dynamic_proxy(
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
             duration = time.time() - start_time
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=502, error_type="upstream_failure")
             record_request_metrics(
                 backend_url=backend.base_url, model=model or "unknown",
                 endpoint_uri=path, user_name=owner_id, success=False, request_duration=duration,
@@ -659,7 +659,7 @@ async def dynamic_proxy(
 
     except Exception as e:
         if tracker is not None and not tracker.finished:
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=500, error_type="upstream_failure")
             record_request_metrics(
                 backend_url=backend.base_url, model=model or "unknown", endpoint_uri=path,
                 user_name=owner_id, success=False, request_duration=time.time() - start_time,

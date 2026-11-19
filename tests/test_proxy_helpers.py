@@ -366,3 +366,26 @@ class TestTryBackendReadErrorHandling:
         await _reset_client("http://test-pool:8000")
         assert "http://test-pool:8000" not in _backend_clients
         assert mock_client.aclose.called
+
+    def test_normalize_backend_payload(self):
+        """normalize_backend_payload translates reasoning_effort dialects between vLLM and OpenAI."""
+        from llm_gateway.proxy_helpers import normalize_backend_payload
+
+        # vLLM converts 'high' -> 'xhigh'
+        vllm_body = {"model": "qwen3.8-flash-next", "reasoning_effort": "high", "temperature": 0.1}
+        normalized = normalize_backend_payload(vllm_body, "vllm")
+        assert normalized["reasoning_effort"] == "xhigh"
+        assert vllm_body["reasoning_effort"] == "high"  # original untouched
+
+        # vLLM preserves 'medium', 'low', 'xhigh'
+        assert normalize_backend_payload({"reasoning_effort": "medium"}, "vllm")["reasoning_effort"] == "medium"
+        assert normalize_backend_payload({"reasoning_effort": "low"}, "vllm")["reasoning_effort"] == "low"
+        assert normalize_backend_payload({"reasoning_effort": "xhigh"}, "vllm")["reasoning_effort"] == "xhigh"
+
+        # OpenAI converts 'xhigh' -> 'high'
+        assert normalize_backend_payload({"reasoning_effort": "xhigh"}, "openai")["reasoning_effort"] == "high"
+        assert normalize_backend_payload({"reasoning_effort": "high"}, "openai")["reasoning_effort"] == "high"
+
+        # Non-dict or missing reasoning_effort is safe
+        assert normalize_backend_payload(None, "vllm") is None
+        assert normalize_backend_payload({"model": "gpt-4"}, "vllm") == {"model": "gpt-4"}

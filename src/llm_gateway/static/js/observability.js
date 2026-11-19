@@ -2039,7 +2039,13 @@
       label = "429 Rate Limit";
     } else if (status === 400 || status === 403) {
       cls = "bg-purple-500/10 text-purple-400 border-purple-500/30";
-      label = errorType === "guardrail_blocked" ? "Blocked (Shield)" : `${status} Guardrail`;
+      if (errorType === "guardrail_blocked") {
+        label = "Blocked (Shield)";
+      } else if (status === 403) {
+        label = "403 Forbidden";
+      } else {
+        label = "400 Bad Request";
+      }
     } else if (status >= 500) {
       cls = "bg-red-500/10 text-red-400 border-red-500/30";
       label = `${status} Upstream Err`;

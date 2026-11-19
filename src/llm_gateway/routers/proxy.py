@@ -463,7 +463,7 @@ async def anthropic_messages_endpoint(
         release_rate_limit_concurrency(request)
         duration = time.time() - start_time if 'start_time' in locals() else 0.0
         if tracker is not None and not tracker.finished:
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=exc.status_code, error_type="upstream_failure" if exc.status_code >= 500 else "bad_request")
             record_request_metrics(
                 backend_url=backend.base_url,
                 model=model or "unknown",
@@ -483,7 +483,7 @@ async def anthropic_messages_endpoint(
         release_rate_limit_concurrency(request)
         duration = time.time() - start_time if 'start_time' in locals() else 0.0
         if tracker is not None and not tracker.finished:
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=500, error_type="upstream_failure")
             record_request_metrics(
                 backend_url=backend.base_url,
                 model=model or "unknown",
@@ -923,7 +923,7 @@ async def _proxy_request_core(
             span.record_exception(exc)
             
             duration = time.time() - start_time
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=502, error_type="upstream_failure")
             record_request_metrics(
                  backend_url=backend.base_url, model=model or "unknown", endpoint_uri=path, user_name=owner_id,
                  success=False, request_duration=duration,
@@ -944,7 +944,7 @@ async def _proxy_request_core(
         # Dispatched but failed without reaching the stream (e.g. fallback chain exhausted):
         # record it, otherwise the failure is invisible to metrics.
         if tracker is not None and not tracker.finished:
-            track_done(tracker, success=False)
+            track_done(tracker, success=False, status_code=500, error_type="upstream_failure")
             record_request_metrics(
                 backend_url=backend.base_url, model=model or "unknown", endpoint_uri=path,
                 user_name=owner_id, success=False, request_duration=time.time() - start_time,

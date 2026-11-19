@@ -175,8 +175,10 @@ async def stream_with_telemetry(
     finalized = False
     # An upstream 4xx/5xx that streams cleanly is still a failed request.
     try:
-        upstream_ok = int(getattr(response, "status_code", 200)) < 400
+        resp_status = int(getattr(response, "status_code", 200))
+        upstream_ok = resp_status < 400
     except (TypeError, ValueError):
+        resp_status = 200
         upstream_ok = True
 
     # Thinking normalization rewrites SSE lines, so it only applies to an
@@ -263,12 +265,25 @@ async def stream_with_telemetry(
             time_to_first_token=time_to_first_token or 0.0,
             generation_tps=tps,
         )
+        err_type = None
+        if not success:
+            if resp_status == 400:
+                err_type = "bad_request"
+            elif resp_status == 429:
+                err_type = "upstream_rate_limit"
+            elif resp_status == 503:
+                err_type = "upstream_overload"
+            else:
+                err_type = "upstream_failure"
+
         track_done(
             tracker, success=success, cancelled=cancelled,
             output_tokens=usage.completion_tokens,
             prompt_tokens=usage.prompt_tokens,
             total_tokens=usage.total_tokens,
             estimated=estimated, decode_seconds=decode_s,
+            status_code=resp_status,
+            error_type=err_type,
         )
         set_llm_attributes(
             span,
@@ -479,8 +494,10 @@ async def stream_with_telemetry(
     finally:
         # Set OpenInference output attributes regardless of completion status
         if span.is_recording():
-            if not has_error:
-                 span.set_status(trace.Status(trace.StatusCode.OK))
+            if not upstream_ok:
+                span.set_status(trace.Status(trace.StatusCode.ERROR, f"HTTP {resp_status}"))
+            elif not has_error:
+                span.set_status(trace.Status(trace.StatusCode.OK))
 
             # Set output messages as JSON array (OpenInference format)
             if scan.content_parts:
