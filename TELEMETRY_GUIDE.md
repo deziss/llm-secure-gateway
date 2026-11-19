@@ -348,6 +348,8 @@ WARNING: OTLP metrics endpoint http://localhost:4318 unreachable, using console 
 | Wrong project name   | FastAPI auto-instrumentation      | Disable `FastAPIInstrumentor`                 |
 | Empty output.value   | Backend not sending SSE format    | Check backend response format                 |
 | No token counts      | Backend doesn't include usage     | Some backends need `stream=false`             |
+| 500 Upstream Err (<50ms, 0 tokens) | Upstream socket abort (UTF-8 typography, thinking history, or keepalive reset) | Gateway auto-escapes JSON via `ensure_ascii=True` and sanitizes agent history; check upstream health |
+| Admin tables empty rows | Stale browser cache of old scripts | Hard refresh browser (`Ctrl+Shift+R`) to fetch updated `?v={{ asset_v }}` bundle |
 
 ---
 

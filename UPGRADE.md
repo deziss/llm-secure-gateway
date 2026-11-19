@@ -466,6 +466,16 @@ Check `PHOENIX_API_KEY` and `PHOENIX_COLLECTOR_ENDPOINT` environment variables.
 - Ensure correct header (`X-API-Key` or `Authorization: Bearer`)
 - Check admin token hasn't expired
 
+### Upstream `httpx.ReadError` / 502 Bad Gateway with Coding Agents
+
+When upgrading from versions prior to 0.16.1, complex multi-turn coding agents (VS Code Copilot SDK, Cline, Roo Code) might encounter sudden connection resets on vLLM:
+- **Solution**: The gateway automatically sanitizes conversation thinking fields and uses ASCII-safe JSON encoding (`ensure_ascii=True`) to avoid upstream tokenizer crashes. Ensure gateway is updated to `v0.16.2+`.
+
+### Admin Tables Empty on Servers or Projects
+
+If tables on `/admin/view/servers` or `/admin/view/projects` appear empty after an upgrade:
+- **Solution**: Hard refresh your browser (`Ctrl+Shift+R` or `Cmd+Shift+R`) to bust cached JavaScript files from earlier versions. Asset URLs now feature dynamic cache busting `?v={{ asset_v }}`.
+
 ---
 
 ## Rollback Plan

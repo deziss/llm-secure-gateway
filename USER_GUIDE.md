@@ -247,14 +247,36 @@ Virtual model names decouple client code from specific provider infrastructure.
 
 ## 10. Troubleshooting Common Issues
 
-### Upstream 502 Bad Gateway / `httpx.ReadError`
-- **Symptom**: Requests fail with `502 Bad Gateway` within milliseconds (20ms–50ms) in Live Traces, or `httpx.ReadError: [Errno 104] Connection reset by peer` in logs.
-- **Root Cause & Resolution**:
-  - **Non-ASCII / Unicode Typographical Characters**: Payloads containing typographic Unicode characters (em-dashes `—`, curly quotes `“`, arrows `→`, or math symbols) can trigger immediate socket aborts on upstream vLLM/C++ engines when sent unescaped. The Gateway automatically applies ASCII-safe JSON serialization (`ensure_ascii=True`) to escape these as `\uXXXX`.
-  - **Coding Agent History Replay**: When using tools like VS Code Copilot SDK, Cline, or Roo Code, prior conversation history replayed to the model may contain internal thinking attributes (`reasoning`, `reasoning_content`, `cot_id`, `cot_summary`). The Gateway sanitizes these fields before upstream forwarding to prevent vLLM Jinja template crashes.
-  - **Hop-by-Hop Headers**: Client requests containing `Connection: close` can disrupt persistent connection pools. The Gateway strips hop-by-hop headers per RFC 7230/9110 to keep connection pools healthy.
+### Upstream 500 Upstream Err / 502 Bad Gateway / `httpx.ReadError`
+- **Symptom**: Requests fail abruptly with `502 Bad Gateway` or `500 Upstream Err` in Live Traces with very low duration (20ms–50ms, 0 tokens generated), accompanied by `httpx.ReadError: [Errno 104] Connection reset by peer` or `exceptions must derive from BaseException` in gateway container logs.
+- **Root Causes & Gateway Mitigations**:
+  - **Non-ASCII / Typographic Unicode Characters**: Coding agents (VS Code Copilot SDK, Cline, Roo Code) dispatch system prompts and tool schemas containing typographical characters (em-dashes `—`, curly quotes `“` `”`, directional arrows `→`, math operators `≤`, `≥`). When passed as raw multi-byte UTF-8, upstream tokenizers and C++ HTTP parsers in vLLM or llama.cpp abruptly reset the TCP connection. The gateway applies `ensure_ascii=True` (`serialize_json_body()`) to safely encode all non-ASCII characters as `\uXXXX` sequences.
+  - **Coding Agent History Replay**: Multi-turn coding sessions often replay earlier model output containing provider-specific chain-of-thought metadata (`reasoning`, `reasoning_content`, `cot_id`, `cot_summary`). These attributes cause vLLM's Jinja chat template rendering to crash and reset the socket. The gateway strips non-standard reasoning fields and validates `tool_calls` structure prior to upstream forwarding.
+  - **Hop-by-Hop Header Poisoning**: Incoming client requests containing `Connection: close` or hop-by-hop headers per RFC 7230/9110 can close persistent keep-alive sockets in the HTTPX connection pool. The gateway automatically strips these headers before dispatching to backend servers.
+  - **Uvicorn Keepalive Mismatch**: Upstream vLLM default keepalive timeout is often 5s. If the client pool keeps connections alive longer, upstream silently resets idle connections. The gateway uses a 4s keepalive expiry and retries transient connection resets with fresh connections.
+- **Diagnostic Verification**:
+  ```bash
+  # Test upstream vLLM health directly from gateway container:
+  docker exec -it llm-gateway curl -v http://<vllm-host>:<port>/health
 
-### Admin Tables Appear Empty
-- If Model Servers (`/admin/view/servers`) or Projects (`/admin/view/projects`) render headers without data rows:
-  - Perform a hard refresh (**Ctrl + Shift + R** or **Cmd + Shift + R**) to ensure your browser fetches the latest dynamic cache-busted bundle (`?v={{ asset_v }}`).
+  # Test completions through gateway:
+  curl -N http://localhost:6130/v1/chat/completions \
+    -H "Authorization: Bearer <your-api-key>" \
+    -H "Content-Type: application/json" \
+    -d '{"model": "qwen3.8-flash-next", "messages": [{"role": "user", "content": "Hello"}], "stream": true}'
+  ```
+
+### Admin Tables Appear Empty (`/admin/view/servers` or `/admin/view/projects`)
+- **Symptom**: The table frame and headers render normally, but no data rows or search filter input appear.
+- **Root Cause & Resolution**:
+  - **Stale Browser Disk Cache**: Browsers may retain cached older Javascript bundles that lack compatibility shims for zero-dependency `GatewayTable`.
+  - **Fix**: Perform a hard refresh (**Ctrl + Shift + R** on Windows/Linux or **Cmd + Shift + R** on macOS) or clear site cookies/cache.
+  - **Verification**: Check developer console (`F12`) — ensure all static scripts resolve with status 200/304 and contain query parameter `?v={{ asset_v }}`.
+
+### Circuit Breaker Tripping Prematurely
+- **Symptom**: Requests return `502 Bad Gateway: Circuit breaker OPEN for backend...` or `Model is quarantined for XX seconds`.
+- **Resolution**:
+  - Check the backend health and verify the endpoint responds to `/health`.
+  - The circuit breaker auto-recovers via half-open probe requests once the backend stabilizes.
+  - Model quarantines expire automatically after 30 seconds for 5xx errors or 60 seconds for timeouts.
 

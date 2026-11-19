@@ -1,3 +1,19 @@
+## [0.16.2] - 2026-11-19
+
+### 📚 Documentation, Troubleshooting & Diagnostics
+
+- **Comprehensive Upstream `httpx.ReadError` & Connection Reset Troubleshooting**:
+  - Added dedicated troubleshooting guides across `USER_GUIDE.md`, `docs/VLLM_API_SUPPORT.md`, `docs/VLLM_INTEGRATION_ANALYSIS.md`, and `docs/OBSERVABILITY.md`.
+  - Documented root causes for sub-50ms upstream socket termination: raw multi-byte UTF-8 typographic characters in coding agent prompts (VS Code Copilot SDK, Cline, Roo Code), replayed assistant thinking history crashing Jinja templates, and hop-by-hop header poisoning.
+  - Clarified mitigation steps: pure ASCII JSON encoding (`\uXXXX` escaping), thinking field sanitization, and connection header normalization.
+
+- **Admin UI Table Rendering & Cache Busting Troubleshooting**:
+  - Documented browser cache invalidation procedures for empty data tables on Model Servers (`/admin/view/servers`) and Projects (`/admin/view/projects`).
+  - Added verification steps for dynamic `?v={{ asset_v }}` asset tokens and browser hard refresh shortcuts (`Ctrl+Shift+R` / `Cmd+Shift+R`).
+
+- **Observability Live Traces & Waterfall Diagnostics**:
+  - Added diagnostic matrix in `TELEMETRY_GUIDE.md` and `docs/OBSERVABILITY.md` for interpreting `500 Upstream Err` vs `502 Bad Gateway` vs `429 Rate Limit` in Live Traces and Arize Phoenix traces.
+
 ## [0.16.1] - 2026-11-19
 
 ### 🐛 Upstream vLLM/Local Backend Stability & Coding Agent Reliability
