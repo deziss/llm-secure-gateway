@@ -39,6 +39,7 @@
         const USER_ROLE = "{{ user_role }}";
     </script>
     <script src="/static/js/globals.js?v={{ asset_v }}"></script>
+    <script src="/static/js/ui-components.js?v={{ asset_v }}"></script>
     <script>
         // Apply theme before first paint to prevent a flash of the wrong theme.
         // localStorage throws in private windows / with site data blocked, so
@@ -111,7 +112,6 @@
         </div>
     </div>
 
-    <script src="/static/js/ui-components.js?v={{ asset_v }}"></script>
     {% if not hide_header %}<script src="/static/js/admin-modal.js?v={{ asset_v }}"></script><script src="/static/js/admin-table.js?v={{ asset_v }}"></script><script src="/static/js/shell.js?v={{ asset_v }}"></script>{% endif %}
   </body>
 </html>

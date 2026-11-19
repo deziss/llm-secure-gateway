@@ -18,6 +18,11 @@
       .replace(/'/g, "&#39;");
   }
 
+  // Ensure escapeHtml is always defined on window for column renderers
+  if (typeof window.escapeHtml !== "function") {
+    window.escapeHtml = escapeText;
+  }
+
   function getByPath(obj, path) {
     if (!path || !obj) return obj;
     const parts = path.split(".");
@@ -40,8 +45,19 @@
         return;
       }
 
+      if (instances.has(this.table)) {
+        const existing = instances.get(this.table);
+        if (options && Object.keys(options).length > 0) {
+          existing.options = Object.assign(existing.options, options);
+          if (options.data) existing.setData(options.data);
+          else if (options.ajax) existing.reload();
+        }
+        return existing;
+      }
+
       this.options = Object.assign({
         columns: [],
+        columnDefs: [],
         ajax: null,
         data: [],
         pageLength: 50,
@@ -51,6 +67,19 @@
         loadingText: "Loading data...",
         drawCallback: null,
       }, options);
+
+      // Apply columnDefs onto columns if provided
+      if (Array.isArray(this.options.columnDefs) && Array.isArray(this.options.columns)) {
+        this.options.columnDefs.forEach((def) => {
+          const targets = Array.isArray(def.targets) ? def.targets : [def.targets];
+          targets.forEach((t) => {
+            const idx = t === -1 ? this.options.columns.length - 1 : t;
+            if (this.options.columns[idx]) {
+              this.options.columns[idx] = Object.assign({}, this.options.columns[idx], def);
+            }
+          });
+        });
+      }
 
       this.rawData = [];
       this.filteredData = [];
@@ -99,9 +128,9 @@
       }
 
       // Add a clean search toolbar if enabled and not already present
-      if (this.options.searchable && !this.table.parentElement.querySelector(".gateway-table-search")) {
+      if (this.options.searchable && this.table.parentElement && !this.table.parentElement.querySelector(".gateway-table-search")) {
         const wrap = document.createElement("div");
-        wrap.className = "gateway-table-search flex items-center justify-between gap-4 mb-3 text-caption";
+        wrap.className = "gateway-table-search flex items-center justify-between gap-4 p-3 border-b border-hairline text-caption";
         wrap.innerHTML = `
           <div class="relative flex-1 max-w-sm">
             <input type="search" placeholder="Filter rows... (Press / to focus)"
@@ -121,7 +150,7 @@
 
         // Keyboard shortcut: '/' to focus search
         document.addEventListener("keydown", (e) => {
-          if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+          if (e.key === "/" && document.activeElement && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
             e.preventDefault();
             input.focus();
           }
@@ -157,7 +186,7 @@
         let json = await res.json();
         this._lastAjaxJson = json;
 
-        if (this.options.ajax.dataSrc && typeof this.options.ajax.dataSrc === "function") {
+        if (this.options.ajax && typeof this.options.ajax.dataSrc === "function") {
           json = this.options.ajax.dataSrc(json);
         }
 
@@ -209,14 +238,18 @@
         const icon = th.querySelector(".sort-icon");
         if (idx === colIdx) {
           th.setAttribute("aria-sort", this.sortDir === 1 ? "ascending" : "descending");
-          if (icon) icon.innerHTML = this.sortDir === 1 ? "▲" : "▼";
-          if (icon) icon.classList.remove("opacity-40");
-          if (icon) icon.classList.add("text-accent", "opacity-100");
+          if (icon) {
+            icon.innerHTML = this.sortDir === 1 ? "▲" : "▼";
+            icon.classList.remove("opacity-40");
+            icon.classList.add("text-accent", "opacity-100");
+          }
         } else {
           th.setAttribute("aria-sort", "none");
-          if (icon) icon.innerHTML = "↕";
-          if (icon) icon.classList.add("opacity-40");
-          if (icon) icon.classList.remove("text-accent", "opacity-100");
+          if (icon) {
+            icon.innerHTML = "↕";
+            icon.classList.add("opacity-40");
+            icon.classList.remove("text-accent", "opacity-100");
+          }
         }
       });
 
@@ -233,6 +266,8 @@
       this.filteredData.sort((a, b) => {
         let valA = key ? getByPath(a, key) : a;
         let valB = key ? getByPath(b, key) : b;
+        if (typeof valA === "object" && valA !== null) valA = valA.name || valA.id || JSON.stringify(valA);
+        if (typeof valB === "object" && valB !== null) valB = valB.name || valB.id || JSON.stringify(valB);
         if (valA === valB) return 0;
         if (valA === null || valA === undefined) return 1;
         if (valB === null || valB === undefined) return -1;
@@ -249,7 +284,7 @@
         const countEl = this.searchWrap.querySelector(".gateway-table-count");
         if (countEl) {
           countEl.textContent = this.filteredData.length === this.rawData.length
-            ? `${this.rawData.length} records`
+            ? `${this.rawData.length} record${this.rawData.length === 1 ? "" : "s"}`
             : `Showing ${this.filteredData.length} of ${this.rawData.length}`;
         }
       }
@@ -271,14 +306,14 @@
         const tr = document.createElement("tr");
         tr.className = "hover:bg-surface-inset/50 transition-colors border-b border-hairline/60";
 
-        this.options.columns.forEach((col) => {
+        this.options.columns.forEach((col, colIdx) => {
           const td = document.createElement("td");
-          if (col.className) td.className = col.className;
-          else td.className = "py-3 px-3 align-middle text-ink text-xs";
+          const baseCls = "p-4 align-middle text-ink text-xs";
+          td.className = col.className ? `${baseCls} ${col.className}` : baseCls;
 
           const val = col.data ? getByPath(row, col.data) : row;
           if (typeof col.render === "function") {
-            td.innerHTML = col.render(val, "display", row, { row: rowIdx, col: col });
+            td.innerHTML = col.render(val, "display", row, { row: rowIdx, col: colIdx });
           } else {
             td.textContent = val !== undefined && val !== null ? String(val) : "—";
           }
@@ -321,7 +356,7 @@
       tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center py-8 text-rose-500 text-xs">
         <div class="font-bold mb-1">Failed to load data</div>
         <div class="text-micro text-ink-muted mb-3">${escapeText(msg)}</div>
-        <button type="button" class="px-3 py-1 bg-surface-inset hover:bg-hairline text-ink rounded-control border border-hairline font-medium text-xs">
+        <button type="button" class="px-3 py-1 bg-surface-inset hover:bg-hairline text-ink rounded-control border border-hairline font-medium text-xs cursor-pointer">
           Retry
         </button>
       </td></tr>`;
@@ -366,7 +401,195 @@
   };
 
   // Zero-dependency jQuery / DataTables compatibility shim
-  if (!window.jQuery) {
+  (function initJQueryShim() {
+    function createWrapper(elements) {
+      const arr = Array.isArray(elements) ? elements : (elements ? [elements] : []);
+      const first = arr[0] || null;
+
+      const wrapper = {
+        length: arr.length,
+        [Symbol.iterator]: function* () {
+          for (let i = 0; i < arr.length; i++) yield arr[i];
+        },
+        forEach: function (callback) {
+          arr.forEach((el, idx) => callback(el, idx));
+          return this;
+        },
+        ready: function (fn) {
+          if (typeof fn === "function") {
+            if (document.readyState === "loading") {
+              document.addEventListener("DOMContentLoaded", fn);
+            } else {
+              fn();
+            }
+          }
+          return this;
+        },
+        DataTable: function (opts) {
+          if (!first) return null;
+          if (!opts) {
+            return GatewayTable.getInstance(first) || new GatewayTable(first);
+          }
+          return new GatewayTable(first, opts);
+        },
+        find: function (selector) {
+          if (!first) return createWrapper([]);
+          try {
+            const matched = first.querySelectorAll(selector);
+            return createWrapper(Array.from(matched));
+          } catch (_) {
+            return createWrapper([]);
+          }
+        },
+        closest: function (selector) {
+          if (!first || typeof first.closest !== "function") return createWrapper([]);
+          const match = first.closest(selector);
+          return createWrapper(match ? [match] : []);
+        },
+        parent: function () {
+          return createWrapper(first && first.parentElement ? [first.parentElement] : []);
+        },
+        children: function (selector) {
+          if (!first) return createWrapper([]);
+          const kids = Array.from(first.children).filter((c) => !selector || c.matches(selector));
+          return createWrapper(kids);
+        },
+        html: function (h) {
+          if (h === undefined) return first ? first.innerHTML : "";
+          arr.forEach((el) => { if (el) el.innerHTML = h; });
+          return this;
+        },
+        text: function (t) {
+          if (t === undefined) return first ? first.textContent : "";
+          arr.forEach((el) => { if (el) el.textContent = t; });
+          return this;
+        },
+        val: function (v) {
+          if (v === undefined) return first ? first.value : "";
+          arr.forEach((el) => { if (el) el.value = v; });
+          return this;
+        },
+        prop: function (p, v) {
+          if (v === undefined) return first ? first[p] : undefined;
+          arr.forEach((el) => { if (el) el[p] = v; });
+          return this;
+        },
+        attr: function (a, v) {
+          if (v === undefined) return first && typeof first.getAttribute === "function" ? first.getAttribute(a) : null;
+          arr.forEach((el) => { if (el && typeof el.setAttribute === "function") el.setAttribute(a, v); });
+          return this;
+        },
+        removeAttr: function (a) {
+          arr.forEach((el) => { if (el && typeof el.removeAttribute === "function") el.removeAttribute(a); });
+          return this;
+        },
+        css: function (prop, val) {
+          if (typeof prop === "object") {
+            arr.forEach((el) => { if (el && el.style) Object.assign(el.style, prop); });
+            return this;
+          }
+          if (val === undefined) return first ? getComputedStyle(first)[prop] : "";
+          arr.forEach((el) => { if (el && el.style) el.style[prop] = val; });
+          return this;
+        },
+        addClass: function (c) {
+          const classes = String(c).trim().split(/\s+/);
+          arr.forEach((el) => {
+            if (el && el.classList) classes.forEach((cls) => cls && el.classList.add(cls));
+          });
+          return this;
+        },
+        removeClass: function (c) {
+          const classes = String(c).trim().split(/\s+/);
+          arr.forEach((el) => {
+            if (el && el.classList) classes.forEach((cls) => cls && el.classList.remove(cls));
+          });
+          return this;
+        },
+        toggleClass: function (c, state) {
+          arr.forEach((el) => {
+            if (el && el.classList) el.classList.toggle(c, state);
+          });
+          return this;
+        },
+        on: function (evt, handler) {
+          const events = evt.split(/\s+/);
+          arr.forEach((el) => {
+            if (el && typeof el.addEventListener === "function") {
+              events.forEach((e) => {
+                if (e) el.addEventListener(e, handler);
+              });
+            }
+          });
+          return this;
+        },
+        off: function (evt, handler) {
+          const events = evt.split(/\s+/);
+          arr.forEach((el) => {
+            if (el && typeof el.removeEventListener === "function") {
+              events.forEach((e) => {
+                if (e) el.removeEventListener(e, handler);
+              });
+            }
+          });
+          return this;
+        },
+        trigger: function (evt) {
+          const e = new Event(evt, { bubbles: true, cancelable: true });
+          arr.forEach((el) => {
+            if (el && typeof el.dispatchEvent === "function") el.dispatchEvent(e);
+          });
+          return this;
+        },
+        focus: function () {
+          if (first && typeof first.focus === "function") first.focus();
+          return this;
+        },
+        click: function () {
+          if (first && typeof first.click === "function") first.click();
+          return this;
+        },
+        hide: function () {
+          arr.forEach((el) => { if (el && el.style) el.style.display = "none"; });
+          return this;
+        },
+        show: function () {
+          arr.forEach((el) => { if (el && el.style) el.style.display = ""; });
+          return this;
+        },
+      };
+
+      // Assign numeric indices
+      arr.forEach((el, i) => { wrapper[i] = el; });
+
+      // Proxy fallback to delegate direct DOM properties like $(id).style, $(id).disabled, $(id).value, $(id).addEventListener
+      return new Proxy(wrapper, {
+        get(target, prop, receiver) {
+          if (prop in target) return target[prop];
+          if (first && prop in first) {
+            const val = first[prop];
+            if (typeof val === "function") {
+              return val.bind(first);
+            }
+            return val;
+          }
+          return undefined;
+        },
+        set(target, prop, value, receiver) {
+          if (prop in target) {
+            target[prop] = value;
+            return true;
+          }
+          if (first) {
+            first[prop] = value;
+            return true;
+          }
+          target[prop] = value;
+          return true;
+        },
+      });
+    }
+
     const $ = function (selector) {
       if (typeof selector === "function") {
         if (document.readyState === "loading") {
@@ -374,44 +597,91 @@
         } else {
           selector();
         }
-        return;
+        return createWrapper([document]);
       }
-      const el = typeof selector === "string" ? document.querySelector(selector) : selector;
-      return {
-        DataTable: function (opts) {
-          if (!opts) {
-            return GatewayTable.getInstance(el) || new GatewayTable(el);
-          }
-          return new GatewayTable(el, opts);
-        },
-        find: function (s) { return el ? $(el.querySelector(s)) : null; },
-        html: function (h) {
-          if (!el) return "";
-          if (h === undefined) return el.innerHTML;
-          el.innerHTML = h;
-          return this;
-        },
-        prop: function (p, v) {
-          if (!el) return;
-          if (v === undefined) return el[p];
-          el[p] = v;
-          return this;
-        },
-        val: function (v) {
-          if (!el) return "";
-          if (v === undefined) return el.value;
-          el.value = v;
-          return this;
-        },
-        on: function (evt, handler) {
-          if (el) el.addEventListener(evt, handler);
-          return this;
-        },
-        addClass: function (c) { if (el) el.classList.add(c); return this; },
-        removeClass: function (c) { if (el) el.classList.remove(c); return this; },
-      };
+      if (selector === window || selector === document) {
+        return createWrapper([selector]);
+      }
+      if (typeof selector === "string") {
+        const trimmed = selector.trim();
+        if (trimmed.startsWith("<")) {
+          const tag = trimmed.replace(/<|>|\//g, "").trim().split(/\s+/)[0] || "div";
+          return createWrapper([document.createElement(tag)]);
+        }
+        try {
+          const matched = document.querySelectorAll(trimmed);
+          return createWrapper(Array.from(matched));
+        } catch (_) {
+          return createWrapper([]);
+        }
+      }
+      if (selector instanceof Node || selector instanceof NodeList || Array.isArray(selector)) {
+        return createWrapper(selector instanceof NodeList ? Array.from(selector) : selector);
+      }
+      return createWrapper(selector ? [selector] : []);
     };
-    window.$ = $;
-    window.jQuery = $;
-  }
+
+    $.extend = function () {
+      let target = arguments[0] || {};
+      let i = 1;
+      let deep = false;
+      if (typeof target === "boolean") {
+        deep = target;
+        target = arguments[1] || {};
+        i = 2;
+      }
+      for (; i < arguments.length; i++) {
+        const src = arguments[i];
+        if (src) {
+          for (const key in src) {
+            if (Object.prototype.hasOwnProperty.call(src, key)) {
+              if (deep && src[key] && typeof src[key] === "object" && !Array.isArray(src[key])) {
+                target[key] = $.extend(true, target[key] || {}, src[key]);
+              } else {
+                target[key] = src[key];
+              }
+            }
+          }
+        }
+      }
+      return target;
+    };
+
+    $.fn = {
+      dataTable: {
+        ext: { errMode: "none" },
+        defaults: { columnDefs: [] },
+      },
+      DataTable: function (opts) {
+        return $(this).DataTable(opts);
+      },
+    };
+
+    $.ajax = async function (opts) {
+      try {
+        const fetcher = window.fetchWithCsrf || window.fetch;
+        const res = await fetcher(opts.url, {
+          method: opts.type || "GET",
+          headers: opts.headers || {},
+          body: opts.data ? JSON.stringify(opts.data) : undefined,
+          credentials: opts.xhrFields?.withCredentials ? "include" : "same-origin",
+        });
+        const data = await res.json();
+        if (typeof opts.success === "function") opts.success(data);
+        return data;
+      } catch (err) {
+        if (typeof opts.error === "function") opts.error(err);
+        throw err;
+      }
+    };
+
+    if (!window.jQuery) {
+      window.$ = $;
+      window.jQuery = $;
+    } else {
+      if (!window.jQuery.fn) window.jQuery.fn = $.fn;
+      if (!window.jQuery.extend) window.jQuery.extend = $.extend;
+      if (!window.$) window.$ = window.jQuery;
+    }
+  })();
 })();
