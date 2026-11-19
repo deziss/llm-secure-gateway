@@ -1,7 +1,7 @@
 """Remote Image URL-to-Base64 Inlining for Local & Air-Gapped Inference Backends.
 
 Ensures that multimodal requests sent to local vLLM/Ollama nodes without
-direct internet egress can process remote image URLs seamlessly.
+direct internet egress can process remote image URLs directly.
 """
 
 import base64

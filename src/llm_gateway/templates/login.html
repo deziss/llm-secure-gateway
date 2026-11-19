@@ -1,101 +1,59 @@
-{% extends "base.html" %} {% block title %}Gateway Portal - LLM Gateway{%
-endblock %} {% set hide_header = true %} {% block content %}
-<div
-  class="fixed inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-100/40 via-slate-50 to-white dark:from-indigo-900/20 dark:via-slate-900 dark:to-slate-950 -z-10"
-></div>
-
-<div class="min-h-[85dvh] flex flex-col justify-center items-center px-4">
-  <!-- Brand Logo/Name -->
-  <div class="mb-8 text-center animate-fade-in-down">
-    <div
-      class="inline-flex items-center justify-center w-24 h-24 rounded-3xl shadow-2xl mb-4 backdrop-blur-xl overflow-hidden p-1.5 bg-slate-900/60 border border-indigo-500/30 shadow-indigo-500/20"
-    >
-      <img src="/static/img/logo.png" alt="LLM Secure Gateway Logo" class="w-full h-full object-cover rounded-2xl" />
+{% extends "base.html" %}
+{% block title %}Sign In - LLM Secure Gateway{% endblock %}
+{% set hide_header = true %}
+{% block content %}
+<div class="min-h-[85dvh] flex flex-col justify-center items-center px-4 py-8">
+  <!-- Brand Header -->
+  <div class="mb-8 text-center max-w-sm">
+    <div class="inline-flex items-center justify-center w-14 h-14 rounded-panel bg-surface-raised border border-hairline shadow-rest mb-4">
+      <img src="/static/img/logo.png" alt="LLM Secure Gateway" class="w-9 h-9 object-contain" />
     </div>
-    <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tighter">
-      LLM <span class="text-indigo-500 font-light">SECURE</span>
-    </h1>
-    <p
-      class="text-slate-500 text-sm mt-2 uppercase tracking-[0.3em] font-medium"
-    >
-      Enterprise Gateway
-    </p>
+    <h1 class="text-2xl font-bold text-ink tracking-tight">LLM Secure Gateway</h1>
+    <p class="text-xs text-ink-muted mt-1">Enterprise AI Governance, Virtual Keys &amp; Telemetry</p>
   </div>
 
-  <div
-    class="bg-white/60 dark:bg-slate-900/40 backdrop-blur-2xl p-6 sm:p-10 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-[0_22px_70px_4px_rgba(0,0,0,0.56)] w-full max-w-md transition-all hover:border-slate-700/50"
-  >
-    <div class="mb-8">
-      <h2 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-        Identity Verification
-      </h2>
-      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
-        Access the orchestration chamber.
-      </p>
+  <!-- Sign-in Container -->
+  <div class="bg-surface-raised border border-hairline p-6 sm:p-8 rounded-panel shadow-overlay w-full max-w-md">
+    <div class="mb-6">
+      <h2 class="text-lg font-bold text-ink tracking-tight">Sign In</h2>
+      <p class="text-xs text-ink-muted mt-0.5">Enter your administrative credentials to continue.</p>
     </div>
 
     {% if not allow_insecure_http %}
-    {# Shown by the script below only on plain HTTP from a non-localhost host,
-       where the browser drops the Secure session cookie and login won't stick. #}
-    <div id="insecureHttpNotice" class="hidden mb-6 rounded-control border border-warn/30 bg-warn/10 p-3 text-caption text-warn" role="alert">
-      This page is served over plain HTTP, so your browser will discard the
-      secure login cookie and sign-in will not stick. Open the gateway over
-      HTTPS (e.g. behind a TLS reverse proxy) or via localhost. For a trusted
-      dev LAN only, set <code>ALLOW_INSECURE_HTTP=true</code> and restart.
+    <div id="insecureHttpNotice" class="hidden mb-5 rounded-control border border-warn/30 bg-warn/10 p-3 text-caption text-warn" role="alert">
+      Served over plain HTTP: your browser will discard the secure login cookie. Access via HTTPS or localhost. For local testing, configure <code>ALLOW_INSECURE_HTTP=true</code>.
     </div>
     {% endif %}
 
-    <form id="loginForm" class="space-y-6">
-      <div class="space-y-2">
-        <label
-          for="login-email"
-          class="block text-xs font-bold text-slate-500 uppercase tracking-widest ml-1"
-          >Administrative Email</label
-        >
-        <div class="relative group">
-          <span
-            class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors"
-          >
-            <i class="fas fa-envelope" aria-hidden="true"></i>
-          </span>
+    <form id="loginForm" class="space-y-4">
+      <div class="space-y-1.5">
+        <label for="login-email" class="block text-xs font-medium text-ink">Email address</label>
+        <div class="relative">
           <input
             type="email"
             id="login-email"
             name="username"
             autocomplete="username"
-            placeholder="admin@internal.io"
-            class="w-full bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+            placeholder="admin@example.com"
+            class="w-full bg-surface-inset border border-hairline rounded-control py-2.5 px-3 text-sm text-ink focus:border-accent focus:outline-none transition-colors"
             required
           />
         </div>
       </div>
 
-      <div class="space-y-2">
-        <div class="flex justify-between items-center ml-1">
-          <label
-            for="login-password"
-            class="block text-xs font-bold text-slate-500 uppercase tracking-widest"
-            >Access Key</label
-          >
-          <a
-            href="/auth/forgot-password"
-            class="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 uppercase tracking-wider transition-colors"
-            >Recover?</a
-          >
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label for="login-password" class="block text-xs font-medium text-ink">Password</label>
+          <a href="/auth/forgot-password" class="text-caption text-accent hover:underline font-medium">Forgot password?</a>
         </div>
-        <div class="relative group">
-          <span
-            class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors"
-          >
-            <i class="fas fa-lock" aria-hidden="true"></i>
-          </span>
+        <div class="relative">
           <input
             type="password"
             id="login-password"
             name="password"
             autocomplete="current-password"
-            placeholder="••••••••"
-            class="w-full bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl py-4 pl-12 pr-12 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+            placeholder="••••••••••••"
+            class="w-full bg-surface-inset border border-hairline rounded-control py-2.5 pl-3 pr-10 text-sm text-ink focus:border-accent focus:outline-none transition-colors"
             required
           />
           <button
@@ -104,97 +62,56 @@ endblock %} {% set hide_header = true %} {% block content %}
             data-target="login-password"
             aria-label="Show password"
             aria-pressed="false"
-            class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-500 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink focus:outline-none"
           >
-            <span data-icon="show"><i class="fas fa-eye" aria-hidden="true"></i></span>
-            <span data-icon="hide" class="hidden"><i class="fas fa-eye-slash" aria-hidden="true"></i></span>
+            <span data-icon="show"><i data-lucide="eye" class="w-4 h-4"></i></span>
+            <span data-icon="hide" class="hidden"><i data-lucide="eye-off" class="w-4 h-4"></i></span>
           </button>
         </div>
       </div>
 
-      <label for="login-remember" class="flex items-center gap-3 ml-1 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          id="login-remember"
-          class="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500/50"
-        />
-        <span class="text-sm text-slate-600 dark:text-slate-300">Remember me for {{ remember_days }} days</span>
-      </label>
+      <div class="pt-1">
+        <label for="login-remember" class="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            id="login-remember"
+            class="h-4 w-4 rounded border-hairline text-accent focus:ring-accent"
+          />
+          <span class="text-caption text-ink-muted">Remember this device for {{ remember_days }} days</span>
+        </label>
+      </div>
 
       <button
         type="submit"
         id="submitBtn"
-        class="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 overflow-hidden"
+        class="w-full mt-2 bg-accent hover:opacity-90 text-accent-ink font-semibold py-2.5 px-4 rounded-control text-sm transition-opacity flex items-center justify-center gap-2"
       >
-        <span id="btnText">INITIATE SESSION</span>
+        <span id="btnText">Sign In</span>
       </button>
 
-      <div id="error" class="hidden animate-shake" role="alert">
-        <div
-          class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 flex items-center gap-3 text-rose-400 text-xs font-bold"
-        >
-          <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-          <span id="errorMsg">PROTOCOL REJECTED</span>
+      <div id="error" class="hidden" role="alert">
+        <div class="bg-rose-500/10 border border-rose-500/20 rounded-control p-3 flex items-center gap-2.5 text-down text-xs font-medium">
+          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+          <span id="errorMsg">Authentication failed</span>
         </div>
       </div>
 
-      <div class="pt-4 text-center">
-        <p
-          class="text-slate-500 text-[11px] font-bold uppercase tracking-wider"
-        >
-          New operative?
-          <a
-            href="/auth/register"
-            class="text-indigo-500 hover:text-indigo-400 transition-colors ml-1"
-            >Request Access</a
-          >
+      <div class="pt-3 border-t border-hairline text-center">
+        <p class="text-caption text-ink-muted">
+          Need an account?
+          <a href="/auth/register" class="text-accent font-medium hover:underline ml-0.5">Register</a>
         </p>
       </div>
     </form>
   </div>
 
-  <p
-    class="mt-8 text-ink-muted text-[10px] font-medium tracking-[0.2em] uppercase"
-  >
-    Secure Layer 7 Proxy
+  <p class="mt-6 text-ink-muted text-micro font-medium tracking-wide">
+    Secure Reverse Proxy &bull; TLS / SPIFFE mTLS Verified
   </p>
 </div>
 
-<style>
-  @keyframes shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    25% {
-      transform: translateX(-5px);
-    }
-    75% {
-      transform: translateX(5px);
-    }
-  }
-  .animate-shake {
-    animation: shake 0.2s ease-in-out 0s 2;
-  }
-
-  @keyframes fade-in-down {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  .animate-fade-in-down {
-    animation: fade-in-down 0.8s ease-out;
-  }
-</style>
-
 <script>
-  // Keep the last choice; only the preference is stored, never the password.
-  try { document.getElementById("login-remember").checked = localStorage.getItem("login.remember") === "1"; } catch (err) { /* private mode */ }
+  try { document.getElementById("login-remember").checked = localStorage.getItem("login.remember") === "1"; } catch (err) {}
 
   (() => {
     const notice = document.getElementById("insecureHttpNotice");
@@ -210,12 +127,12 @@ endblock %} {% set hide_header = true %} {% block content %}
     const errorMsg = document.getElementById("errorMsg");
 
     submitBtn.disabled = true;
-    btnText.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    btnText.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span> Signing in...';
     errorEl.classList.add("hidden");
 
     const formData = new FormData(e.target);
     const remember = document.getElementById("login-remember").checked;
-    try { localStorage.setItem("login.remember", remember ? "1" : "0"); } catch (err) { /* private mode */ }
+    try { localStorage.setItem("login.remember", remember ? "1" : "0"); } catch (err) {}
 
     try {
       const response = await fetchWithCsrf(BASE_URL + (remember ? "/auth/cookie-remember/login" : "/auth/cookie/login"), {
@@ -225,24 +142,27 @@ endblock %} {% set hide_header = true %} {% block content %}
       });
 
       if (response.ok) {
-        btnText.innerHTML = '<i class="fas fa-check animate-ping"></i>';
-        setTimeout(() => (window.location.href = "/admin/dashboard"), 500);
+        btnText.textContent = "Success";
+        setTimeout(() => (window.location.href = "/admin/dashboard"), 300);
       } else {
         if (response.status === 400) {
-          errorMsg.textContent = "INVALID CREDENTIALS";
+          errorMsg.textContent = "Invalid email or password.";
         } else if (response.status === 403) {
-          errorMsg.textContent = "SECURITY TOKEN EXPIRED - REFRESH";
+          errorMsg.textContent = "Security token expired. Please refresh the page.";
         } else if (response.status === 429) {
-          errorMsg.textContent = "TOO MANY ATTEMPTS - LOCKED TEMPORARILY";
+          errorMsg.textContent = "Too many failed attempts. Account temporarily locked.";
         } else {
-          errorMsg.textContent = "AUTHENTICATION ERROR (" + response.status + ")";
+          errorMsg.textContent = "Authentication failed (code " + response.status + ").";
         }
-        throw new Error("Login failed with status: " + response.status);
+        throw new Error("Login failed");
       }
     } catch (error) {
       errorEl.classList.remove("hidden");
-      btnText.innerHTML = "RETRY INITIATION";
+      btnText.textContent = "Sign In";
       submitBtn.disabled = false;
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
+      }
     }
   });
 </script>

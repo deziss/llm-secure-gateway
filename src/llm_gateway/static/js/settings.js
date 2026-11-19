@@ -77,6 +77,7 @@ async function loadSettings() {
   } catch (e) {
     console.error("IO Fault: Settings payload corrupted", e);
   }
+  await loadLicenseStatus();
 }
 
 async function loadInvites() {
@@ -414,7 +415,175 @@ function initThemeToggle() {
   });
 }
 
+// ─── License & Subscription ────────────────────────────────────────────
+
+async function loadLicenseStatus() {
+  if (USER_ROLE !== "admin") return;
+  try {
+    const res = await fetchWithCsrf("/admin/license/status", {
+      credentials: "include",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // 1. Tier Badge
+    const badge = document.getElementById("licTierBadge");
+    if (badge) {
+      const tier = (data.tier || "community").toLowerCase();
+      badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+      badge.className = "px-2.5 py-1 text-xs font-semibold rounded-control inline-flex items-center";
+      if (tier === "enterprise") {
+        badge.classList.add("bg-emerald-500/10", "text-emerald-400", "border", "border-emerald-500/20");
+      } else if (tier === "pro") {
+        badge.classList.add("bg-cyan-500/10", "text-cyan-400", "border", "border-cyan-500/20");
+      } else {
+        badge.classList.add("bg-surface-base", "text-ink-muted", "border", "border-hairline");
+      }
+    }
+
+    // 2. Masked Key
+    const keyEl = document.getElementById("licKeyMasked");
+    if (keyEl) {
+      keyEl.textContent = data.key_masked || "COMMUNITY-EDITION";
+    }
+
+    // 3. Hardware Fingerprint
+    const hwEl = document.getElementById("licHardwareId");
+    if (hwEl) {
+      const hwId = data.hardware_id || "localhost";
+      hwEl.textContent = hwId;
+      hwEl.title = hwId;
+      hwEl.setAttribute("data-full-id", hwId);
+    }
+
+    // 4. Lease Expiry
+    const leaseEl = document.getElementById("licLeaseExpiry");
+    if (leaseEl) {
+      if (data.lease_expires_at) {
+        try {
+          const exp = new Date(data.lease_expires_at);
+          leaseEl.textContent = `Expires ${exp.toLocaleDateString()} ${exp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        } catch (_) {
+          leaseEl.textContent = data.lease_expires_at;
+        }
+      } else {
+        leaseEl.textContent = data.is_community ? "Perpetual / Offline" : "Active Offline Lease";
+      }
+    }
+
+    // 5. Quotas
+    const limits = data.limits || {};
+    const backendsQuotaEl = document.getElementById("licBackendsQuota");
+    if (backendsQuotaEl) {
+      backendsQuotaEl.textContent = limits.max_backends !== undefined ? `${limits.max_backends} max` : "Unlimited";
+    }
+
+    const keysQuotaEl = document.getElementById("licKeysQuota");
+    if (keysQuotaEl) {
+      keysQuotaEl.textContent = limits.max_keys !== undefined ? `${limits.max_keys} max` : "Unlimited";
+    }
+
+    // 6. Features Checklist
+    const features = data.features || {};
+    const featChecks = [
+      { id: "licFeatSemanticCache", enabled: Boolean(features.semantic_cache) },
+      { id: "licFeatComplexityRouting", enabled: Boolean(features.complexity_routing) },
+      { id: "licFeatLiveTraces", enabled: Boolean(features.live_traces) },
+      { id: "licFeatAuditLogs", enabled: Boolean(features.audit_logs) },
+    ];
+
+    featChecks.forEach(({ id, enabled }) => {
+      const container = document.getElementById(id);
+      if (!container) return;
+      const icon = container.querySelector(".feature-icon");
+      if (icon) {
+        if (enabled) {
+          icon.setAttribute("data-lucide", "check-circle-2");
+          icon.className = "w-4 h-4 text-ok feature-icon";
+        } else {
+          icon.setAttribute("data-lucide", "x-circle");
+          icon.className = "w-4 h-4 text-ink-muted feature-icon";
+        }
+      }
+    });
+
+    if (window.lucide && typeof lucide.createIcons === "function") {
+      lucide.createIcons();
+    }
+  } catch (err) {
+    console.error("Failed to load license status:", err);
+  }
+}
+
+function initLicenseControls() {
+  const refreshBtn = document.getElementById("btnRefreshLicense");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      refreshBtn.disabled = true;
+      try {
+        const res = await fetchWithCsrf("/admin/license/refresh", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          showToast("License Lease", "License lease refreshed successfully.");
+          await loadLicenseStatus();
+        } else {
+          const body = await res.json().catch(() => ({}));
+          showToast("License Error", body.detail || "Failed to refresh license lease.", "error");
+        }
+      } catch (err) {
+        showToast("License Error", "Network error while refreshing license.", "error");
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    });
+  }
+
+  const deactivateBtn = document.getElementById("btnDeactivateLicense");
+  if (deactivateBtn) {
+    deactivateBtn.addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to deactivate this gateway license seat? The gateway will revert to Community mode.")) {
+        return;
+      }
+      deactivateBtn.disabled = true;
+      try {
+        const res = await fetchWithCsrf("/admin/license/deactivate", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          showToast("Seat Deactivated", "Gateway license has been deactivated and reverted to Community tier.");
+          await loadLicenseStatus();
+        } else {
+          const body = await res.json().catch(() => ({}));
+          showToast("Deactivation Error", body.detail || "Failed to deactivate license.", "error");
+        }
+      } catch (err) {
+        showToast("Deactivation Error", "Network error during deactivation.", "error");
+      } finally {
+        deactivateBtn.disabled = false;
+      }
+    });
+  }
+
+  const copyBtn = document.getElementById("btnCopyHardwareId");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      const hwEl = document.getElementById("licHardwareId");
+      if (!hwEl) return;
+      const text = hwEl.getAttribute("data-full-id") || hwEl.textContent || "";
+      if (!text || text === "...") return;
+      navigator.clipboard.writeText(text).then(
+        () => showToast("Copied", "Hardware fingerprint copied to clipboard."),
+        () => showToast("Notice", "Failed to copy hardware fingerprint.", "warning")
+      );
+    });
+  }
+}
+
 loadSettings();
 loadInvites();
 loadScopeRules();
 initThemeToggle();
+initLicenseControls();

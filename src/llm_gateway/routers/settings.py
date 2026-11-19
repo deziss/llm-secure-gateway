@@ -1,9 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from ..models import SystemSetting, _utcnow
-from ..database import get_session
+
+try:
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from ..models import SystemSetting, _utcnow
+    from ..database import get_session
+except (ImportError, ModuleNotFoundError):
+    AsyncSession = None  # type: ignore
+    SystemSetting = None  # type: ignore
+    _utcnow = None  # type: ignore
+    def get_session():  # type: ignore
+        pass
+
 from .admin import require_admin
+from ..licensing.client import get_licencia_client
 
 router = APIRouter(prefix="/admin", tags=["admin-settings"])
 
@@ -64,3 +74,21 @@ async def update_setting(
     await session.commit()
     await session.refresh(setting)
     return setting
+
+@router.get("/license/status")
+async def get_license_status(user = Depends(require_admin)):
+    client = get_licencia_client()
+    return client.state.model_dump()
+
+@router.post("/license/refresh")
+async def refresh_license(user = Depends(require_admin)):
+    client = get_licencia_client()
+    state = await client.validate()
+    return state.model_dump()
+
+@router.post("/license/deactivate")
+async def deactivate_license_seat(user = Depends(require_admin)):
+    client = get_licencia_client()
+    success = await client.deactivate()
+    return {"success": success}
+
