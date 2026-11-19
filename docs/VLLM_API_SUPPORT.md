@@ -324,9 +324,17 @@ ENABLE_RETRY_BACKOFF=false
 - Check API key rate limit: `rate_limit_rpm` setting
 - Use a different API key or request higher limits from admin
 
-### Connection Errors (502)
-- Verify backend URL is reachable
-- Check circuit breaker status in logs
+### Connection Errors (502) & `httpx.ReadError`
+- **Immediate Socket Termination (0.02s - 0.04s)**:
+  - **Symptom**: Gateway logs show `Upstream ReadError: connection reset before headers` / `[Errno 104] Connection reset by peer` within milliseconds of request dispatch.
+  - **Cause 1: Raw Multibyte UTF-8 Characters**: Large agent tool schemas or prompts containing typographic Unicode characters (em-dashes `—`, curved quotes `“` `”`, arrows `→`, math symbols `≤`, `≥`) can cause vLLM's internal C++ tokenizer/parser to abort the TCP socket when sent unescaped.
+    - *Resolution*: The gateway enforces `serialize_json_body()` with `ensure_ascii=True`, converting all non-ASCII characters to standard `\uXXXX` escape sequences before dispatch.
+  - **Cause 2: Non-standard Thinking/Reasoning History**: Coding agents (VS Code Copilot, Cline, Roo Code) replaying multi-turn conversation history with internal chain-of-thought fields (`reasoning`, `reasoning_content`, `cot_id`, `cot_summary`) can crash vLLM's Jinja chat template engine.
+    - *Resolution*: The gateway automatically strips non-standard reasoning fields and formats stringified `tool_calls` into standard lists in `normalize_backend_payload()`.
+  - **Cause 3: Hop-by-Hop Header Poisoning**: Client requests carrying `Connection: close` or hop-by-hop headers can break upstream persistent HTTP connection pools.
+    - *Resolution*: The gateway strips all hop-by-hop headers per RFC 7230/9110 before upstream transmission.
+- Verify backend URL is reachable (`curl -v http://<vllm-host>:<port>/health`)
+- Check circuit breaker status in logs (`Circuit breaker OPEN for backend...`)
 - Confirm firewall allows connection
 
 ## Next Steps

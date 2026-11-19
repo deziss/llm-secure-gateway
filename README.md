@@ -342,7 +342,8 @@ See **[TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md)** for Phoenix projects, per-tenan
 
 | Document | Purpose |
 | :--- | :--- |
-| [USER_GUIDE.md](USER_GUIDE.md) | Step-by-step walkthrough for configuring backends, owners, and keys |
+| [USER_GUIDE.md](USER_GUIDE.md) | Step-by-step walkthrough for backends, spend quotas, failover & troubleshooting |
+| [docs/VLLM_API_SUPPORT.md](docs/VLLM_API_SUPPORT.md) | vLLM integration, supported endpoints, and connection/encoding troubleshooting |
 | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | Complete reference for all REST endpoints, request bodies, and responses |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | In-depth architectural designs, sequence diagrams, and security models |
 | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) | Observability: admin page, `/metrics`, GPU agent, export presets and metric reference |

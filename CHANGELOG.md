@@ -1,3 +1,29 @@
+## [0.16.1] - 2026-11-19
+
+### 🐛 Upstream vLLM/Local Backend Stability & Coding Agent Reliability
+
+- **ASCII-Safe JSON Serialization (`ensure_ascii=True`)**:
+  - Implemented `serialize_json_body()` to force pure ASCII JSON encoding (`\uXXXX` escaping) across all upstream proxy dispatch paths (`try_backend_with_fallback`, Anthropic translation, and TTS endpoints).
+  - Resolved critical `httpx.ReadError` / `Connection reset by peer` (Errno 104) where upstream vLLM and local C++ tokenizers/parsers abruptly terminated TCP sockets when processing large payloads containing raw multi-byte UTF-8 typographical characters (em-dashes `—`, en-dashes `–`, curved quotes `“` `”`, arrows `→`, and math symbols `≤`, `≥`) common in agent tool definitions and system prompts.
+  - Enforced explicit `Content-Length` and `Content-Type: application/json` headers on serialized request bodies.
+
+- **Agent Conversation History Sanitization**:
+  - Automatically stripped non-standard thinking/reasoning history fields (`reasoning`, `reasoning_content`, `cot_id`, `cot_summary`) replayed by multi-turn coding agents (VS Code Copilot SDK, Cline, Roo Code) before dispatching to vLLM, Ollama, and llama.cpp backends.
+  - Automatically deserialized stringified `tool_calls` into standard JSON lists and ensured valid `role` assignment across all conversation turns.
+  - Fixed Jinja chat template rendering crashes and instant socket resets on vLLM backends.
+
+- **RFC 7230/9110 Hop-by-Hop Header Stripping**:
+  - Stripped all hop-by-hop headers (`connection`, `keep-alive`, `proxy-authenticate`, `proxy-authorization`, `te`, `trailers`, `transfer-encoding`, `upgrade`) from forwarded backend requests, preventing client `Connection: close` headers from poisoning persistent HTTPX connection pools.
+
+- **Circuit Breaker & Fallback Exception Safety**:
+  - Guaranteed valid `BaseException` instantiation in `try_backend_with_fallback` and fallback re-raise paths, resolving `TypeError: exceptions must derive from BaseException`.
+  - Added half-open probe fallback to prevent deadlocks when all target URLs are in open circuit breaker states.
+
+- **Admin UI Table Rendering & Asset Cache Invalidation**:
+  - Restored data table rendering on `/admin/view/servers` and `/admin/view/projects` by adding comprehensive compatibility shims for `$.fn.dataTable`, `$.fn.DataTable`, `rows().invalidate()`, `.draw()`, and `.api()`.
+  - Enforced dynamic per-render asset cache busting `?v={{ asset_v }}` to prevent stale browser disk caching.
+  - Capped OpenTelemetry flattened attributes to prevent span buffer overflow drops.
+
 ## [0.16.0] - 2026-11-19
 
 ### 🚀 Enterprise UI Revamp & Licencia Licensing

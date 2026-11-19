@@ -242,3 +242,19 @@ Virtual model names decouple client code from specific provider infrastructure.
 - **URL**: `http://localhost:6130/admin/view/aliases`
 - **Virtual Aliases**: Map client model requests like `smart-model` to `llama-3.3-70b` on `vllm-node1`.
 - **Failover Chains**: Define prioritized fallback targets to automatically retry queries against backup models or providers on 429 rate limits or 5xx server errors.
+
+---
+
+## 10. Troubleshooting Common Issues
+
+### Upstream 502 Bad Gateway / `httpx.ReadError`
+- **Symptom**: Requests fail with `502 Bad Gateway` within milliseconds (20ms–50ms) in Live Traces, or `httpx.ReadError: [Errno 104] Connection reset by peer` in logs.
+- **Root Cause & Resolution**:
+  - **Non-ASCII / Unicode Typographical Characters**: Payloads containing typographic Unicode characters (em-dashes `—`, curly quotes `“`, arrows `→`, or math symbols) can trigger immediate socket aborts on upstream vLLM/C++ engines when sent unescaped. The Gateway automatically applies ASCII-safe JSON serialization (`ensure_ascii=True`) to escape these as `\uXXXX`.
+  - **Coding Agent History Replay**: When using tools like VS Code Copilot SDK, Cline, or Roo Code, prior conversation history replayed to the model may contain internal thinking attributes (`reasoning`, `reasoning_content`, `cot_id`, `cot_summary`). The Gateway sanitizes these fields before upstream forwarding to prevent vLLM Jinja template crashes.
+  - **Hop-by-Hop Headers**: Client requests containing `Connection: close` can disrupt persistent connection pools. The Gateway strips hop-by-hop headers per RFC 7230/9110 to keep connection pools healthy.
+
+### Admin Tables Appear Empty
+- If Model Servers (`/admin/view/servers`) or Projects (`/admin/view/projects`) render headers without data rows:
+  - Perform a hard refresh (**Ctrl + Shift + R** or **Cmd + Shift + R**) to ensure your browser fetches the latest dynamic cache-busted bundle (`?v={{ asset_v }}`).
+

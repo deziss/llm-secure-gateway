@@ -678,6 +678,13 @@ http://vllm:8000 (if using docker network)
 - [ ] No "Invalid API key" errors
 - [ ] Rate limits respected
 
+### Upstream Socket Abort & ReadError Diagnosis
+- [ ] **Socket Abort in <0.1s**: If vLLM immediately terminates the connection with `Connection reset by peer` / `httpx.ReadError`:
+  - Ensure the request body is encoded with `ensure_ascii=True` (`serialize_json_body()`) so non-ASCII characters (`—`, `“`, `”`, `→`) are escaped as `\uXXXX`.
+  - Ensure conversation history does not contain replayed internal assistant thinking fields (`reasoning`, `reasoning_content`, `cot_id`, `cot_summary`) which cause vLLM's Jinja chat template to crash.
+  - Verify all hop-by-hop headers (`Connection: close`, `Keep-Alive`, `Transfer-Encoding`) are stripped to protect HTTPX keep-alive pooling.
+- [ ] **Timeout vs Socket Drop**: Check duration in logs or Live Traces. If duration is under 100ms, it is a socket termination / template crash, not an HTTP read timeout.
+
 ---
 
 ## 11. Key Files Reference
