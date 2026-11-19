@@ -320,6 +320,10 @@ llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes * 100
   - Upstream LLM backend (e.g. vLLM or llama.cpp) aborted the TCP socket immediately before responding.
   - Check for non-ASCII typographical characters (`—`, `“`, `”`, `→`) or replayed agent thinking fields (`reasoning`, `cot_id`). The Gateway automatically escapes characters via `ensure_ascii=True` and sanitizes agent histories.
   - Verify upstream engine health via `curl http://<backend-host>:<port>/health`.
+- **Live Traces timestamps and charts timezone:**
+  - All backend traces and database metrics are stored and transferred in unambiguous UTC ISO 8601 (`+00:00` or `Z`).
+  - The UI automatically parses backend UTC datetimes via `window.parseIsoDate()` and renders them in the operator's local browser timezone (e.g. IST / UTC+05:30) in 24-hour format (`HH:mm:ss`).
+  - Hovering over any timestamp cell displays a tooltip with the complete localized date and time.
 - **Admin tables (Servers, Projects, Users) show headers but no rows:**
   - Browser is holding stale cached scripts prior to the zero-dependency `GatewayTable` update.
   - Perform a hard refresh (**Ctrl+Shift+R** / **Cmd+Shift+R**) to download the latest cache-busted asset bundle (`?v={{ asset_v }}`).
