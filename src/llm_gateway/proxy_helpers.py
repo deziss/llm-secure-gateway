@@ -368,6 +368,18 @@ async def build_backend_auth_headers(
     headers = dict(request.headers)
     headers.pop("host", None)
     headers.pop("content-length", None)
+    # Strip hop-by-hop headers per RFC 7230 / RFC 9110 to protect connection pooling
+    for hop_header in (
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailers",
+        "transfer-encoding",
+        "upgrade",
+    ):
+        headers.pop(hop_header, None)
     # Ask for an uncompressed body: thinking normalization and protocol
     # translation read it as text. (Raw passthrough would otherwise forward
     # gzip bytes under a header we may have to drop.)
@@ -630,6 +642,17 @@ def _get_all_urls(backend: LLMBackend) -> List[str]:
     return urls
 
 
+def serialize_json_body(data: Any) -> bytes:
+    """Serialize dict to JSON bytes with ensure_ascii=True.
+
+    Guarantees all non-ASCII characters (em-dashes, smart quotes, emojis, etc.)
+    are safely escaped as ASCII \\uXXXX sequences. This prevents upstream LLM servers
+    (specifically vLLM and llama.cpp HTTP engines) from abruptly terminating the
+    connection with ConnectionResetError / httpx.ReadError on raw multibyte UTF-8.
+    """
+    return json.dumps(data, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
+
+
 async def try_backend_with_fallback(
     backend: LLMBackend,
     path: str,
@@ -671,6 +694,15 @@ async def try_backend_with_fallback(
         attempt = 0
         backoff = 1.0
 
+        forward_headers = dict(headers)
+        forward_content = None
+        if body is not None:
+            forward_content = serialize_json_body(body)
+            forward_headers["content-type"] = "application/json"
+            forward_headers["content-length"] = str(len(forward_content))
+        elif raw_body is not None:
+            forward_content = raw_body
+
         while attempt < max_attempts:
             attempt += 1
             client = _get_client(base_url)
@@ -679,9 +711,8 @@ async def try_backend_with_fallback(
                 req = client.build_request(
                     method,
                     target_url,
-                    headers=headers,
-                    json=body if body else None,
-                    content=raw_body if not body else None,
+                    headers=forward_headers,
+                    content=forward_content,
                     timeout=timeout,
                 )
                 try:

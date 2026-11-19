@@ -24,6 +24,7 @@ from ..proxy_helpers import (
     try_with_cross_provider_fallback,
     _get_all_urls,
     clean_target_url,
+    serialize_json_body,
 )
 from ..rate_limit import get_rate_limiter
 import time
@@ -341,7 +342,10 @@ async def anthropic_messages_endpoint(
             dest_url = clean_target_url(u, target_path)
             try:
                 if is_stream:
-                    req_obj = client.build_request("POST", dest_url, json=forward_body, headers=headers)
+                    headers["content-type"] = "application/json"
+                    forward_bytes = serialize_json_body(forward_body)
+                    headers["content-length"] = str(len(forward_bytes))
+                    req_obj = client.build_request("POST", dest_url, content=forward_bytes, headers=headers)
                     raw_resp = await client.send(req_obj, stream=True)
                     if raw_resp.status_code >= 400:
                         err_text = await raw_resp.aread()
@@ -541,7 +545,10 @@ async def audio_speech_endpoint(
 
     dest_url = f"{backend.base_url.rstrip('/')}/v1/audio/speech"
     try:
-        req_obj = client.build_request("POST", dest_url, json=body, headers=headers)
+        headers["content-type"] = "application/json"
+        body_bytes = serialize_json_body(body)
+        headers["content-length"] = str(len(body_bytes))
+        req_obj = client.build_request("POST", dest_url, content=body_bytes, headers=headers)
         resp = await client.send(req_obj, stream=True)
         if resp.status_code >= 400:
             err = await resp.aread()
