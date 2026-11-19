@@ -47,7 +47,7 @@ dependencies = [
 
     # Auth & System utilities
     "fastapi-users[sqlalchemy]>=14.0.0",
-    "typer>=0.12.0",
+    "typer>=0.27.3",
     "jinja2>=3.1.0",
     "aiosmtplib>=3.0.0",
 ]
