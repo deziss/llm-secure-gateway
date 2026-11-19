@@ -332,6 +332,7 @@ class TestTryBackendReadErrorHandling:
     async def test_read_error_exhausts_and_raises(self):
         """When all attempts raise httpx.ReadError, records circuit failure and raises ReadError."""
         import httpx
+        import time
         from llm_gateway.proxy_helpers import try_backend_with_fallback, _circuit_breaker
 
         backend = MagicMock()
@@ -389,3 +390,59 @@ class TestTryBackendReadErrorHandling:
         # Non-dict or missing reasoning_effort is safe
         assert normalize_backend_payload(None, "vllm") is None
         assert normalize_backend_payload({"model": "gpt-4"}, "vllm") == {"model": "gpt-4"}
+
+    @pytest.mark.asyncio
+    async def test_all_circuits_open_forces_probe_and_does_not_raise_none(self):
+        """When all candidate URLs are in open circuit breaker state, it forces a probe attempt
+
+        instead of skipping all URLs and raising None (which triggers TypeError).
+        """
+        import httpx
+        import time
+        from llm_gateway.proxy_helpers import try_backend_with_fallback, _circuit_breaker
+
+        backend = MagicMock()
+        backend.base_url = "http://open-backend:8000"
+        backend.fallback_urls = []
+        backend.name = "vllm-open"
+
+        # Trip the circuit breaker for this URL
+        c = _circuit_breaker._get(backend.base_url)
+        c["state"] = "open"
+        c["failures"] = 10
+        c["last_failure"] = time.time()  # recent, within RECOVERY_TIMEOUT
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+
+        mock_client = AsyncMock()
+        mock_client.build_request = MagicMock(return_value=MagicMock())
+        mock_client.send = AsyncMock(return_value=mock_resp)
+        mock_client.is_closed = False
+
+        with patch("llm_gateway.proxy_helpers._get_client", return_value=mock_client):
+            resp, used_url, _ = await try_backend_with_fallback(
+                backend, "v1/chat/completions", "POST", {}, {"model": "test"}, None
+            )
+            assert resp.status_code == 200
+            assert used_url == "http://open-backend:8000"
+            assert mock_client.send.call_count == 1
+            # Probe succeeded, so circuit is reset
+            assert _circuit_breaker._get(backend.base_url)["state"] == "closed"
+
+    @pytest.mark.asyncio
+    async def test_empty_urls_raises_connect_error(self):
+        """When backend has no URLs, raises httpx.ConnectError rather than None/TypeError."""
+        import httpx
+        from llm_gateway.proxy_helpers import try_backend_with_fallback
+
+        backend = MagicMock()
+        backend.base_url = ""
+        backend.fallback_urls = []
+        backend.name = "empty-backend"
+
+        with pytest.raises(httpx.ConnectError) as exc_info:
+            await try_backend_with_fallback(
+                backend, "v1/chat/completions", "POST", {}, {"model": "test"}, None
+            )
+        assert "No healthy upstream URLs" in str(exc_info.value)
