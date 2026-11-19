@@ -46,6 +46,15 @@ def test_resolve_model_mapping_custom():
 def test_classify_empty_or_none():
     assert classify_complexity(None) == ComplexityTier.TIER_1_FAST
     assert classify_complexity([]) == ComplexityTier.TIER_1_FAST
+    assert classify_complexity(123) == ComplexityTier.TIER_1_FAST
+    assert classify_complexity("not a list") == ComplexityTier.TIER_1_FAST
+
+def test_classify_malformed_parts():
+    messages = [
+        {"role": "user", "content": [{"type": "text", "text": None}]},
+        "invalid_msg_string",
+    ]
+    assert classify_complexity(messages) == ComplexityTier.TIER_1_FAST
 
 def test_classify_list_content():
     messages = [

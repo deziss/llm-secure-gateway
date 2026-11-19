@@ -23,15 +23,17 @@ TIER_DEFAULTS = {
 
 def classify_complexity(messages: Optional[List[Dict[str, Any]]]) -> ComplexityTier:
     """Classify prompt into fast, standard, or reasoning tier based on heuristics."""
-    if not messages:
+    if not isinstance(messages, list) or not messages:
         return ComplexityTier.TIER_1_FAST
 
     total_chars = 0
     full_text = []
+    valid_msgs = 0
 
     for msg in messages:
         if not isinstance(msg, dict):
             continue
+        valid_msgs += 1
         content = msg.get("content", "")
         if isinstance(content, str):
             total_chars += len(content)
@@ -39,9 +41,10 @@ def classify_complexity(messages: Optional[List[Dict[str, Any]]]) -> ComplexityT
         elif isinstance(content, list):
             for part in content:
                 if isinstance(part, dict) and part.get("type") == "text":
-                    t = part.get("text", "")
-                    total_chars += len(t)
-                    full_text.append(t)
+                    t = part.get("text") or ""
+                    if isinstance(t, str):
+                        total_chars += len(t)
+                        full_text.append(t)
 
     combined = "\n".join(full_text)
 
@@ -52,9 +55,9 @@ def classify_complexity(messages: Optional[List[Dict[str, Any]]]) -> ComplexityT
 
     # 2. Token / context volume estimation (~4 chars/token)
     est_tokens = total_chars // 4
-    if est_tokens > 2500 or len(messages) >= 8:
+    if est_tokens > 2500 or valid_msgs >= 8:
         return ComplexityTier.TIER_3_REASONING
-    elif est_tokens > 300 or len(messages) >= 3:
+    elif est_tokens > 300 or valid_msgs >= 3:
         return ComplexityTier.TIER_2_STANDARD
 
     return ComplexityTier.TIER_1_FAST

@@ -392,6 +392,21 @@ async def dynamic_proxy(
         except Exception as e:
             logger.debug("Alias resolution error: %s", e)
 
+    # 0a. Complexity auto-routing (Bifrost parity)
+    if model and model.lower() in ("auto", "smart-route", "auto-router"):
+        from ..routing.complexity import classify_complexity, resolve_complexity_model
+        msgs_payload = None
+        if isinstance(body, dict):
+            msgs_payload = body.get("messages")
+            if not msgs_payload and body.get("prompt"):
+                msgs_payload = [{"role": "user", "content": body.get("prompt")}]
+        tier = classify_complexity(msgs_payload)
+        resolved_model = resolve_complexity_model(tier)
+        logger.info("Complexity router assigned model '%s' -> '%s' (Tier: %s)", model, resolved_model, tier.value)
+        model = resolved_model
+        if isinstance(body, dict):
+            body["model"] = resolved_model
+
     owner_id, is_admin_ui = get_owner_id_from_request(request)
 
     # 0a. Budget enforcement
