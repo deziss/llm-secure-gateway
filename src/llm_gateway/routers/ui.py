@@ -69,7 +69,8 @@ def get_template_context(user=None) -> dict:
     return {
         "user": user,
         "user_role": user_role,
-        "base_url": BASE_URL
+        "base_url": BASE_URL,
+        "asset_v": _asset_version(),
     }
 
 @router.get("/auth/login")
