@@ -35,6 +35,14 @@ async def register_backend(
     user = Depends(require_manager)
 ) -> LLMBackend:
     try:
+        # Check Licencia backend quota
+        from ..licensing.entitlements import check_backend_quota
+        from sqlalchemy import func, select as sa_select
+        from ..models import LLMBackend
+        count_res = await session.execute(sa_select(func.count()).select_from(LLMBackend))
+        backend_count = count_res.scalar() or 0
+        check_backend_quota(backend_count)
+
         # Sanitize inputs
         backend.name = backend.name.strip()
         backend.base_url = backend.base_url.strip().rstrip("/")

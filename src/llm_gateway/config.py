@@ -32,3 +32,10 @@ def _remember_days() -> int:
 
 # "Remember me" on the login page keeps the session this long (default 30 days).
 REMEMBER_ME_DAYS = _remember_days()
+
+# Licencia Licensing Engine Configuration
+LICENCIA_URL = os.getenv("LICENCIA_URL", "http://172.20.0.11:3000")
+LICENCIA_API_KEY = os.getenv("LICENCIA_API_KEY", "")
+LICENCIA_LICENSE_KEY = os.getenv("LICENCIA_LICENSE_KEY", "")
+LICENCIA_LEASE_FILE = os.getenv("LICENCIA_LEASE_FILE", "/tmp/gateway_license_lease.json")
+

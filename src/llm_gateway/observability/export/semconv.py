@@ -34,6 +34,12 @@ def set_llm_attributes(
     output_value: Optional[str] = None,
     input_mime_type: Optional[str] = None,
     output_mime_type: Optional[str] = None,
+    time_to_first_token: Optional[float] = None,
+    request_duration: Optional[float] = None,
+    cache_read_input_tokens: Optional[int] = None,
+    finish_reasons: Optional[list] = None,
+    error_type: Optional[str] = None,
+    **kwargs,
 ) -> None:
     """Write LLM semantic attributes onto ``span``. No-op when the span is not recording."""
     try:
@@ -68,6 +74,18 @@ def set_llm_attributes(
         _set(span, "gen_ai.usage.input_tokens", int(input_tokens))
     if output_tokens is not None:
         _set(span, "gen_ai.usage.output_tokens", int(output_tokens))
+    if cache_read_input_tokens is not None:
+        _set(span, "gen_ai.usage.cache_read_input_tokens", int(cache_read_input_tokens))
+    if time_to_first_token is not None:
+        _set(span, "gen_ai.server.time_to_first_token", time_to_first_token)
+    if request_duration is not None:
+        _set(span, "gen_ai.server.request.duration", request_duration)
+    if finish_reasons is not None:
+        _set(span, "gen_ai.response.finish_reasons", finish_reasons)
+
+    # Error taxonomy
+    if error_type is not None:
+        _set(span, "error.type", error_type)
 
     # Session / user and gateway routing
     _set(span, "user.id", user_id)

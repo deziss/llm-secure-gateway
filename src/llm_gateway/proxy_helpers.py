@@ -418,6 +418,7 @@ async def get_target_backend(
     provider: Optional[str] = None,
     owner_id: Optional[str] = None,
     strategy: Optional[str] = None,
+    messages: Optional[List[Dict[str, Any]]] = None,
 ) -> LLMBackend:
     """Resolve the appropriate backend for a given model and optional provider using Smart Routing.
 
@@ -430,6 +431,13 @@ async def get_target_backend(
     backends = await service.list_backends(session)
     if not backends:
         raise HTTPException(status_code=503, detail="No LLM backend configured")
+
+    # Dynamic Complexity-based routing for virtual auto models
+    if model and model.lower() in ("auto", "smart-route", "auto-router"):
+        from .routing.complexity import classify_complexity, resolve_complexity_model
+        tier = classify_complexity(messages)
+        model = resolve_complexity_model(tier)
+        logger.info("Complexity router assigned model '%s' (Tier: %s)", model, tier.value)
 
     # Resolve model alias if configured
     try:
@@ -867,8 +875,9 @@ async def try_with_cross_provider_fallback(
                 backend.name, exc, req_model, fallback_chain_id
             )
 
-    from .services.fallback_service import get_chain_targets
+    from .services.fallback_service import get_chain_targets, rank_fallback_targets
     targets = await get_chain_targets(session, fallback_chain_id)
+    targets = rank_fallback_targets(targets)
     backends = await service.list_backends(session)
     backends_by_name = {b.name: b for b in backends}
 

@@ -5,9 +5,9 @@ block content %}
 >
   <div>
     <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
-      <i data-lucide="folder-kanban" class="h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true"></i> Projects &amp; API keys
+      <i data-lucide="folder-kanban" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Projects &amp; API keys
     </h1>
-    <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">
+    <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       API keys, budgets and server access belong to projects. Users sign in; projects call the API.
     </p>
   </div>
@@ -16,7 +16,7 @@ block content %}
     type="button"
     id="addOwnerBtn"
     onclick="openAddModal()"
-    class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-xl transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
+    class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-control transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
   >
     <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
     <span>New project</span>
@@ -34,19 +34,19 @@ block content %}
       class="w-full text-left text-sm border-separate border-spacing-0"
     >
       <thead
-        class="bg-slate-100/50 dark:bg-slate-800/30 text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest"
+        class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest"
       >
         <tr>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Project</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Type</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Description</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50">Access Status</th>
-          <th class="p-4 border-b border-slate-200 dark:border-slate-700/50 text-right">
+          <th class="p-4 border-b border-hairline">Project</th>
+          <th class="p-4 border-b border-hairline">Type</th>
+          <th class="p-4 border-b border-hairline">Description</th>
+          <th class="p-4 border-b border-hairline">Access Status</th>
+          <th class="p-4 border-b border-hairline text-right">
             Operations
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50 text-slate-700 dark:text-slate-300">
+      <tbody class="divide-y divide-hairline text-ink">
         <!-- populated via js -->
       </tbody>
     </table>
@@ -62,15 +62,15 @@ block content %}
   onclick="if(event.target === this) closeAddModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
+    class="bg-surface-raised border border-hairline p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-        <i data-lucide="user-plus" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> New project
+      <h2 class="text-lg font-bold text-ink flex items-center gap-3">
+        <i data-lucide="user-plus" class="text-accent w-5 h-5" aria-hidden="true"></i> New project
       </h2>
       <button
         onclick="closeAddModal()"
-        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        class="text-ink-muted hover:text-ink transition"
         aria-label="Close modal"
         title="Close"
       >
@@ -90,7 +90,7 @@ block content %}
             type="text"
             id="addOwnerId"
             name="id"
-            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
             placeholder="e.g. user_123"
             required
           />
@@ -105,7 +105,7 @@ block content %}
             type="text"
             id="addOwnerName"
             name="name"
-            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
             placeholder="John Doe"
             required
           />
@@ -119,12 +119,12 @@ block content %}
           >Contact Email</label
         >
         <div class="relative">
-          <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
+          <i data-lucide="mail" class="w-4 h-4 text-ink-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
           <input
             type="email"
             id="addOwnerEmail"
             name="email"
-            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
             placeholder="team@example.com"
           />
         </div>
@@ -139,7 +139,7 @@ block content %}
         <select
           id="addOwnerType"
           name="type"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer"
         >
           <option value="user">Personal (one person)</option>
           <option value="project">Team or service</option>
@@ -156,7 +156,7 @@ block content %}
           id="addOwnerDescription"
           name="description"
           rows="2"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition resize-none"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition resize-none"
           placeholder="What is this project used for?"
         ></textarea>
       </div>
@@ -173,16 +173,16 @@ block content %}
           name="max_keys"
           value="5"
           min="1"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
           required
         />
       </div>
 
       <div
-        class="bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-2xl flex items-start gap-4"
+        class="bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-panel flex items-start gap-4"
       >
-        <div class="bg-indigo-500/20 p-2.5 rounded-xl">
-          <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
+        <div class="bg-indigo-500/20 p-2.5 rounded-control">
+          <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
           <div class="flex justify-between items-center mb-1">
@@ -198,22 +198,22 @@ block content %}
                 checked
               />
               <div
-                class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
+                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
               ></div>
             </label>
           </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400">
+          <p class="text-xs text-ink-muted">
             Restricts destructive model management API calls (pull, delete,
             create).
           </p>
         </div>
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-hairline">
         <button
           type="button"
           onclick="closeAddModal()"
-          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          class="min-h-touch px-6 py-3 bg-surface-inset hover:bg-hairline text-ink font-bold rounded-control transition"
         >
           Cancel
         </button>
@@ -237,15 +237,15 @@ block content %}
   onclick="if(event.target === this) closeEditModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
+    class="bg-surface-raised border border-hairline p-4 sm:p-5 rounded-panel max-h-[90vh] overflow-y-auto w-full max-w-lg shadow-overlay transform transition-all"
   >
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+      <h2 class="text-lg font-bold text-ink flex items-center gap-3">
         <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit project
       </h2>
       <button
         onclick="closeEditModal()"
-        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        class="text-ink-muted hover:text-ink transition"
         aria-label="Close modal"
         title="Close"
       >
@@ -265,7 +265,7 @@ block content %}
           type="text"
           name="name"
           id="editName"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
           required
         />
       </div>
@@ -280,7 +280,7 @@ block content %}
           type="email"
           name="email"
           id="editEmail"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
         />
       </div>
 
@@ -293,7 +293,7 @@ block content %}
         <select
           name="type"
           id="editType"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
         >
           <option value="user">Personal (one person)</option>
           <option value="project">Team or service</option>
@@ -301,10 +301,10 @@ block content %}
       </div>
 
       <div
-        class="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-5 rounded-2xl flex items-start gap-4"
+        class="bg-surface-inset/50 border border-hairline p-5 rounded-panel flex items-start gap-4"
       >
-        <div class="bg-indigo-500/20 p-2.5 rounded-xl">
-          <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
+        <div class="bg-indigo-500/20 p-2.5 rounded-control">
+          <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
           <div class="flex justify-between items-center mb-1">
@@ -319,20 +319,20 @@ block content %}
                 class="sr-only peer"
               />
               <div
-                class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
+                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
               ></div>
             </label>
           </div>
-          <p class="text-xs text-slate-500 font-medium">
+          <p class="text-xs text-ink-muted font-medium">
             Blocks dangerous model management API calls.
           </p>
         </div>
       </div>
 
       <div
-        class="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 p-5 rounded-2xl flex items-start gap-4"
+        class="bg-surface-inset/50 border border-hairline p-5 rounded-panel flex items-start gap-4"
       >
-        <div class="bg-emerald-500/20 p-2.5 rounded-xl">
+        <div class="bg-emerald-500/20 p-2.5 rounded-control">
           <i class="fas fa-toggle-on text-ok" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
@@ -347,11 +347,11 @@ block content %}
                 checked
               />
               <div
-                class="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"
+                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"
               ></div>
             </label>
           </div>
-          <p class="text-xs text-slate-500 font-medium">
+          <p class="text-xs text-ink-muted font-medium">
             Deactivating rejects every API request made with this project's keys.
           </p>
         </div>
@@ -367,7 +367,7 @@ block content %}
           name="description"
           id="editDescription"
           rows="2"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
           placeholder="What is this project used for?"
         ></textarea>
       </div>
@@ -384,15 +384,15 @@ block content %}
           id="editMaxKeys"
           min="1"
           max="100"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
         />
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-hairline">
         <button
           type="button"
           onclick="closeEditModal()"
-          class="min-h-touch px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition"
+          class="min-h-touch px-6 py-3 bg-surface-inset hover:bg-hairline text-ink font-bold rounded-control transition"
         >
           Cancel
         </button>
@@ -416,13 +416,13 @@ block content %}
   onclick="if(event.target === this) closePermissionsModal()"
 >
   <div
-    class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl"
+    class="bg-surface-raised border border-hairline rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl"
   >
     <div
-      class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20"
+      class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset/50"
     >
       <div>
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <h2 class="text-lg font-bold text-ink flex items-center gap-3">
           <i data-lucide="shield-check" class="text-emerald-500 w-5 h-5" aria-hidden="true"></i> Server access
         </h2>
         <p
@@ -434,7 +434,7 @@ block content %}
         onclick="
           document.getElementById('permissionsModal').classList.add('hidden')
         "
-        class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+        class="text-ink-muted hover:text-ink transition"
         aria-label="Close modal"
         title="Close"
       >
@@ -446,26 +446,26 @@ block content %}
       <!-- Active Permissions -->
       <div>
         <h3
-          class="text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
+          class="text-ink-muted text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"
         >
           <i data-lucide="layers" class="w-4 h-4" aria-hidden="true"></i> Active Grant Access
         </h3>
         <div
-          class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden"
+          class="bg-surface-inset/40 rounded-panel border border-hairline/50 overflow-hidden"
         >
           <table class="w-full text-left text-xs">
             <thead
-              class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-micro font-bold"
+              class="bg-surface-inset/50 text-ink-muted uppercase text-micro font-bold"
             >
               <tr>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">
+                <th class="p-4 border-b border-hairline/50">
                   Model server
                 </th>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Allowed Models</th>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50 text-right"></th>
+                <th class="p-4 border-b border-hairline/50">Allowed Models</th>
+                <th class="p-4 border-b border-hairline/50 text-right"></th>
               </tr>
             </thead>
-            <tbody id="permissionsList" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+            <tbody id="permissionsList" class="divide-y divide-hairline">
               <!-- Populated via JS -->
             </tbody>
           </table>
@@ -473,16 +473,16 @@ block content %}
       </div>
 
       <div id="addPermissionContainer">
-        <hr class="border-slate-200 dark:border-slate-800 mb-5" id="addPermissionDivider" />
+        <hr class="border-hairline mb-5" id="addPermissionDivider" />
         <h3
-          class="text-slate-900 dark:text-white font-bold mb-4 flex items-center gap-2"
+          class="text-ink font-bold mb-4 flex items-center gap-2"
           id="addPermissionHeader"
         >
-          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i> Grant access to a server
+          <i data-lucide="plus-circle" class="w-4 h-4 text-accent" aria-hidden="true"></i> Grant access to a server
         </h3>
         <form
           id="addPermissionForm" action="javascript:void(0);"
-          class="space-y-4 bg-slate-100/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50"
+          class="space-y-4 bg-surface-inset p-4 rounded-panel border border-hairline"
         >
           <input type="hidden" id="permFormOwnerId" />
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -494,7 +494,7 @@ block content %}
               >
               <select
                 id="permBackend"
-                class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                class="w-full bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-blue-500/50 transition"
                 required
               ></select>
             </div>
@@ -502,8 +502,8 @@ block content %}
               <div id="permEndpointsLabel" class="block text-caption font-medium text-ink-muted mb-2">
                 Endpoint Authorization
               </div>
-              <div role="group" aria-labelledby="permEndpointsLabel" class="w-full bg-surface-inset border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
-                <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i>
+              <div role="group" aria-labelledby="permEndpointsLabel" class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink-muted text-xs flex items-center gap-2">
+                <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i>
                 Controlled by API Key Scopes (configured per key)
               </div>
               <input type="hidden" id="permEndpoints" value="*" />
@@ -519,7 +519,7 @@ block content %}
               type="text"
               id="permModels"
               value="*"
-              class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+              class="w-full bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-blue-500/50 transition"
               required
             />
           </div>
@@ -539,62 +539,62 @@ block content %}
 
 <!-- Manage Keys Modal -->
 <div id="keysModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeKeysModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
-    <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
+  <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
+    <div class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset/50">
       <div>
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-5 h-5" aria-hidden="true"></i> Manage API Keys</h2>
+        <h2 class="text-lg font-bold text-ink flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-5 h-5" aria-hidden="true"></i> Manage API Keys</h2>
         <p class="text-warn text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
       </div>
-      <button type="button" onclick="closeKeysModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
+      <button type="button" onclick="closeKeysModal()" class="text-ink-muted hover:text-ink transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
     </div>
     <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-5">
       <div>
-        <h3 class="text-slate-500 dark:text-slate-400 text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4" aria-hidden="true"></i> Active Keys</h3>
-        <div class="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-800/50 overflow-hidden">
+        <h3 class="text-ink-muted text-micro font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4" aria-hidden="true"></i> Active Keys</h3>
+        <div class="bg-surface-inset/40 rounded-panel border border-hairline/50 overflow-hidden">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-100 dark:bg-slate-800/50 text-slate-500 uppercase text-micro font-bold">
+            <thead class="bg-surface-inset/50 text-ink-muted uppercase text-micro font-bold">
               <tr>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Key Prefix</th>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Scopes</th>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Created</th>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50">Expires</th>
-                <th class="p-4 border-b border-slate-200 dark:border-slate-800/50 text-right">Actions</th>
+                <th class="p-4 border-b border-hairline/50">Key Prefix</th>
+                <th class="p-4 border-b border-hairline/50">Scopes</th>
+                <th class="p-4 border-b border-hairline/50">Created</th>
+                <th class="p-4 border-b border-hairline/50">Expires</th>
+                <th class="p-4 border-b border-hairline/50 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody id="keysList" class="divide-y divide-slate-200 dark:divide-slate-800/50">
+            <tbody id="keysList" class="divide-y divide-hairline">
               <!-- Populated via JS -->
             </tbody>
           </table>
         </div>
       </div>
       <!-- Scope selector for new keys -->
-      <div class="bg-slate-100/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-4">
-        <h3 class="text-slate-900 dark:text-white font-bold flex items-center gap-2 text-sm">
-          <i class="fas fa-shield-alt text-indigo-400" aria-hidden="true"></i> New Key Scopes
+      <div class="bg-surface-inset p-4 rounded-panel border border-hairline space-y-4">
+        <h3 class="text-ink font-bold flex items-center gap-2 text-sm">
+          <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i> New Key Scopes
         </h3>
         <div id="scopeCheckboxes" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:chat" checked class="accent-indigo-500" />
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:chat</span>
+            <span class="text-xs font-bold text-ink">llm:chat</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:embed" class="accent-indigo-500" />
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:embed</span>
+            <span class="text-xs font-bold text-ink">llm:embed</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:read" class="accent-indigo-500" />
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:read</span>
+            <span class="text-xs font-bold text-ink">llm:read</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="llm:*" class="accent-indigo-500" />
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">llm:*</span>
-            <span class="text-micro text-slate-500">(all)</span>
+            <span class="text-xs font-bold text-ink">llm:*</span>
+            <span class="text-micro text-ink-muted">(all)</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
             <input type="checkbox" name="newKeyScope" value="admin:*" class="accent-indigo-500" />
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">admin:*</span>
+            <span class="text-xs font-bold text-ink">admin:*</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-rose-700/50 rounded-xl cursor-pointer hover:border-rose-500/50 transition has-[:checked]:border-rose-500 has-[:checked]:bg-rose-500/10">
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-rose-700/50 rounded-control cursor-pointer hover:border-rose-500/50 transition has-[:checked]:border-rose-500 has-[:checked]:bg-rose-500/10">
             <input type="checkbox" name="newKeyScope" value="*" class="accent-rose-500" />
             <span class="text-xs font-bold text-rose-400">* (full)</span>
           </label>
@@ -611,43 +611,43 @@ block content %}
 
 <!-- Client Setup Snippets Modal -->
 <div id="snippetsModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[70] p-4" role="dialog" aria-modal="true" onclick="if(event.target === this) closeSnippetsModal()">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
-    <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/20">
+  <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
+    <div class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset/50">
       <div>
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <i data-lucide="terminal" class="text-indigo-500 w-5 h-5" aria-hidden="true"></i> Client Setup Snippets
+        <h2 class="text-lg font-bold text-ink flex items-center gap-3">
+          <i data-lucide="terminal" class="text-accent w-5 h-5" aria-hidden="true"></i> Client Setup Snippets
         </h2>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+        <p class="text-xs text-ink-muted mt-0.5">
           One-click connection snippets for Claude Code, Cursor, Python SDK, Continue.dev, and cURL.
         </p>
       </div>
-      <button type="button" onclick="closeSnippetsModal()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="Close modal" title="Close">
+      <button type="button" onclick="closeSnippetsModal()" class="text-ink-muted hover:text-ink transition" aria-label="Close modal" title="Close">
         <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
       </button>
     </div>
 
     <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4">
       <!-- Target Key & Model Configuration Strip -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-100/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-100/60 dark:bg-slate-800/40 p-3.5 rounded-control border border-hairline">
         <div>
-          <label for="snippetApiKeyInput" class="block text-micro font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+          <label for="snippetApiKeyInput" class="block text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">
             API Key
           </label>
           <input
             type="text"
             id="snippetApiKeyInput"
-            class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none"
+            class="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none"
             placeholder="YOUR_API_KEY"
           />
         </div>
         <div>
-          <label for="snippetModelInput" class="block text-micro font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+          <label for="snippetModelInput" class="block text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">
             Model
           </label>
           <input
             type="text"
             id="snippetModelInput"
-            class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none"
+            class="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none"
             value="default"
             placeholder="default or model-name"
           />
@@ -655,38 +655,38 @@ block content %}
       </div>
 
       <!-- Tab Buttons -->
-      <div class="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3" role="tablist">
+      <div class="flex flex-wrap gap-2 border-b border-hairline pb-3" role="tablist">
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-accent text-accent-ink border-transparent"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-accent text-accent-ink border-transparent"
           data-tab="claude_code"
         >
           <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Claude Code
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/50"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
           data-tab="cursor"
         >
           <i data-lucide="code" class="w-3.5 h-3.5"></i> Cursor
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/50"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
           data-tab="python_sdk"
         >
           <i data-lucide="file-code" class="w-3.5 h-3.5"></i> Python SDK
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/50"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
           data-tab="continue_dev"
         >
           <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Continue.dev
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/50"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
           data-tab="curl"
         >
           <i data-lucide="send" class="w-3.5 h-3.5"></i> cURL
@@ -695,16 +695,16 @@ block content %}
 
       <!-- Sub-variant selector (for Python SDK & cURL variants) -->
       <div id="snippetVariantBar" class="hidden flex items-center justify-between text-xs">
-        <span class="text-slate-500 dark:text-slate-400 font-medium" id="snippetVariantLabel">SDK Flavor:</span>
-        <div class="inline-flex rounded-lg p-0.5 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700" id="snippetVariantButtons">
+        <span class="text-ink-muted font-medium" id="snippetVariantLabel">SDK Flavor:</span>
+        <div class="inline-flex rounded-lg p-0.5 bg-slate-200 dark:bg-slate-800 border border-hairline" id="snippetVariantButtons">
           <!-- Populated dynamically (OpenAI vs Anthropic) -->
         </div>
       </div>
 
       <!-- Code Snippet Display Block with Copy button -->
-      <div class="relative rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-950 text-slate-100 overflow-hidden shadow-sm">
+      <div class="relative rounded-control border border-slate-300 dark:border-slate-800 bg-slate-950 text-slate-100 overflow-hidden shadow-sm">
         <div class="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800">
-          <span class="text-micro font-mono font-bold text-slate-400 tracking-wider uppercase" id="snippetFormatTitle">Snippet</span>
+          <span class="text-micro font-mono font-bold text-ink-muted tracking-wider uppercase" id="snippetFormatTitle">Snippet</span>
           <button
             type="button"
             id="copySnippetBtn"
@@ -722,11 +722,11 @@ block content %}
       </div>
     </div>
 
-    <div class="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 flex justify-end bg-slate-50 dark:bg-slate-800/20">
+    <div class="p-4 sm:p-5 border-t border-hairline flex justify-end bg-surface-inset/50">
       <button
         type="button"
         onclick="closeSnippetsModal()"
-        class="min-h-touch px-6 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-xl transition text-xs cursor-pointer"
+        class="min-h-touch px-6 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-ink font-bold rounded-control transition text-xs cursor-pointer"
       >
         Done
       </button>

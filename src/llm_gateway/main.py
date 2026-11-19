@@ -39,8 +39,11 @@ async def create_default_admin() -> None:
         result = await session.execute(select(User).where(User.email == admin_email))
         admin_user = result.scalars().first()
 
+        from fastapi_users.password import PasswordHelper
+        helper = PasswordHelper()
+
         if not admin_user:
-            hashed = bcrypt.hashpw(admin_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            hashed = helper.hash(admin_password)
             new_admin = User(
                 id=uuid.uuid4(),
                 email=admin_email,
@@ -55,8 +58,6 @@ async def create_default_admin() -> None:
             logging.getLogger(__name__).info(f"Created default admin user: {admin_email}")
         else:
             # Sync password if DEFAULT_ADMIN_PASSWORD was updated in .env
-            from fastapi_users.password import PasswordHelper
-            helper = PasswordHelper()
             verified, _ = helper.verify_and_update(admin_password, admin_user.hashed_password)
             if not verified:
                 admin_user.hashed_password = helper.hash(admin_password)
@@ -96,6 +97,16 @@ async def lifespan(app: FastAPI):
         integ_task = asyncio.create_task(integrations_loop())
     except ImportError as exc:
         logging.getLogger(__name__).warning("integrations manager unavailable: %s", exc)
+
+    # Licencia licensing initialization & periodic check-in loop
+    lic_task = None
+    try:
+        from .licensing.manager import start_licensing, licencia_checkin_loop
+        await start_licensing()
+        lic_task = asyncio.create_task(licencia_checkin_loop())
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Licencia manager startup error: %s", exc)
+
     try:
         yield
     finally:
@@ -103,6 +114,13 @@ async def lifespan(app: FastAPI):
         for t in (poll_task, integ_task):
             if t is not None:
                 t.cancel()
+        if lic_task is not None:
+            lic_task.cancel()
+        try:
+            from .licensing.manager import stop_licensing
+            await stop_licensing()
+        except Exception as exc:
+            logging.getLogger(__name__).debug("Licencia shutdown error: %s", exc)
         from .proxy_helpers import close_all_clients
         await close_all_clients()
 

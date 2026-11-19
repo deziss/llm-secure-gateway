@@ -35,6 +35,7 @@ from .collect import gpu as gpu_mod
 from .collect import poller
 from .collect.groups import OVERRIDES_KEY, group_key, load_overrides, validate_overrides
 from .store import calculate_percentile
+from .traces import get_trace_buffer
 
 logger = logging.getLogger(__name__)
 
@@ -627,6 +628,13 @@ async def stream(request: Request, session: AsyncSession = Depends(get_session),
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@router.get("/traces")
+async def list_recent_traces(limit: int = 100):
+    """Retrieve in-memory traces for the live trace waterfall explorer."""
+    buf = get_trace_buffer()
+    return [t.model_dump() for t in buf.get_all(limit=limit)]
 
 
 class TracemallocIn(BaseModel):

@@ -147,6 +147,16 @@ async def anthropic_messages_endpoint(
     provider = prov_hint or query_prov
     model = clean_model
 
+    # Complexity auto-routing (Bifrost parity)
+    if model and model.lower() in ("auto", "smart-route", "auto-router"):
+        from ..routing.complexity import classify_complexity, resolve_complexity_model
+        tier = classify_complexity(body.get("messages", []) if isinstance(body, dict) else None)
+        resolved_model = resolve_complexity_model(tier)
+        logger.info("Complexity router assigned model '%s' -> '%s' (Tier: %s)", model, resolved_model, tier.value)
+        model = resolved_model
+        if isinstance(body, dict):
+            body["model"] = resolved_model
+
     owner_id, is_admin_ui = get_owner_id_from_request(request)
     
     enable_budget = await config_service.get_setting(session, "ENABLE_BUDGET_ENFORCEMENT", "true")
@@ -155,7 +165,14 @@ async def anthropic_messages_endpoint(
         api_key_hash = getattr(request.state.user, "key_hash", None) if hasattr(request.state, "user") else None
         await check_budget(session, owner_id, api_key_hash)
 
-    backend = await get_target_backend(model, config_service, session, provider=provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model,
+        config_service,
+        session,
+        provider=provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
     is_native_anthropic = (
         str(getattr(backend.backend_type, "value", backend.backend_type)).lower() == "anthropic"
     )
@@ -163,12 +180,33 @@ async def anthropic_messages_endpoint(
     if not is_admin_ui:
         target_perm_ep = "/v1/messages" if is_native_anthropic else "/v1/chat/completions"
         await check_owner_permissions(session, owner_id, backend, target_perm_ep, model)
+
+    if isinstance(body, dict) and "messages" in body:
+        enable_guardrails = await config_service.get_setting(session, "ENABLE_GUARDRAILS", "false")
+        if str(enable_guardrails).lower() == "true":
+            from ..services.guardrails_service import evaluate_guardrail, GuardrailPhase
+            sensitivity = await config_service.get_setting(session, "GUARDRAIL_SENSITIVITY", "medium")
+            decision = evaluate_guardrail(
+                GuardrailPhase.PRE_CALL,
+                body.get("messages", []),
+                sensitivity=sensitivity,
+            )
+            if not decision.is_allowed:
+                logger.warning("Prompt injection blocked: %s", decision.matches)
+                raise HTTPException(status_code=400, detail=f"Guardrail violation: {decision.reason}")
     
     is_stream = bool(body.get("stream", False))
     from ..proxy_helpers import _get_client, build_backend_auth_headers, _get_all_urls
 
     headers = await build_backend_auth_headers(request, backend, session, owner_id, backend.name)
     headers["Content-Type"] = "application/json"
+
+    if "anthropic" in backend.name.lower() or "claude" in (model or "").lower() or is_native_anthropic:
+        existing_beta = headers.get("anthropic-beta")
+        if not existing_beta:
+            headers["anthropic-beta"] = "prompt-caching-2024-07-31"
+        elif "prompt-caching" not in existing_beta:
+            headers["anthropic-beta"] = f"{existing_beta},prompt-caching-2024-07-31"
 
     if is_native_anthropic:
         forward_body = dict(body)
@@ -489,7 +527,14 @@ async def audio_speech_endpoint(
     provider = prov_hint or query_prov
     model = clean_model
 
-    backend = await get_target_backend(model, config_service, session, provider=provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model,
+        config_service,
+        session,
+        provider=provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
     client = _get_client(backend.base_url)
     headers = await build_backend_auth_headers(request, backend, session, owner_id, backend.name)
     headers["Content-Type"] = "application/json"
@@ -559,6 +604,21 @@ async def _proxy_request_core(
         except Exception as e:
             logger.debug("Alias resolution error: %s", e)
 
+    # 0a. Complexity auto-routing (Bifrost parity)
+    if model and model.lower() in ("auto", "smart-route", "auto-router"):
+        from ..routing.complexity import classify_complexity, resolve_complexity_model
+        msgs_payload = None
+        if isinstance(body, dict):
+            msgs_payload = body.get("messages")
+            if not msgs_payload and body.get("prompt"):
+                msgs_payload = [{"role": "user", "content": body.get("prompt")}]
+        tier = classify_complexity(msgs_payload)
+        resolved_model = resolve_complexity_model(tier)
+        logger.info("Complexity router assigned model '%s' -> '%s' (Tier: %s)", model, resolved_model, tier.value)
+        model = resolved_model
+        if isinstance(body, dict):
+            body["model"] = resolved_model
+
     # Provider resolution & prefix stripping (e.g. 'vllm-node1/llama-3.1-8b' or ?provider=vllm-node1)
     query_prov = request.query_params.get("provider")
     if query_prov and not provider:
@@ -602,12 +662,16 @@ async def _proxy_request_core(
     if isinstance(body, dict) and "messages" in body:
         enable_guardrails = await config_service.get_setting(session, "ENABLE_GUARDRAILS", "false")
         if str(enable_guardrails).lower() == "true":
-            from ..services.guardrails_service import check_prompt_injection
+            from ..services.guardrails_service import evaluate_guardrail, GuardrailPhase
             sensitivity = await config_service.get_setting(session, "GUARDRAIL_SENSITIVITY", "medium")
-            is_safe, _, matches = check_prompt_injection(body["messages"], sensitivity=sensitivity)
-            if not is_safe:
-                logger.warning("Prompt injection blocked: %s", matches)
-                raise HTTPException(status_code=400, detail="Request blocked by safety guardrails: prompt injection detected")
+            decision = evaluate_guardrail(
+                GuardrailPhase.PRE_CALL,
+                body.get("messages", []),
+                sensitivity=sensitivity,
+            )
+            if not decision.is_allowed:
+                logger.warning("Prompt injection blocked: %s", decision.matches)
+                raise HTTPException(status_code=400, detail=f"Guardrail violation: {decision.reason}")
 
         enable_pii = await config_service.get_setting(session, "ENABLE_PII_MASKING", "false")
         if str(enable_pii).lower() == "true":
@@ -653,7 +717,14 @@ async def _proxy_request_core(
                         )
 
     # Resolve backend
-    backend = await get_target_backend(model, config_service, session, provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model,
+        config_service,
+        session,
+        provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
 
     if not is_admin_ui:
         await check_owner_permissions(session, owner_id, backend, path, model)
@@ -674,6 +745,16 @@ async def _proxy_request_core(
     provider_id = provider if provider else backend.backend_type.value
 
     headers = await build_backend_auth_headers(request, backend, session, owner_id, provider_id)
+
+    is_native_anthropic = (
+        str(getattr(backend.backend_type, "value", backend.backend_type)).lower() == "anthropic"
+    )
+    if "anthropic" in backend.name.lower() or "claude" in (model or "").lower() or is_native_anthropic:
+        existing_beta = headers.get("anthropic-beta")
+        if not existing_beta:
+            headers["anthropic-beta"] = "prompt-caching-2024-07-31"
+        elif "prompt-caching" not in existing_beta:
+            headers["anthropic-beta"] = f"{existing_beta},prompt-caching-2024-07-31"
 
     # ---------------------------------------------------------
     # Manual Span Management for Streaming & Detailed Telemetry
