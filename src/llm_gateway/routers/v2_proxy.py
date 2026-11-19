@@ -468,7 +468,14 @@ async def dynamic_proxy(
         if fast_response:
             return fast_response
 
-    backend = await get_target_backend(model or "unknown", config_service, session, provider=provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model or "unknown",
+        config_service,
+        session,
+        provider=provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
 
     # 2. Protocol Translation request mapping
     enable_translation = await config_service.get_setting(session, "ENABLE_PROTOCOL_TRANSLATION", "false")
