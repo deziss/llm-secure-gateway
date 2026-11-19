@@ -432,6 +432,9 @@
           }
           return new GatewayTable(first, opts);
         },
+        dataTable: function (opts) {
+          return this.DataTable(opts);
+        },
         find: function (selector) {
           if (!first) return createWrapper([]);
           try {
@@ -647,11 +650,14 @@
       return target;
     };
 
+    const dataTableFn = function (opts) {
+      return $(this).DataTable(opts);
+    };
+    dataTableFn.ext = { errMode: "none" };
+    dataTableFn.defaults = { columnDefs: [] };
+
     $.fn = {
-      dataTable: {
-        ext: { errMode: "none" },
-        defaults: { columnDefs: [] },
-      },
+      dataTable: dataTableFn,
       DataTable: function (opts) {
         return $(this).DataTable(opts);
       },

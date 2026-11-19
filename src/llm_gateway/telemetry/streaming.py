@@ -24,19 +24,23 @@ from ..translation.think_tag_parser import ThinkTagParser
 logger = logging.getLogger(__name__)
 
 # Telemetry Helpers
-def flatten_attributes(data: Dict, prefix: str = "llm.input_messages") -> Dict[str, str]:
+def flatten_attributes(data: Dict, prefix: str = "llm.input_messages", max_attrs: int = 64) -> Dict[str, str]:
     """
     Flatten a list of message dictionaries into OpenTelemetry attributes.
     Follows OpenInference semantic conventions.
+    Capped at max_attrs to avoid filling the span attribute table and dropping status codes.
     """
     attributes = {}
     if not isinstance(data, list):
         return attributes
 
+    count = 0
     for i, item in enumerate(data):
         if not isinstance(item, dict):
             continue
         for key, value in item.items():
+            if count >= max_attrs:
+                return attributes
             attr_key = f"{prefix}.{i}.{key}"
             if isinstance(value, (str, int, float, bool)):
                 attributes[attr_key] = str(value)
@@ -44,6 +48,7 @@ def flatten_attributes(data: Dict, prefix: str = "llm.input_messages") -> Dict[s
                 attributes[attr_key] = ""
             else:
                 attributes[attr_key] = json.dumps(value)
+            count += 1
     return attributes
 
 

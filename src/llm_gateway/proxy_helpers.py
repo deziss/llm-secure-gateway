@@ -1,4 +1,5 @@
 """Shared helpers used by both proxy routers to eliminate duplication."""
+import json
 import httpx
 import asyncio
 import logging
@@ -829,6 +830,11 @@ def normalize_backend_payload(body: Any, backend_type: str) -> Any:
 
     - vLLM expects reasoning_effort in ('xhigh', 'medium', 'low'); OpenAI standard uses 'high'.
     - OpenAI/Azure expect reasoning_effort in ('high', 'medium', 'low').
+    - Clean up messages for upstream backends (e.g. vLLM):
+      - Ensure 'role' is present on every message in 'messages' (default to 'assistant' if tool_calls present, else 'user').
+      - Convert stringified 'tool_calls' into list of dicts.
+      - Strip non-standard client replay fields ('reasoning', 'reasoning_content', 'cot_id', 'cot_summary')
+        that cause vLLM's chat template renderer to crash with TCP connection reset (ReadError).
     """
     if not isinstance(body, dict):
         return body
@@ -844,6 +850,36 @@ def normalize_backend_payload(body: Any, backend_type: str) -> Any:
         effort = str(new_body.get("reasoning_effort", "")).lower()
         if effort == "xhigh":
             new_body["reasoning_effort"] = "high"
+
+    # Normalize messages for upstream compatibility
+    if "messages" in new_body and isinstance(new_body["messages"], list):
+        sanitized_messages = []
+        for msg in new_body["messages"]:
+            if not isinstance(msg, dict):
+                sanitized_messages.append(msg)
+                continue
+            m = dict(msg)
+            # Ensure 'role' is always present
+            if "role" not in m or not m["role"]:
+                m["role"] = "assistant" if ("tool_calls" in m or "tool_call_id" in m) else "user"
+
+            # Parse stringified tool_calls if sent by certain agent frameworks
+            if "tool_calls" in m and isinstance(m["tool_calls"], str):
+                try:
+                    parsed_tc = json.loads(m["tool_calls"])
+                    if isinstance(parsed_tc, list):
+                        m["tool_calls"] = parsed_tc
+                except Exception:
+                    pass
+
+            # For vLLM and local backends, strip non-standard thinking/reasoning history fields
+            # that cause Jinja chat templates and tokenizer to crash with connection reset
+            if btype in ("vllm", "ollama", "llamacpp"):
+                for field in ("reasoning", "reasoning_content", "cot_id", "cot_summary"):
+                    m.pop(field, None)
+
+            sanitized_messages.append(m)
+        new_body["messages"] = sanitized_messages
 
     return new_body
 
