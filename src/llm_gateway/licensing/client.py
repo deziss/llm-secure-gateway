@@ -20,6 +20,11 @@ except ImportError:
     LICENCIA_LICENSE_KEY = os.getenv("LICENCIA_LICENSE_KEY", "")
     LICENCIA_LEASE_FILE = os.getenv("LICENCIA_LEASE_FILE", "/tmp/gateway_license_lease.json")
 
+try:
+    from ..observability import VERSION
+except ImportError:
+    VERSION = "0.16.0"
+
 from .fingerprint import generate_hardware_id
 from .models import (
     LicenseState,
@@ -92,7 +97,7 @@ class LicenciaClient:
             hardwareId=hw_id,
             deviceName=platform.node(),
             os=platform.system().lower(),
-            appVersion="0.15.1",
+            appVersion=VERSION,
         )
 
         headers = {

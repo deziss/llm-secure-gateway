@@ -1,3 +1,37 @@
+## [0.16.0] - 2026-11-19
+
+### 🚀 Enterprise UI Revamp & Licencia Licensing
+
+- **Modernized Enterprise UI/UX**:
+  - Full aesthetic and architectural overhaul of the Gateway admin interface using unslop design tokens, semantic borders, and cohesive dark-theme typography.
+  - Zero-dependency client-side table system (`gateway-table.js`) supporting instant fuzzy search, multi-column sorting, and responsive pagination across Backends, Users, and Owners.
+  - Redesigned authentication and recovery workflows (login, registration, forgot/reset password) with accessible form styling and responsive layouts.
+  - Live Traces Waterfall Explorer on the Observability page featuring real-time span execution timelines, status inspection, and token cost avoidance visualization.
+
+- **Licencia Enterprise Licensing Integration**:
+  - Offline-first cryptographic lease caching (`LicenciaClient`) with persistent filesystem backup (`/tmp/gateway_license_lease.json`).
+  - Multi-factor hardware fingerprinting (`generate_hardware_id`) using CPU model, motherboard UUID, machine-id, and MAC addresses with automated local subnet / loopback bypass.
+  - Periodic background check-in loop (configurable interval, default 6 hours) with graceful degradation to cached offline leases.
+  - Dynamic tier entitlement enforcement (`Community`, `Team`, `Enterprise`) for registered backend limits, API key quotas, and rate limiting ceilings.
+  - Administrative License Portal under Settings for one-click key activation, status verification, lease renewal, and seat deactivation.
+
+- **Dynamic Complexity-Based Routing**:
+  - Multi-tier prompt complexity classification (`ComplexityTier.TIER_1_FAST`, `TIER_2_STANDARD`, `TIER_3_REASONING`) evaluating token lengths, syntax markers (code blocks, markdown, mathematical LaTeX), and cognitive indicators.
+  - Transparent virtual model resolution for `auto`, `smart-route`, and `auto-router` requests to optimal downstream model backends.
+  - Automated request payload rewriting ensuring upstream providers receive valid physical model identifiers.
+
+- **Multi-Provider Fallback Cascade Ranking**:
+  - Prioritized fallback matrix ranking (`rank_fallback_targets`) dynamically sorting cross-provider targets based on availability and configured tier weights.
+
+- **OpenTelemetry GenAI Semantic Conventions (v1.30+)**:
+  - Standardized tracing attributes strictly conforming to OTel GenAI SemConv v1.30+ (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`).
+  - Standardized error taxonomy mapping upstream HTTP errors to OpenTelemetry exception events and canonical error classifications.
+  - In-memory trace ring buffer (`TraceRingBuffer`) capturing full request dispatch metadata with authenticated `/traces` REST endpoint.
+
+- **Security & Caching Enhancements**:
+  - Pre-call prompt injection shield enforcement via `evaluate_guardrail` in standard and v2 proxy pipelines.
+  - Automatic injection of Anthropic prompt caching headers (`anthropic-beta: prompt-caching-2024-07-31`) for Claude backends.
+
 ## [0.15.1] - 2026-11-18
 
 ### 🐛 Fixed & Resilient Networking
