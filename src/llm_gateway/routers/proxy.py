@@ -155,7 +155,14 @@ async def anthropic_messages_endpoint(
         api_key_hash = getattr(request.state.user, "key_hash", None) if hasattr(request.state, "user") else None
         await check_budget(session, owner_id, api_key_hash)
 
-    backend = await get_target_backend(model, config_service, session, provider=provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model,
+        config_service,
+        session,
+        provider=provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
     is_native_anthropic = (
         str(getattr(backend.backend_type, "value", backend.backend_type)).lower() == "anthropic"
     )
@@ -489,7 +496,14 @@ async def audio_speech_endpoint(
     provider = prov_hint or query_prov
     model = clean_model
 
-    backend = await get_target_backend(model, config_service, session, provider=provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model,
+        config_service,
+        session,
+        provider=provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
     client = _get_client(backend.base_url)
     headers = await build_backend_auth_headers(request, backend, session, owner_id, backend.name)
     headers["Content-Type"] = "application/json"
@@ -653,7 +667,14 @@ async def _proxy_request_core(
                         )
 
     # Resolve backend
-    backend = await get_target_backend(model, config_service, session, provider, owner_id=owner_id if not is_admin_ui else None)
+    backend = await get_target_backend(
+        model,
+        config_service,
+        session,
+        provider,
+        owner_id=owner_id if not is_admin_ui else None,
+        messages=body.get("messages", []) if isinstance(body, dict) else None,
+    )
 
     if not is_admin_ui:
         await check_owner_permissions(session, owner_id, backend, path, model)
