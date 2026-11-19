@@ -126,9 +126,10 @@ class TestSSEEndpoint:
 # past the upstream Content-Length.
 
 class _ChunkedResponse:
-    def __init__(self, chunks, content_type):
+    def __init__(self, chunks, content_type, status_code=200):
         self._chunks = chunks
         self.headers = {"content-type": content_type}
+        self.status_code = status_code
 
     async def aiter_raw(self):
         for c in self._chunks:
@@ -176,3 +177,31 @@ def test_passthrough_response_headers_drops_length_and_encoding():
     h = passthrough_response_headers({"Content-Length": "10", "content-encoding": "gzip",
                                       "content-type": "application/json", "x-request-id": "a"})
     assert h == {"content-type": "application/json", "x-request-id": "a"}
+
+
+@pytest.mark.asyncio
+async def test_upstream_400_status_code_propagated_to_tracker():
+    from unittest.mock import MagicMock, patch
+    from llm_gateway.telemetry.streaming import stream_with_telemetry
+
+    span = MagicMock()
+    span.is_recording.return_value = True
+    tracker = MagicMock()
+
+    resp = _ChunkedResponse([b'{"error": "bad request"}'], "application/json", status_code=400)
+
+    with patch("llm_gateway.telemetry.streaming.track_done") as mock_track_done:
+        chunks = []
+        async for c in stream_with_telemetry(
+            resp, 0, "http://vllm", "qwen3.8-flash-next", "/v1/chat/completions",
+            "anshu", span, tracker=tracker
+        ):
+            chunks.append(c)
+
+        assert b"".join(chunks) == b'{"error": "bad request"}'
+        assert mock_track_done.called
+        kwargs = mock_track_done.call_args.kwargs
+        assert kwargs["success"] is False
+        assert kwargs["status_code"] == 400
+        assert kwargs["error_type"] == "bad_request"
+        assert span.set_status.called

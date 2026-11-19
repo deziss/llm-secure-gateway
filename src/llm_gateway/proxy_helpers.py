@@ -644,6 +644,7 @@ async def try_backend_with_fallback(
     """
     urls = _get_all_urls(backend)
     last_exc = None
+    body = normalize_backend_payload(body, backend_type_name(backend))
 
     cb = _circuit_breaker
 
@@ -676,10 +677,9 @@ async def try_backend_with_fallback(
                 try:
                     r = await client.send(req, stream=True)
                 except httpx.ReadError as e:
-                    logger.exception(
-                        "Upstream ReadError occurred. URL=%s, Method=%s, Backend=%s, Attempt=%d/%d, Elapsed=%.2fs",
+                    logger.warning(
+                        "Upstream ReadError on %s (%s, attempt %d/%d, elapsed %.2fs): connection reset before headers",
                         target_url,
-                        method,
                         backend.name,
                         attempt,
                         max_attempts,
@@ -809,6 +809,30 @@ def _mark_served_model(r, model: Optional[str]) -> None:
         r.extensions[SERVED_MODEL_EXTENSION] = model
     except Exception:
         pass
+
+
+def normalize_backend_payload(body: Any, backend_type: str) -> Any:
+    """Normalize vendor-specific payload differences across backends.
+
+    - vLLM expects reasoning_effort in ('xhigh', 'medium', 'low'); OpenAI standard uses 'high'.
+    - OpenAI/Azure expect reasoning_effort in ('high', 'medium', 'low').
+    """
+    if not isinstance(body, dict):
+        return body
+    btype = str(backend_type or "").lower()
+    new_body = dict(body)
+
+    # vLLM reasoning_effort normalization: map 'high' -> 'xhigh'
+    if btype == "vllm" and "reasoning_effort" in new_body:
+        effort = str(new_body.get("reasoning_effort", "")).lower()
+        if effort == "high":
+            new_body["reasoning_effort"] = "xhigh"
+    elif btype in ("openai", "azure") and "reasoning_effort" in new_body:
+        effort = str(new_body.get("reasoning_effort", "")).lower()
+        if effort == "xhigh":
+            new_body["reasoning_effort"] = "high"
+
+    return new_body
 
 
 def backend_type_name(backend) -> str:
