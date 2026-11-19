@@ -729,7 +729,7 @@ def _host_out(h: GpuHost) -> dict:
         "url": h.url,
         "source": h.source,
         "enabled": bool(h.enabled),
-        "created_at": h.created_at.isoformat() if h.created_at else None,
+        "created_at": (h.created_at.isoformat() + "Z") if h.created_at else None,
     }
 
 
@@ -922,7 +922,7 @@ def _catalog(rows: dict) -> list[dict]:
             "active": bool(rt.get("active")), "mode": rt.get("mode"),
             "status": rt.get("status"), "error": rt.get("error"),
             "env_configured": name in env_names or name in configured_names(),
-            "updated_at": row.updated_at.isoformat() if row and row.updated_at else None,
+            "updated_at": (row.updated_at.isoformat() + "Z") if row and row.updated_at else None,
         })
     return out
 

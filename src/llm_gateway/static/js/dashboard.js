@@ -346,8 +346,8 @@ function render24hTraffic(data) {
       const lbl = b.label || b.time || b.bucket_time || b.hour || b.timestamp || "";
       if (lbl.includes("T")) {
         try {
-          const d = new Date(lbl);
-          return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const d = window.parseIsoDate ? window.parseIsoDate(lbl) : new Date(lbl);
+          return d ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : lbl;
         } catch (e) {
           return lbl;
         }

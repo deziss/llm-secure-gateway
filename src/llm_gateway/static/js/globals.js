@@ -49,6 +49,92 @@ window.escapeHtml = function (text) {
     .replace(/'/g, '&#39;');
 };
 
+// ── Timezone & Datetime Formatting Utilities ───────────────────────────────
+// Standardizes timestamp rendering in the user's local browser timezone.
+// Backend models store UTC (naive or aware); parseIsoDate ensures that naive
+// date-time strings are treated as UTC so the browser never parses them as local time.
+
+window.parseIsoDate = function (val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'number') {
+    const d = new Date(val > 1e11 ? val : val * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val !== 'string') return null;
+  let s = val.trim();
+  if (!s) return null;
+  // Date-only "YYYY-MM-DD" -> parse into local date parts to prevent calendar day shifting
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const parts = s.split('-').map(Number);
+    const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  if (s.includes(' ') && !s.includes('T')) {
+    s = s.replace(' ', 'T');
+  }
+  // If string has date + time but lacks timezone indicator, treat as UTC
+  if (s.includes('T') && !/[zZ]|[+-]\d{2}(?::?\d{2})?$/.test(s)) {
+    s += 'Z';
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+// Format local time, e.g. "13:11:21" (24-hour)
+window.formatTime = function (val, opts = {}) {
+  const d = window.parseIsoDate(val);
+  if (!d) return '—';
+  return d.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    ...opts
+  });
+};
+
+// Format local date, e.g. "Nov 19, 2026"
+window.formatDate = function (val, opts = {}) {
+  const d = window.parseIsoDate(val);
+  if (!d) return '—';
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    ...opts
+  });
+};
+
+// Format local date and time, e.g. "Nov 19, 2026, 13:11:21"
+window.formatDateTime = function (val, opts = {}) {
+  const d = window.parseIsoDate(val);
+  if (!d) return '—';
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    ...opts
+  });
+};
+
+// Relative time e.g. "2m ago", "1h ago", "yesterday"
+window.formatRelTime = function (val) {
+  const d = window.parseIsoDate(val);
+  if (!d) return '—';
+  const s = Math.round((d.getTime() - Date.now()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  const a = Math.abs(s);
+  if (a < 60) return rtf.format(s, 'second');
+  if (a < 3600) return rtf.format(Math.round(s / 60), 'minute');
+  if (a < 86400) return rtf.format(Math.round(s / 3600), 'hour');
+  return rtf.format(Math.round(s / 86400), 'day');
+};
+
 // DataTables ships with errMode 'alert', which turns any failed ajax call into
 // a browser alert() reading only "Ajax error".  Replace it with handling that
 // distinguishes an expired session from a genuine server fault, and reports

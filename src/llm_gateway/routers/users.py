@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
+from datetime import datetime, timezone
 from pydantic import BaseModel
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,14 @@ from ..pagination import pagination_params
 from .admin import require_admin, require_manager, get_user_manager
 
 router = APIRouter(prefix="/admin", tags=["admin-users"])
+
+
+def _utc_iso(dt: Optional[datetime]) -> Optional[str]:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc).isoformat()
+    return dt.astimezone(timezone.utc).isoformat()
 
 class UserResponse(BaseModel):
     id: str
@@ -51,8 +60,8 @@ async def list_users(
             is_superuser=u.is_superuser,
             is_verified=u.is_verified,
             role=u.role,
-            created_at=u.created_at.isoformat() if u.created_at else None,
-            last_login=u.last_login.isoformat() if u.last_login else None
+            created_at=_utc_iso(u.created_at),
+            last_login=_utc_iso(u.last_login)
         ) 
         for u in users
     ]
@@ -90,7 +99,7 @@ async def create_user_admin(
         is_superuser=new_user.is_superuser,
         is_verified=new_user.is_verified,
         role=new_user.role,
-        created_at=new_user.created_at.isoformat() if new_user.created_at else None,
+        created_at=_utc_iso(new_user.created_at),
         last_login=None
     )
 
