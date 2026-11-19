@@ -39,6 +39,9 @@
     overridesLoaded: false,
     tracemallocOn: null,
     view: "cards", // Groups tab: "cards" | "list"
+    traces: [],
+    tracesPollTimer: null,
+    selectedTrace: null,
   };
 
   const store = {
@@ -353,6 +356,12 @@
     });
     if (name === "gpus" && IS_ADMIN && !state.hostsLoaded) loadGpuHosts();
     if (name === "gateway" && IS_ADMIN && !state.overridesLoaded) loadOverrides();
+    if (name === "traces") {
+      loadTraces();
+      startTracesPoll();
+    } else {
+      stopTracesPoll();
+    }
     if (state.payload) render();
   }
 
@@ -1912,6 +1921,11 @@
         if (btn.dataset.scope === "groups") sorts.groups = { key: "name", dir: "asc" };
         render();
         break;
+      case "traces-refresh": loadTraces(); break;
+      case "traces-clear-filters":
+        ["fTracesQ", "fTracesStatus", "fTracesCache"].forEach((id) => { const n = $(id); if (n) n.value = ""; });
+        renderTraces();
+        break;
       case "tracemalloc": toggleTracemalloc(); break;
       case "save-overrides": saveOverrides(); break;
       case "host-reset": hostFormReset(); break;
@@ -1945,6 +1959,310 @@
     });
   }
 
+  // ── Live Traces & Waterfall Explorer ─────────────────────────────────
+  function startTracesPoll() {
+    stopTracesPoll();
+    state.tracesPollTimer = setInterval(() => {
+      if (state.tab === "traces" && !document.hidden) {
+        loadTraces();
+      }
+    }, 3000);
+  }
+
+  function stopTracesPoll() {
+    if (state.tracesPollTimer) {
+      clearInterval(state.tracesPollTimer);
+      state.tracesPollTimer = null;
+    }
+  }
+
+  async function loadTraces() {
+    try {
+      const res = await fetch("/admin/observability/traces?limit=100");
+      if (!res.ok) return;
+      const data = await res.json();
+      state.traces = Array.isArray(data) ? data : [];
+      updateCostAvoidanceWidget();
+      if (state.tab === "traces") {
+        renderTraces();
+      }
+    } catch (err) {
+      console.warn("Failed to load live traces:", err);
+    }
+  }
+
+  function updateCostAvoidanceWidget() {
+    let totalSavedUsd = 0;
+    let savedTokens = 0;
+    let totalTokens = 0;
+    let totalCost = 0;
+
+    for (const t of state.traces) {
+      const tok = (t.input_tokens || 0) + (t.output_tokens || 0);
+      totalTokens += tok;
+      totalCost += t.cost_usd || 0;
+      if (t.cache_hit) {
+        savedTokens += tok;
+        totalSavedUsd += (tok / 1000) * 0.005;
+      }
+    }
+
+    const savedEl = $("costSavedTotal");
+    if (savedEl) savedEl.textContent = "$" + totalSavedUsd.toFixed(2);
+
+    const tokEl = $("costSavedTokens");
+    if (tokEl) tokEl.textContent = integer.format(savedTokens);
+
+    const per1kEl = $("costPer1kTokens");
+    if (per1kEl) {
+      const blended = totalTokens > 0 ? (totalCost / totalTokens) * 1000 : 0.0018;
+      per1kEl.textContent = "$" + blended.toFixed(4);
+    }
+
+    const pctEl = $("costReductionPct");
+    if (pctEl) {
+      const denom = totalCost + totalSavedUsd;
+      const ratio = denom > 0 ? (totalSavedUsd / denom) * 100 : 0;
+      pctEl.textContent = ratio.toFixed(1) + "%";
+    }
+  }
+
+  function getTraceStatusPill(status, errorType) {
+    let cls = "bg-surface-inset text-ink border-hairline";
+    let label = String(status || 200);
+
+    if (status === 200) {
+      cls = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+      label = "200 OK";
+    } else if (status === 429) {
+      cls = "bg-amber-500/10 text-amber-400 border-amber-500/30";
+      label = "429 Rate Limit";
+    } else if (status === 400 || status === 403) {
+      cls = "bg-purple-500/10 text-purple-400 border-purple-500/30";
+      label = errorType === "guardrail_blocked" ? "Blocked (Shield)" : `${status} Guardrail`;
+    } else if (status >= 500) {
+      cls = "bg-red-500/10 text-red-400 border-red-500/30";
+      label = `${status} Upstream Err`;
+    } else if (status === 499) {
+      cls = "bg-gray-500/10 text-gray-400 border-gray-500/30";
+      label = "499 Client Abort";
+    }
+
+    return el("span", {
+      cls: `inline-flex items-center rounded-control border px-2 py-0.5 text-xs font-semibold ${cls}`,
+      text: label,
+    });
+  }
+
+  function renderTraces() {
+    const tbody = $("obsTracesBody");
+    const emptyMsg = $("obsTracesEmpty");
+    const countEl = $("fTracesCount");
+    if (!tbody) return;
+
+    const query = norm(val("fTracesQ"));
+    const statusFilter = val("fTracesStatus");
+    const cacheFilter = val("fTracesCache");
+
+    const filtered = state.traces.filter((t) => {
+      if (query) {
+        const text = `${t.request_id || ""} ${t.model || ""} ${t.provider || ""} ${t.owner_id || ""}`.toLowerCase();
+        if (!text.includes(query)) return false;
+      }
+      if (statusFilter) {
+        if (statusFilter === "200" && t.status_code !== 200) return false;
+        if (statusFilter === "429" && t.status_code !== 429) return false;
+        if (statusFilter === "5xx" && (t.status_code < 500 || t.status_code >= 600)) return false;
+        if (statusFilter === "blocked" && (t.status_code !== 400 && t.status_code !== 403 && t.error_type !== "guardrail_blocked")) return false;
+        if (statusFilter === "error" && t.status_code < 400) return false;
+      }
+      if (cacheFilter) {
+        if (cacheFilter === "hit" && !t.cache_hit) return false;
+        if (cacheFilter === "miss" && t.cache_hit) return false;
+      }
+      return true;
+    });
+
+    if (countEl) countEl.textContent = `${filtered.length} trace${filtered.length === 1 ? "" : "s"}`;
+
+    if (filtered.length === 0) {
+      tbody.replaceChildren();
+      if (emptyMsg) emptyMsg.classList.remove("hidden");
+      return;
+    }
+    if (emptyMsg) emptyMsg.classList.add("hidden");
+
+    const rows = filtered.map((t) => {
+      const timeStr = t.timestamp ? (t.timestamp.includes("T") ? t.timestamp.split("T")[1].substring(0, 8) : t.timestamp) : DASH;
+      const reqIdTrunc = t.request_id ? (t.request_id.length > 12 ? t.request_id.substring(0, 10) + "…" : t.request_id) : DASH;
+      const ttftStr = isNum(t.ttft_ms) ? `${Math.round(t.ttft_ms)} ms` : (t.ttft_ms ? `${t.ttft_ms} ms` : DASH);
+      const durStr = isNum(t.duration_ms) ? (t.duration_ms >= 1000 ? `${(t.duration_ms / 1000).toFixed(2)} s` : `${Math.round(t.duration_ms)} ms`) : DASH;
+      const tokensStr = `${integer.format(t.input_tokens || 0)} / ${integer.format(t.output_tokens || 0)}`;
+      const costStr = t.cost_usd ? `$${t.cost_usd.toFixed(5)}` : "$0.00";
+
+      const inspectBtn = el("button", {
+        cls: "min-h-touch rounded-control border border-hairline px-2.5 py-1 text-xs font-semibold text-accent hover:bg-surface-inset flex items-center gap-1 mx-auto",
+        text: "Inspect",
+        attrs: { type: "button", "aria-label": `Inspect trace ${t.request_id}` },
+      });
+      inspectBtn.addEventListener("click", () => openTraceDrawer(t));
+
+      const tr = el("tr", { cls: "hover:bg-surface-inset/50 transition-colors" }, [
+        el("td", { cls: "p-3 font-mono text-xs text-ink-muted", text: timeStr }),
+        el("td", { cls: "p-3 font-mono text-xs text-accent font-semibold", text: reqIdTrunc, attrs: { title: t.request_id } }),
+        el("td", { cls: "p-3 font-medium text-ink", text: t.model || DASH }),
+        el("td", { cls: "p-3 text-ink-muted text-caption", text: t.provider || DASH }),
+        el("td", { cls: "p-3 text-center" }, [getTraceStatusPill(t.status_code, t.error_type)]),
+        el("td", { cls: "p-3 text-right font-mono text-xs text-ink", text: ttftStr }),
+        el("td", { cls: "p-3 text-right font-mono text-xs font-semibold text-ink", text: durStr }),
+        el("td", { cls: "p-3 text-right font-mono text-xs text-ink-muted", text: tokensStr }),
+        el("td", { cls: "p-3 text-right font-mono text-xs text-emerald-400 font-medium", text: costStr }),
+        el("td", { cls: "p-3 text-center" }, [inspectBtn]),
+      ]);
+      return tr;
+    });
+
+    tbody.replaceChildren(...rows);
+  }
+
+  function openTraceDrawer(t) {
+    state.selectedTrace = t;
+    const drawer = $("traceDetailDrawer");
+    if (!drawer) return;
+
+    // Header & Badges
+    const reqIdEl = $("traceDrawerReqId");
+    if (reqIdEl) reqIdEl.textContent = t.request_id;
+
+    const statusBadgeEl = $("drawerStatusBadge");
+    if (statusBadgeEl) {
+      statusBadgeEl.replaceChildren(getTraceStatusPill(t.status_code, t.error_type));
+    }
+
+    const modelEl = $("drawerModel");
+    if (modelEl) modelEl.textContent = t.model || DASH;
+
+    const durEl = $("drawerDuration");
+    if (durEl) {
+      durEl.textContent = isNum(t.duration_ms) ? `${t.duration_ms.toFixed(1)} ms` : DASH;
+    }
+
+    const cacheEl = $("drawerCache");
+    if (cacheEl) {
+      cacheEl.textContent = t.cache_hit ? "HIT (Avoided)" : "MISS";
+      cacheEl.className = t.cache_hit ? "font-bold text-emerald-400" : "font-bold text-ink-muted";
+    }
+
+    // Accounting
+    const promptTokEl = $("drawerPromptTokens");
+    if (promptTokEl) promptTokEl.textContent = integer.format(t.input_tokens || 0);
+
+    const outTokEl = $("drawerOutputTokens");
+    if (outTokEl) outTokEl.textContent = integer.format(t.output_tokens || 0);
+
+    const totalTokEl = $("drawerTotalTokens");
+    if (totalTokEl) totalTokEl.textContent = integer.format(t.total_tokens || ((t.input_tokens || 0) + (t.output_tokens || 0)));
+
+    const costEl = $("drawerCost");
+    if (costEl) costEl.textContent = `$${(t.cost_usd || 0).toFixed(6)}`;
+
+    // Error section
+    const errSection = $("drawerErrorSection");
+    if (errSection) {
+      if (t.status_code >= 400 || t.error_type) {
+        errSection.classList.remove("hidden");
+        const typeEl = $("drawerErrorType");
+        if (typeEl) typeEl.textContent = `Error Type: ${t.error_type || "http_error"} (HTTP ${t.status_code})`;
+        const detailEl = $("drawerErrorDetail");
+        if (detailEl) detailEl.textContent = `Execution returned error at ${t.timestamp}.`;
+      } else {
+        errSection.classList.add("hidden");
+      }
+    }
+
+    // Build Execution Timing Waterfall
+    const totalMs = Math.max(t.duration_ms || 1, 1);
+    const phases = [];
+
+    const recordedPhases = t.phases || {};
+    const ingressMs = recordedPhases.ingress || Math.min(2.0, totalMs * 0.05);
+    const authMs = recordedPhases.auth || Math.min(1.5, totalMs * 0.04);
+    const policyMs = recordedPhases.policy || Math.min(1.0, totalMs * 0.03);
+    const guardrailMs = recordedPhases.guardrail || Math.min(3.0, totalMs * 0.08);
+
+    phases.push({ name: "Ingress & TLS", ms: ingressMs, color: "bg-cyan-500", dot: "bg-cyan-500" });
+    phases.push({ name: "Auth & Key Check", ms: authMs, color: "bg-blue-500", dot: "bg-blue-500" });
+    phases.push({ name: "Policy & Routing", ms: policyMs, color: "bg-indigo-500", dot: "bg-indigo-500" });
+    phases.push({ name: "Shield & Guardrails", ms: guardrailMs, color: "bg-purple-500", dot: "bg-purple-500" });
+
+    if (t.ttft_ms && t.ttft_ms > 0) {
+      const ttftWait = Math.max(0, t.ttft_ms - (ingressMs + authMs + policyMs + guardrailMs));
+      phases.push({ name: "Upstream First Token (TTFT)", ms: ttftWait, color: "bg-amber-400", dot: "bg-amber-400" });
+      const streamMs = Math.max(0, totalMs - t.ttft_ms);
+      if (streamMs > 0) {
+        phases.push({ name: "Stream Token Generation", ms: streamMs, color: "bg-emerald-400", dot: "bg-emerald-400" });
+      }
+    } else {
+      const upstreamWait = Math.max(0, totalMs - (ingressMs + authMs + policyMs + guardrailMs));
+      phases.push({ name: "Upstream Inference", ms: upstreamWait, color: "bg-emerald-400", dot: "bg-emerald-400" });
+    }
+
+    // Waterfall bar segments
+    const bar = $("drawerWaterfallBar");
+    if (bar) {
+      const segments = phases.map((p) => {
+        const pct = Math.max(1, (p.ms / totalMs) * 100);
+        return el("div", {
+          cls: `h-full ${p.color} transition-all`,
+          attrs: {
+            style: `width: ${pct}%;`,
+            title: `${p.name}: ${p.ms.toFixed(1)} ms (${pct.toFixed(1)}%)`,
+          },
+        });
+      });
+      bar.replaceChildren(...segments);
+    }
+
+    // Waterfall list
+    const phasesContainer = $("drawerWaterfallPhases");
+    if (phasesContainer) {
+      const phaseItems = phases.map((p) => {
+        const pct = ((p.ms / totalMs) * 100).toFixed(1);
+        return el("div", { cls: "flex items-center justify-between text-caption py-1 border-b border-hairline/50" }, [
+          el("div", { cls: "flex items-center gap-2" }, [
+            el("span", { cls: `inline-block h-2.5 w-2.5 rounded-full ${p.dot}` }),
+            el("span", { cls: "text-ink font-medium", text: p.name }),
+          ]),
+          el("div", { cls: "flex items-center gap-3 font-mono text-xs" }, [
+            el("span", { cls: "text-ink-muted", text: `${pct}%` }),
+            el("span", { cls: "text-ink font-bold", text: `${p.ms.toFixed(1)} ms` }),
+          ]),
+        ]);
+      });
+      phasesContainer.replaceChildren(...phaseItems);
+    }
+
+    drawer.classList.remove("hidden");
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
+  function closeTraceDrawer() {
+    state.selectedTrace = null;
+    const drawer = $("traceDetailDrawer");
+    if (drawer) drawer.classList.add("hidden");
+  }
+
+  const drawerCloseBtn = $("traceDrawerCloseBtn");
+  if (drawerCloseBtn) drawerCloseBtn.addEventListener("click", closeTraceDrawer);
+  const drawerBackdrop = $("traceDrawerBackdrop");
+  if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeTraceDrawer);
+  ["fTracesQ", "fTracesStatus", "fTracesCache"].forEach((id) => {
+    const n = $(id);
+    if (n) n.addEventListener(n.tagName === "SELECT" ? "change" : "input", renderTraces);
+  });
+
   // ── Boot ────────────────────────────────────────────────────────────
   initSortHeaders();
   applySortIndicators("models");
@@ -1952,4 +2270,5 @@
   const bootTf = store.get("obs.timeframe", "1h");
   setTimeframe(bootTf);
   startStream();
+  loadTraces();
 })();
