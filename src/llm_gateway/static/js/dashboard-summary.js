@@ -26,7 +26,10 @@
   }
 
   function relTime(iso) {
-    const s = Math.round((Date.parse(iso) - Date.now()) / 1000);
+    if (window.formatRelTime) return window.formatRelTime(iso);
+    const d = window.parseIsoDate ? window.parseIsoDate(iso) : new Date(iso);
+    if (!d || Number.isNaN(d.getTime())) return "—";
+    const s = Math.round((d.getTime() - Date.now()) / 1000);
     const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
     const a = Math.abs(s);
     if (a < 60) return rtf.format(s, "second");
@@ -82,7 +85,7 @@
     const canvas = $("spendChart");
     if (!canvas || typeof Chart === "undefined") return;
     const labels = daily.map((d) =>
-      new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      window.formatDate ? window.formatDate(d.date, { month: "short", day: "numeric" }) : d.date
     );
     const values = daily.map((d) => d.cost_usd);
     if (spendChart) {
@@ -254,7 +257,7 @@
       renderCache(d.cache);
       renderSecurity(d.security);
       renderBackends(d.backends);
-      $("dashUpdated").textContent = "Updated " + new Date().toLocaleTimeString();
+      $("dashUpdated").textContent = "Updated " + (window.formatTime ? window.formatTime(new Date()) : new Date().toLocaleTimeString());
     } catch (e) {
       $("dashUpdated").textContent = "Couldn't refresh summary (" + e.message + "). Retrying in 30 s.";
     } finally {

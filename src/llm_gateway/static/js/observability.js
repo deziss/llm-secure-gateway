@@ -147,8 +147,9 @@
 
   function ageSeconds(iso) {
     if (!iso) return null;
-    const t = Date.parse(iso);
-    return Number.isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 1000));
+    const d = window.parseIsoDate ? window.parseIsoDate(iso) : new Date(iso);
+    if (!d || Number.isNaN(d.getTime())) return null;
+    return Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
   }
 
   function fmtAge(iso) {
@@ -736,8 +737,8 @@
       const raw = p.time || p.bucket_time || p.label || "";
       if (raw.includes("T")) {
         try {
-          const d = new Date(raw);
-          return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const d = window.parseIsoDate ? window.parseIsoDate(raw) : new Date(raw);
+          return d ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : raw;
         } catch (e) {
           return raw;
         }
@@ -2099,7 +2100,8 @@
     if (emptyMsg) emptyMsg.classList.add("hidden");
 
     const rows = filtered.map((t) => {
-      const timeStr = t.timestamp ? (t.timestamp.includes("T") ? t.timestamp.split("T")[1].substring(0, 8) : t.timestamp) : DASH;
+      const timeStr = t.timestamp ? (window.formatTime ? window.formatTime(t.timestamp) : (t.timestamp.includes("T") ? t.timestamp.split("T")[1].substring(0, 8) : t.timestamp)) : DASH;
+      const timeFull = t.timestamp ? (window.formatDateTime ? window.formatDateTime(t.timestamp) : t.timestamp) : "";
       const reqIdTrunc = t.request_id ? (t.request_id.length > 12 ? t.request_id.substring(0, 10) + "…" : t.request_id) : DASH;
       const ttftStr = isNum(t.ttft_ms) ? `${Math.round(t.ttft_ms)} ms` : (t.ttft_ms ? `${t.ttft_ms} ms` : DASH);
       const durStr = isNum(t.duration_ms) ? (t.duration_ms >= 1000 ? `${(t.duration_ms / 1000).toFixed(2)} s` : `${Math.round(t.duration_ms)} ms`) : DASH;
@@ -2114,7 +2116,7 @@
       inspectBtn.addEventListener("click", () => openTraceDrawer(t));
 
       const tr = el("tr", { cls: "hover:bg-surface-inset/50 transition-colors" }, [
-        el("td", { cls: "p-3 font-mono text-xs text-ink-muted", text: timeStr }),
+        el("td", { cls: "p-3 font-mono text-xs text-ink-muted", text: timeStr, attrs: { title: timeFull } }),
         el("td", { cls: "p-3 font-mono text-xs text-accent font-semibold", text: reqIdTrunc, attrs: { title: t.request_id } }),
         el("td", { cls: "p-3 font-medium text-ink", text: t.model || DASH }),
         el("td", { cls: "p-3 text-ink-muted text-caption", text: t.provider || DASH }),
@@ -2138,7 +2140,10 @@
 
     // Header & Badges
     const reqIdEl = $("traceDrawerReqId");
-    if (reqIdEl) reqIdEl.textContent = t.request_id;
+    if (reqIdEl) {
+      const timeFmt = t.timestamp ? (window.formatDateTime ? window.formatDateTime(t.timestamp) : t.timestamp) : "";
+      reqIdEl.textContent = timeFmt ? `${t.request_id} · ${timeFmt}` : t.request_id;
+    }
 
     const statusBadgeEl = $("drawerStatusBadge");
     if (statusBadgeEl) {
@@ -2180,7 +2185,8 @@
         const typeEl = $("drawerErrorType");
         if (typeEl) typeEl.textContent = `Error Type: ${t.error_type || "http_error"} (HTTP ${t.status_code})`;
         const detailEl = $("drawerErrorDetail");
-        if (detailEl) detailEl.textContent = `Execution returned error at ${t.timestamp}.`;
+        const timeFmt = t.timestamp ? (window.formatDateTime ? window.formatDateTime(t.timestamp) : t.timestamp) : "";
+        if (detailEl) detailEl.textContent = `Execution returned error at ${timeFmt || t.timestamp}.`;
       } else {
         errSection.classList.add("hidden");
       }

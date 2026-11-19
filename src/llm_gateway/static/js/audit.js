@@ -14,8 +14,11 @@
 
   function when(iso) {
     if (!iso) return "—";
-    const d = new Date(iso);
-    return `<time datetime="${escapeHtml(d.toISOString())}" title="${escapeHtml(d.toLocaleString())}">${escapeHtml(d.toLocaleString([], { dateStyle: "short", timeStyle: "medium" }))}</time>`;
+    const d = window.parseIsoDate ? window.parseIsoDate(iso) : new Date(iso);
+    if (!d || Number.isNaN(d.getTime())) return escapeHtml(String(iso));
+    const full = window.formatDateTime ? window.formatDateTime(d) : d.toLocaleString();
+    const display = window.formatDateTime ? window.formatDateTime(d, { dateStyle: "short", timeStyle: "medium" }) : d.toLocaleString([], { dateStyle: "short", timeStyle: "medium" });
+    return `<time datetime="${escapeHtml(d.toISOString())}" title="${escapeHtml(full)}">${escapeHtml(display)}</time>`;
   }
 
   function details(meta) {

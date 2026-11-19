@@ -83,9 +83,9 @@ $(document).ready(function () {
       {
         data: "created_at",
         render: function (data, type, row) {
-          const created = data ? new Date(data).toLocaleDateString() : "-";
+          const created = data ? (window.formatDate ? window.formatDate(data) : new Date(data).toLocaleDateString()) : "-";
           const lastLogin = row.last_login
-            ? new Date(row.last_login).toLocaleString()
+            ? (window.formatDateTime ? window.formatDateTime(row.last_login) : new Date(row.last_login).toLocaleString())
             : "Never";
           return `
             <div class="flex flex-col text-caption gap-1">

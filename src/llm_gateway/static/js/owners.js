@@ -304,10 +304,11 @@ let currentOwnerIdForKeys = null;
 // the date can be off by a day. Full timestamp goes in the tooltip.
 function keyDate(value, fallback) {
   if (!value) return `<span class="font-mono">${fallback}</span>`;
-  const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : value + "Z";
-  const d = new Date(iso);
-  if (isNaN(d)) return escapeHtml(String(value));
-  return `<time datetime="${escapeHtml(d.toISOString())}" title="${escapeHtml(d.toLocaleString())}">${escapeHtml(d.toLocaleDateString())}</time>`;
+  const d = window.parseIsoDate ? window.parseIsoDate(value) : (/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? new Date(value) : new Date(value + "Z"));
+  if (!d || isNaN(d.getTime())) return escapeHtml(String(value));
+  const full = window.formatDateTime ? window.formatDateTime(d) : d.toLocaleString();
+  const dateStr = window.formatDate ? window.formatDate(d) : d.toLocaleDateString();
+  return `<time datetime="${escapeHtml(d.toISOString())}" title="${escapeHtml(full)}">${escapeHtml(dateStr)}</time>`;
 }
 
 async function openKeysModal(ownerId) {

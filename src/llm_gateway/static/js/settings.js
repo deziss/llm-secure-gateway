@@ -103,7 +103,7 @@ async function loadInvites() {
         return `
         <tr class="hover:bg-surface-inset transition-all group">
           <td class="p-4 font-mono text-blue-600 dark:text-blue-400 select-all font-bold tracking-tighter">${escapeHtml(i.code)}</td>
-          <td class="p-4 text-slate-500 text-xs font-medium">${escapeHtml(new Date(i.created_at).toLocaleString())}</td>
+          <td class="p-4 text-slate-500 text-xs font-medium">${escapeHtml(window.formatDateTime ? window.formatDateTime(i.created_at) : new Date(i.created_at).toLocaleString())}</td>
           <td class="p-4">
             <div class="flex items-center gap-3">
               <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${statusCls}">${statusText}</span>
@@ -461,8 +461,8 @@ async function loadLicenseStatus() {
     if (leaseEl) {
       if (data.lease_expires_at) {
         try {
-          const exp = new Date(data.lease_expires_at);
-          leaseEl.textContent = `Expires ${exp.toLocaleDateString()} ${exp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+          const expStr = window.formatDateTime ? window.formatDateTime(data.lease_expires_at) : new Date(data.lease_expires_at).toLocaleString();
+          leaseEl.textContent = `Expires ${expStr}`;
         } catch (_) {
           leaseEl.textContent = data.lease_expires_at;
         }
