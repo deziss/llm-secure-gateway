@@ -58,6 +58,12 @@ async def get_chain_targets(
     return []
 
 
+def rank_fallback_targets(targets: list[dict]) -> list[dict]:
+    """Sort fallback targets by priority ascending (1 = highest priority)."""
+    return sorted(targets, key=lambda t: t.get("priority", 100))
+
+
+
 async def list_aliases(session: AsyncSession) -> List[ModelAlias]:
     """Return all model aliases."""
     result = await session.execute(select(ModelAlias))

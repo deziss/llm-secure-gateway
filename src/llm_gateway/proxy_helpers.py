@@ -875,8 +875,9 @@ async def try_with_cross_provider_fallback(
                 backend.name, exc, req_model, fallback_chain_id
             )
 
-    from .services.fallback_service import get_chain_targets
+    from .services.fallback_service import get_chain_targets, rank_fallback_targets
     targets = await get_chain_targets(session, fallback_chain_id)
+    targets = rank_fallback_targets(targets)
     backends = await service.list_backends(session)
     backends_by_name = {b.name: b for b in backends}
 
