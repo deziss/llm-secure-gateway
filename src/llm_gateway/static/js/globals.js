@@ -38,11 +38,22 @@ window.handleSessionExpiry = function () {
   window.location.href = '/auth/login';
 };
 
+// Global HTML escaping utility
+window.escapeHtml = function (text) {
+  if (text === null || text === undefined) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 // DataTables ships with errMode 'alert', which turns any failed ajax call into
 // a browser alert() reading only "Ajax error".  Replace it with handling that
 // distinguishes an expired session from a genuine server fault, and reports
 // the fault inside the table instead of in a modal dialog.
-if (window.jQuery && $.fn.dataTable) {
+if (window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable) {
   $.fn.dataTable.ext.errMode = 'none';
 
   // autoWidth makes DataTables measure the table once and write fixed pixel
