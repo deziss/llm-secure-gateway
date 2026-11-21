@@ -23,7 +23,7 @@ dependencies = [
     "cryptography>=44.0.0",
     "pyjwt>=2.14.0",
     "python-multipart>=0.0.20",
-    "bcrypt>=4.0.1",
+    "bcrypt>=5.0.0",
 
     # Database
     "sqlmodel>=0.0.22",
