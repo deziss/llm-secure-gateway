@@ -86,9 +86,66 @@ async def refresh_license(user = Depends(require_admin)):
     state = await client.validate()
     return state.model_dump()
 
+class LicenseUpgrade(BaseModel):
+    license_key: str
+
+@router.post("/license/upgrade")
+async def upgrade_license(
+    update: LicenseUpgrade,
+    session: AsyncSession = Depends(get_session),
+    user = Depends(require_admin),
+):
+    """Validate a new (upgraded) license key online and adopt it, persisting the key
+    in SystemSettings so the seat survives restarts without redeploying env vars."""
+    client = get_licencia_client()
+    upgraded, state = await client.upgrade(update.license_key)
+    if not upgraded:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Could not validate the new license key. Verify the key, ensure the "
+                "licensing server is reachable, and confirm this gateway's hardware "
+                "fingerprint is activated against that plan."
+            ),
+        )
+    # Persist the accepted key; start_licensing() applies it on next boot.
+    new_key = update.license_key.strip()
+    try:
+        from sqlmodel import select
+        result = await session.execute(
+            select(SystemSetting).where(SystemSetting.key == "LICENCIA_LICENSE_KEY")
+        )
+        setting = result.scalar_one_or_none()
+        if not setting:
+            setting = SystemSetting(key="LICENCIA_LICENSE_KEY", value=new_key)
+        else:
+            setting.value = new_key
+            setting.updated_at = _utcnow()
+        session.add(setting)
+        await session.commit()
+    except Exception:
+        # Upgrade is already live in-memory; persistence failure must not undo it.
+        await session.rollback()
+    return state.model_dump()
+
 @router.post("/license/deactivate")
-async def deactivate_license_seat(user = Depends(require_admin)):
+async def deactivate_license_seat(
+    session: AsyncSession = Depends(get_session),
+    user = Depends(require_admin),
+):
     client = get_licencia_client()
     success = await client.deactivate()
+    # Drop any admin-activated key so Community mode persists across restarts.
+    try:
+        from sqlmodel import select
+        result = await session.execute(
+            select(SystemSetting).where(SystemSetting.key == "LICENCIA_LICENSE_KEY")
+        )
+        setting = result.scalar_one_or_none()
+        if setting:
+            await session.delete(setting)
+            await session.commit()
+    except Exception:
+        await session.rollback()
     return {"success": success}
 

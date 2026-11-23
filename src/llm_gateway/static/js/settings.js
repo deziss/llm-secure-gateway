@@ -582,8 +582,107 @@ function initLicenseControls() {
   }
 }
 
+function openUpgradeLicenseModal() {
+  const modal = document.getElementById("upgradeLicenseModal");
+  if (!modal) return;
+  // Mark the currently active plan card.
+  const tier = (document.getElementById("licTierBadge")?.textContent || "").trim().toLowerCase();
+  const badgeMap = { community: "upgradePlanCommunityBadge", pro: "upgradePlanProBadge", enterprise: "upgradePlanEnterpriseBadge" };
+  for (const [, badgeId] of Object.entries(badgeMap)) {
+    const el = document.getElementById(badgeId);
+    if (el) el.classList.add("hidden");
+  }
+  const currentBadge = document.getElementById(badgeMap[tier] || "");
+  if (currentBadge) currentBadge.classList.remove("hidden");
+  // Mirror the hardware fingerprint from the license panel into the modal.
+  const hwEl = document.getElementById("licHardwareId");
+  const modalHwEl = document.getElementById("upgradeHardwareId");
+  if (modalHwEl && hwEl) {
+    modalHwEl.textContent = hwEl.getAttribute("data-full-id") || hwEl.textContent || "...";
+  }
+  const keyInput = document.getElementById("upgradeLicenseKey");
+  if (keyInput) keyInput.value = "";
+  modal.classList.remove("hidden");
+  if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
+  if (keyInput) keyInput.focus();
+}
+
+function closeUpgradeLicenseModal() {
+  const modal = document.getElementById("upgradeLicenseModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function initUpgradeLicenseModal() {
+  const openBtn = document.getElementById("btnUpgradeLicense");
+  if (openBtn) {
+    openBtn.addEventListener("click", openUpgradeLicenseModal);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeUpgradeLicenseModal();
+  });
+
+  const copyHwBtn = document.getElementById("btnCopyUpgradeHardwareId");
+  if (copyHwBtn) {
+    copyHwBtn.addEventListener("click", () => {
+      const text = document.getElementById("upgradeHardwareId")?.textContent || "";
+      if (!text || text === "...") return;
+      navigator.clipboard.writeText(text).then(
+        () => showToast("Copied", "Hardware fingerprint copied to clipboard."),
+        () => showToast("Notice", "Failed to copy hardware fingerprint.", "warning")
+      );
+    });
+  }
+
+  const applyBtn = document.getElementById("btnApplyUpgradeKey");
+  const keyInput = document.getElementById("upgradeLicenseKey");
+  if (!applyBtn || !keyInput) return;
+
+  const submitUpgrade = async () => {
+    const licenseKey = keyInput.value.trim();
+    if (!licenseKey) {
+      showToast("License Upgrade", "Enter a license key first.", "warning");
+      return;
+    }
+    applyBtn.disabled = true;
+    const originalHtml = applyBtn.innerHTML;
+    applyBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>Validating...';
+    if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
+    try {
+      const res = await fetchWithCsrf("/admin/license/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ license_key: licenseKey }),
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const tierName = (body.tier || "").toUpperCase();
+        showToast("License Upgraded", `Welcome to the ${tierName || "new"} tier! Entitlements are now active. This key persists across restarts.`);
+        closeUpgradeLicenseModal();
+        await loadLicenseStatus();
+      } else {
+        showToast("Upgrade Failed", body.detail || "Could not validate the new license key.", "error");
+      }
+    } catch (err) {
+      showToast("Upgrade Failed", "Network error while contacting the licensing server.", "error");
+    } finally {
+      applyBtn.disabled = false;
+      applyBtn.innerHTML = originalHtml;
+      if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
+    }
+  };
+
+  applyBtn.addEventListener("click", submitUpgrade);
+  keyInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitUpgrade();
+  });
+
+  window.closeUpgradeLicenseModal = closeUpgradeLicenseModal;
+}
+
 loadSettings();
 loadInvites();
 loadScopeRules();
 initThemeToggle();
 initLicenseControls();
+initUpgradeLicenseModal();

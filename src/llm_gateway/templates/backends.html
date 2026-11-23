@@ -471,5 +471,50 @@
   </div>
 </div>
 
+<!-- Available Models Popup Modal -->
+<div
+  id="modelsPopupModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+  onclick="if(event.target === this) closeModelsPopup()"
+>
+  <div
+    class="bg-surface-raised border border-hairline rounded-panel w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] overflow-hidden transform transition-all"
+  >
+    <div
+      class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset/50"
+    >
+      <div>
+        <h2 class="text-lg font-bold text-ink flex items-center gap-3">
+          <i data-lucide="boxes" class="text-blue-500 w-5 h-5" aria-hidden="true"></i>
+          Available Models
+          <span id="popupModelsCount" class="px-2 py-0.5 bg-surface-inset rounded-lg text-ink font-bold text-xs border border-hairline"></span>
+        </h2>
+        <p class="text-blue-400 text-sm font-bold mt-1" id="popupBackendName"></p>
+      </div>
+      <button
+        type="button"
+        onclick="closeModelsPopup()"
+        class="text-ink-muted hover:text-ink transition cursor-pointer p-1"
+        aria-label="Close modal"
+        title="Close"
+      >
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="p-4 flex-1 overflow-y-auto">
+      <div
+        class="bg-surface-inset/40 rounded-panel border border-hairline/50 overflow-hidden"
+      >
+        <ul id="popupModelsList" class="divide-y divide-hairline">
+          <!-- populated via js -->
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/static/js/backends.js?v={{ asset_v }}"></script>
 {% endblock %}

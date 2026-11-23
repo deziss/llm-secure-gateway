@@ -85,8 +85,12 @@ class LicenciaClient:
         )
         return self.state
 
-    async def validate(self) -> LicenseState:
-        """Validate license with Licencia server, falling back to local cached lease only on network errors."""
+    async def validate(self, lease_fallback: bool = True) -> LicenseState:
+        """Validate license with Licencia server, falling back to local cached lease only on network errors.
+
+        Pass ``lease_fallback=False`` when validating a *new* key (upgrade flow): a cached
+        lease for the old key must never make an unverified key look valid.
+        """
         if not self.license_key or not self.api_key:
             logger.info("No Licencia credentials configured. Running in Community mode.")
             return self._apply_community_defaults()
@@ -157,7 +161,7 @@ class LicenciaClient:
                     return self._apply_community_defaults()
                 elif res.status_code >= 500:
                     logger.warning("Licencia server error %d, attempting offline lease fallback", res.status_code)
-                    cached = self._load_lease_cache()
+                    cached = self._load_lease_cache() if lease_fallback else None
                     if cached:
                         return cached
                     return self._apply_community_defaults()
@@ -166,12 +170,32 @@ class LicenciaClient:
                     return self._apply_community_defaults()
         except Exception as exc:
             logger.warning("Licencia API unreachable (%s), attempting offline lease load", exc)
-            cached = self._load_lease_cache()
+            cached = self._load_lease_cache() if lease_fallback else None
             if cached:
                 return cached
 
         logger.warning("No valid offline lease found. Falling back to Community mode.")
         return self._apply_community_defaults()
+
+    async def upgrade(self, new_key: str) -> tuple:
+        """Validate a new/upgrade license key strictly online and adopt it on success.
+
+        On failure (invalid key, rejected seat, unreachable server) the previously
+        configured key and its state are restored, so a bad attempt never downgrades
+        the running tier. Returns ``(upgraded: bool, state: LicenseState)``.
+        """
+        new_key = (new_key or "").strip()
+        if not new_key or not self.api_key:
+            return False, self.state
+        previous_key = self.license_key
+        self.license_key = new_key
+        state = await self.validate(lease_fallback=False)
+        if state.is_valid and not state.is_community:
+            logger.info("License upgraded successfully. New tier: %s", state.tier.value)
+            return True, state
+        self.license_key = previous_key
+        restored = await self.validate()
+        return False, restored
 
     async def deactivate(self) -> bool:
         """Gracefully release license seat on shutdown."""

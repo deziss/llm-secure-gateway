@@ -47,11 +47,11 @@ $(document).ready(function () {
       },
       {
         data: "models",
-        render: (data) => `
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 bg-surface-inset rounded-lg text-ink font-bold text-xs border border-hairline">${data ? data.length : 0}</span>
-            <span class="text-ink-muted text-micro font-bold uppercase tracking-widest">Models</span>
-          </div>
+        render: (data, type, row) => `
+          <button type="button" data-action="view-models" data-id="${escapeHtml(String(row.name))}" class="group flex items-center gap-2 cursor-pointer" title="View available models" aria-label="View available models">
+            <span class="px-2 py-0.5 bg-surface-inset group-hover:bg-blue-500/10 group-hover:text-blue-400 rounded-lg text-ink font-bold text-xs border border-hairline group-hover:border-blue-500/30 transition-colors">${data ? data.length : 0}</span>
+            <span class="flex items-center gap-1 text-ink-muted group-hover:text-blue-400 text-micro font-bold uppercase tracking-widest transition-colors">Models <i data-lucide="eye" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+          </button>
         `,
       },
       {
@@ -345,6 +345,49 @@ function closeManageModelsModal() {
 }
 window.closeManageModelsModal = closeManageModelsModal;
 
+// Read-only popup listing every model registered for a server.
+function openModelsPopup(name) {
+  const data = backendsData[name];
+  if (!data) return;
+  const titleEl = document.getElementById("popupBackendName");
+  if (titleEl) titleEl.innerText = data.name;
+  const countEl = document.getElementById("popupModelsCount");
+  if (countEl) countEl.innerText = data.models ? String(data.models.length) : "0";
+
+  const list = document.getElementById("popupModelsList");
+  if (list) {
+    if (data.models && data.models.length > 0) {
+      list.innerHTML = "";
+      data.models.forEach((model) => {
+        const li = document.createElement("li");
+        li.className = "flex items-center gap-3 p-3 hover:bg-slate-800/50 transition-colors";
+        li.innerHTML = `
+          <div class="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+            <i data-lucide="box" class="w-3.5 h-3.5"></i>
+          </div>
+          <span class="text-ink font-medium text-sm break-all">${escapeHtml(String(model))}</span>
+        `;
+        list.appendChild(li);
+      });
+    } else {
+      list.innerHTML = `<li class="p-8 text-center text-ink-muted italic text-sm">No models registered for this server.</li>`;
+    }
+  }
+
+  const modal = document.getElementById("modelsPopupModal");
+  if (modal) modal.classList.remove("hidden");
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+}
+window.openModelsPopup = openModelsPopup;
+
+function closeModelsPopup() {
+  const modal = document.getElementById("modelsPopupModal");
+  if (modal) modal.classList.add("hidden");
+}
+window.closeModelsPopup = closeModelsPopup;
+
 // Health checks are deliberately throttled.
 //
 // Browsers allow only ~6 concurrent HTTP/1.1 connections per origin, and the
@@ -577,6 +620,7 @@ document.addEventListener("click", function (e) {
   const { action, id, backend, model } = btn.dataset;
   switch (action) {
     case "manage": return openManageModelsModal(id);
+    case "view-models": return openModelsPopup(id);
     case "sync": return syncBackendModels(id);
     case "edit": return openEditModal(id);
     case "delete": return deleteBackend(id);

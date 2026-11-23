@@ -567,6 +567,9 @@
       </div>
     </div>
     <div class="flex items-center gap-3 flex-wrap">
+      <button id="btnUpgradeLicense" type="button" class="min-h-touch px-4 py-2 bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 rounded-control font-medium text-xs flex items-center gap-2 transition">
+        <i data-lucide="rocket" class="w-4 h-4"></i>Upgrade Plan
+      </button>
       <button id="btnRefreshLicense" type="button" class="min-h-touch px-4 py-2 bg-accent text-accent-ink rounded-control font-medium text-xs flex items-center gap-2 hover:bg-accent/90 transition shadow-sm">
         <i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh Lease Now
       </button>
@@ -634,6 +637,97 @@
             <i data-lucide="check-circle-2" class="w-4 h-4 text-ok feature-icon"></i>
             <span class="text-ink">Audit Log Persistence</span>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upgrade License Plan Modal -->
+<div
+  id="upgradeLicenseModal"
+  class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+  onclick="if(event.target === this) window.closeUpgradeLicenseModal && window.closeUpgradeLicenseModal()"
+>
+  <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-2xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden transform transition-all">
+    <div class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset/50">
+      <div>
+        <h2 class="text-lg font-bold text-ink flex items-center gap-3">
+          <i data-lucide="rocket" class="text-violet-400 w-5 h-5" aria-hidden="true"></i>Upgrade Your Plan
+        </h2>
+        <p class="text-xs text-ink-muted mt-1">Choose a plan, get your key from the Licencia portal, then activate it below. Nothing restarts &mdash; new entitlements apply immediately.</p>
+      </div>
+      <button type="button" onclick="window.closeUpgradeLicenseModal && window.closeUpgradeLicenseModal()" class="text-ink-muted hover:text-ink transition cursor-pointer p-1" aria-label="Close modal" title="Close">
+        <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-5">
+      <!-- Plans grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-surface-inset/60 rounded-panel border border-hairline p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-ink font-bold text-sm">Community</h3>
+            <span id="upgradePlanCommunityBadge" class="px-2 py-0.5 rounded text-micro font-bold border border-hairline text-ink-muted">Current</span>
+          </div>
+          <p class="text-2xl font-bold text-ink mb-3">Free</p>
+          <ul class="text-xs text-ink-muted space-y-1.5 flex-1">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>2 model servers</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>5 API keys</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>Basic routing &amp; audit logs</li>
+          </ul>
+          <p class="text-micro text-ink-subtle mt-3">No license key required.</p>
+        </div>
+        <div class="bg-surface-inset/60 rounded-panel border border-cyan-500/30 p-4 flex flex-col relative">
+          <span class="absolute -top-2.5 right-3 px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-micro font-bold border border-cyan-500/30">POPULAR</span>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-cyan-300 font-bold text-sm">Pro</h3>
+            <span id="upgradePlanProBadge" class="hidden px-2 py-0.5 rounded text-micro font-bold border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">Current</span>
+          </div>
+          <p class="text-2xl font-bold text-ink mb-3">Paid</p>
+          <ul class="text-xs text-ink-muted space-y-1.5 flex-1">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>Higher server &amp; API key quotas</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>Semantic response cache</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>Complexity-based routing</li>
+          </ul>
+          <p class="text-micro text-ink-subtle mt-3">Exact quotas are granted per license by the licensing server.</p>
+        </div>
+        <div class="bg-surface-inset/60 rounded-panel border border-emerald-500/30 p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-emerald-300 font-bold text-sm">Enterprise</h3>
+            <span id="upgradePlanEnterpriseBadge" class="hidden px-2 py-0.5 rounded text-micro font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-300">Current</span>
+          </div>
+          <p class="text-2xl font-bold text-ink mb-3">Custom</p>
+          <ul class="text-xs text-ink-muted space-y-1.5 flex-1">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>Unlimited servers &amp; API keys</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>Live waterfall traces</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-ok shrink-0"></i>All features unlocked</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Activation -->
+      <div class="bg-surface-inset/50 border border-hairline p-4 rounded-panel">
+        <h3 class="text-ink font-bold mb-1 flex items-center gap-2 text-sm">
+          <i data-lucide="key-round" class="text-violet-400 w-4 h-4" aria-hidden="true"></i>Activate License Key
+        </h3>
+        <p class="text-micro text-ink-muted mb-3">Paste the license key issued for this gateway. The key is validated online against the licensing server before it is applied; a failed attempt never changes your current tier.</p>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="text" id="upgradeLicenseKey" autocomplete="off" spellcheck="false" placeholder="e.g. LCG-PRO-XXXX-XXXX-XXXX" aria-label="New license key"
+            class="flex-1 bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink font-mono text-sm outline-none focus:ring-2 focus:ring-violet-500/50 transition" />
+          <button id="btnApplyUpgradeKey" type="button" class="min-h-touch px-5 py-3 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-control transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer text-sm">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>Validate &amp; Upgrade
+          </button>
+        </div>
+        <div class="flex items-center gap-2 mt-3 text-micro text-ink-muted">
+          <i data-lucide="fingerprint" class="w-3.5 h-3.5 shrink-0"></i>
+          <span>Hardware fingerprint for activation:</span>
+          <code id="upgradeHardwareId" class="font-mono text-ink bg-surface-inset px-1.5 py-0.5 rounded border border-hairline break-all">...</code>
+          <button type="button" id="btnCopyUpgradeHardwareId" class="text-ink-muted hover:text-ink transition p-1" title="Copy Hardware ID" aria-label="Copy Hardware ID">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          </button>
         </div>
       </div>
     </div>
