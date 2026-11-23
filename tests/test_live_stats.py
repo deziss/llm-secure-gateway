@@ -131,3 +131,38 @@ def test_tracker_timing_uses_store_clock():
     out = tr.finish(success=True, output_tokens=20)
     assert out["ttft"] == pytest.approx(0.5)
     assert out["decode_seconds"] == pytest.approx(2.0)
+
+
+def test_progress_updates_live_tok_s_without_double_counting():
+    clk = Clock()
+    st = LiveStats(clock=clk)
+    tr = track_dispatch("gpu-a", "vllm", "llama3", store=st)
+    tr.first_token()
+
+    tr.progress(40)
+    row = _row(st.snapshot())
+    assert row["tok_s_throughput_live"] == pytest.approx(40 / 10)
+
+    clk.t += 5
+    tr.progress(90)  # +50 into a later second bucket
+    row = _row(st.snapshot())
+    assert row["tok_s_throughput_live"] == pytest.approx(9.0)  # both buckets inside the 10 s window
+
+    # Finish with the full figure: second-bucket sum must stay 90, not 180.
+    clk.t += 1
+    tr.finish(success=True, output_tokens=90)
+    row = _row(st.snapshot())
+    assert row["tok_s_throughput"] == pytest.approx(90 / 60)
+    mb = next(iter(st._minute_buckets.values()))
+    assert mb.completion_tokens == 90  # rollups credit the full figure exactly once
+
+
+def test_progress_ignores_zero_and_regressions():
+    clk = Clock()
+    st = LiveStats(clock=clk)
+    tr = track_dispatch("gpu-a", "vllm", "llama3", store=st)
+    tr.first_token()
+    tr.progress(0)
+    tr.progress(-5)
+    row = _row(st.snapshot())
+    assert row["tok_s_throughput_live"] == 0.0

@@ -61,6 +61,7 @@ class RequestTracker:
         "request_id",
         "owner_id",
         "provider",
+        "_live_tokens",
     )
 
     def __init__(
@@ -83,6 +84,7 @@ class RequestTracker:
         self.request_id = request_id
         self.owner_id = owner_id
         self.provider = provider
+        self._live_tokens = 0
 
     def retarget(self, server: str, server_type, model: str) -> None:
         """Re-key a still-waiting request after fallback chose a different server/model."""
@@ -108,6 +110,21 @@ class RequestTracker:
         if delta:
             self._inflight = total
             self._store.add_inflight_bytes(self.key, delta)
+
+    def progress(self, total_output_tokens: int) -> None:
+        """Report tokens produced so far by this still-running stream.
+
+        Credits only the increment to the live second-buckets so tok/s updates while the
+        request is in flight. The total is remembered so ``finish`` can avoid double-counting.
+        """
+        if self.finished or total_output_tokens <= self._live_tokens:
+            return
+        delta = total_output_tokens - self._live_tokens
+        self._live_tokens = total_output_tokens
+        try:
+            self._store.progress(self.key, delta)
+        except Exception:  # never let stats break a request
+            logger.debug("live stats progress failed", exc_info=True)
 
     def finish(
         self,
@@ -161,6 +178,7 @@ class RequestTracker:
             ttft=ttft,
             itl_ms=itl_ms,
             estimated=estimated,
+            already_counted=self._live_tokens,
             now=now,
         )
         if self._inflight:

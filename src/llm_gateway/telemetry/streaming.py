@@ -207,6 +207,23 @@ async def stream_with_telemetry(
 
     scan = _StreamScan()
 
+    _last_live_report = 0.0
+
+    def _report_live_tokens() -> None:
+        """Feed tokens-so-far to the live store so tok/s updates mid-stream (throttled)."""
+        nonlocal _last_live_report
+        if tracker is None or tracker.finished:
+            return
+        now = time.monotonic()
+        if now - _last_live_report < 0.25:
+            return
+        _last_live_report = now
+        if scan.usage_seen and scan.usage.completion_tokens > 0:
+            tracker.progress(scan.usage.completion_tokens)
+        elif scan.delta_count > 0:
+            # No usage chunk yet: each content delta is roughly one token.
+            tracker.progress(scan.delta_count)
+
     # Determine whether the client expects OpenAI or Anthropic format
     # If translation_mode is anthropic_to_openai, final format is Anthropic (client sent Anthropic)
     # If translation_mode is openai_to_anthropic, final format is OpenAI (client sent OpenAI)
@@ -335,6 +352,7 @@ async def stream_with_telemetry(
                 tracker.set_inflight_bytes(accumulated_bytes)
 
             decoded = decoder.decode(chunk)
+            _report_live_tokens()
 
             # If normalize_thinking is active, we parse and intercept standard/thinking blocks
             if parser:

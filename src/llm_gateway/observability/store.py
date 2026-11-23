@@ -231,6 +231,20 @@ class LiveStats:
                 st.waiting -= 1
             st.generating += 1
 
+    def progress(self, key: Key, tokens: int, now: Optional[float] = None) -> None:
+        """Partial output tokens for a still-running request.
+
+        Without this, ``tok_s_throughput(_live)`` stays at 0 for the whole duration of a
+        stream and only jumps when the request finishes. Minute rollups are untouched:
+        ``finish`` credits them with the request's full token count exactly once.
+        """
+        if tokens <= 0:
+            return
+        raw_now = self.now() if now is None or isinstance(now, datetime) else now
+        with self._lock:
+            st = self._state(key)
+            self._bucket(st, raw_now).out_tokens += tokens
+
     def finish(
         self,
         key: Key,
@@ -246,6 +260,7 @@ class LiveStats:
         ttft: Optional[float] = None,
         itl_ms: Optional[float] = None,
         estimated: bool = False,
+        already_counted: int = 0,
         now: Optional[float | datetime] = None,
     ) -> None:
         raw_now = self.now() if now is None or isinstance(now, datetime) else now
@@ -258,8 +273,11 @@ class LiveStats:
             b = self._bucket(st, raw_now)
             if not success and not cancelled:
                 b.errors += 1
+            # ``already_counted``: tokens credited live via progress() while the request
+            # was streaming. Only the remainder lands in the second bucket; minute
+            # rollups below always take the request's full figures exactly once.
             if output_tokens > 0:
-                b.out_tokens += output_tokens
+                b.out_tokens += max(0, output_tokens - already_counted)
                 if decode_seconds and decode_seconds > 0:
                     b.decode_tps_sum += output_tokens / decode_seconds
                     b.decode_n += 1
