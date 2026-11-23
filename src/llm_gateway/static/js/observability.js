@@ -523,6 +523,8 @@
       const summary = m.summary || {};
       const tokDecode = summary.tok_s_decode ?? m.tok_s_decode;
       const tokThru = summary.tok_s_throughput ?? m.tok_s_throughput;
+      const tokThruLive = summary.tok_s_throughput_live ?? m.tok_s_throughput_live;
+      const tokDecodeLive = summary.tok_s_decode_live ?? m.tok_s_decode_live;
       const ttftP50 = summary.ttft_p50_ms ?? m.ttft_p50_ms;
       const srvRps = summary.server_rps ?? m.server_rps;
       const srvTok = summary.server_tok_s ?? m.server_tok_s;
@@ -566,6 +568,17 @@
       tr.appendChild(td(genText, "text-right tabular-nums"));
       tr.appendChild(td(fmt(tokDecode, 1), "text-right tabular-nums"));
       tr.appendChild(td(fmt(tokThru, 1), "text-right tabular-nums"));
+      // Live tok/s: prefer the server-reported instantaneous rate, fall back to the
+      // gateway-measured 10s window, then the 60s average.
+      const liveTok = isLive ? (isNum(srvTok) ? srvTok : (isNum(tokThruLive) ? tokThruLive : null)) : null;
+      const liveCell = td(isNum(liveTok) ? fmt(liveTok, 1) : (isNum(tokThruLive) ? fmt(tokThruLive, 1) : DASH), "text-right tabular-nums");
+      if (isLive && liveTok && liveTok > 0) {
+        liveCell.classList.add("text-emerald-400", "font-semibold");
+        liveCell.title = "Current generation speed" + (isNum(tokDecodeLive) ? ` · decode ${fmt(tokDecodeLive, 1)} tok/s` : "");
+      } else if (isNum(tokDecodeLive)) {
+        liveCell.title = `decode ${fmt(tokDecodeLive, 1)} tok/s`;
+      }
+      tr.appendChild(liveCell);
       tr.appendChild(td(fmtMs(ttftP50), "text-right tabular-nums"));
       tr.appendChild(td(fmt(srvRps, 2), "text-right tabular-nums"));
       tr.appendChild(td(fmt(srvTok, 1), "text-right tabular-nums"));
@@ -583,6 +596,44 @@
     replaceRows($("obsModelsBody"), rows);
     $("obsModelsEmpty").textContent = all.length ? "No models match the filters." : "No model servers configured yet. Add one under Model servers.";
     $("obsModelsEmpty").classList.toggle("hidden", rows.length > 0);
+
+    // Global live & average tokens/sec stat cards
+    renderTokenThroughputStats(all, isLive);
+  }
+
+  function renderTokenThroughputStats(models, isLive) {
+    const num = (v) => (typeof v === "number" && isFinite(v) ? v : null);
+
+    // Live total: the freshest signal available — sum of server-reported instantaneous
+    // rates where present, plus the gateway-measured 10s window for the rest.
+    let liveTotal = 0;
+    let liveDecode = 0, liveDecodeHas = false;
+    let avgTotal = 0, avgHas = false;
+    for (const m of models) {
+      const s = m.summary || {};
+      const srv = num(s.server_tok_s ?? m.server_tok_s);
+      const live10s = num(s.tok_s_throughput_live ?? m.tok_s_throughput_live);
+      const liveTok = srv != null && isLive ? srv : (live10s != null ? live10s : (num(s.tok_s_throughput ?? m.tok_s_throughput) || 0));
+      liveTotal += liveTok || 0;
+      const decLive = num(s.tok_s_decode_live ?? m.tok_s_decode_live);
+      if (decLive != null) { liveDecode += decLive; liveDecodeHas = true; }
+      const avg = num(s.tok_s_throughput ?? m.tok_s_throughput);
+      if (avg != null) { avgTotal += avg; avgHas = true; }
+    }
+
+    const liveEl = $("obsLiveTokTotal");
+    if (liveEl) liveEl.textContent = liveTotal > 0 ? liveTotal.toFixed(1) : "0";
+    const bdEl = $("obsLiveTokBreakdown");
+    if (bdEl) bdEl.textContent = liveDecodeHas && liveDecode > 0 ? `· decode ≈ ${liveDecode.toFixed(1)} tok/s` : "";
+    const subEl = $("obsLiveTokSub");
+    if (subEl) subEl.textContent = isLive
+      ? "Instantaneous — last snapshot (10s window / server metrics)"
+      : `Snapshot live · averages shown for ${state.timeframe} window`;
+
+    const avgEl = $("obsAvgTokTotal");
+    if (avgEl) avgEl.textContent = avgHas && avgTotal > 0 ? avgTotal.toFixed(1) : "0";
+    const winEl = $("obsAvgTokWindow");
+    if (winEl) winEl.textContent = isLive ? "· over last 60s" : `· over last ${state.timeframe}`;
   }
 
   // ── Model Telemetry Deep-Dive Modal & Charts ──────────────────────────
@@ -731,6 +782,23 @@
     if (statTtft) statTtft.textContent = isNum(avgTtft) ? avgTtft.toFixed(1) + " ms" : DASH;
     const statTok = $("telemetryStatTotalTokens");
     if (statTok) statTok.textContent = integer.format(totalTokens || 0);
+
+    // Avg & live tokens/sec for this model
+    const avgTps = summary.tok_s_throughput ?? modelData?.tok_s_throughput ?? null;
+    const liveTps = summary.tok_s_throughput_live ?? modelData?.tok_s_throughput_live ?? null;
+    const liveTtftSrv = modelData?.server_tok_s ?? summary.server_tok_s ?? null;
+    const displayLive = isNum(liveTtftSrv) ? liveTtftSrv : liveTps;
+    const decLive = summary.tok_s_decode_live ?? modelData?.tok_s_decode_live ?? null;
+    const statAvgTps = $("telemetryStatAvgTps");
+    if (statAvgTps) {
+      statAvgTps.textContent = isNum(avgTps) ? avgTps.toFixed(1) : DASH;
+      statAvgTps.title = isNum(decLive) ? `decode now: ${decLive.toFixed(1)} tok/s` : "Mean output tokens/s across the window";
+    }
+    const statLiveTps = $("telemetryStatLiveTps");
+    if (statLiveTps) {
+      statLiveTps.textContent = isNum(displayLive) ? displayLive.toFixed(1) : DASH;
+      statLiveTps.title = isNum(liveTps) ? `gateway-measured last 10s: ${liveTps.toFixed(1)} tok/s` : "Instantaneous tokens/s (last ~10s)";
+    }
 
     // Chart labels
     const labels = timeseries.map((p) => {

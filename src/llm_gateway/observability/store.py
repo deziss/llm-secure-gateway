@@ -410,11 +410,15 @@ class LiveStats:
                     continue
 
                 long_ = list(self._window(st, now, WINDOW_S))
+                short_ = list(self._window(st, now, SHORT_WINDOW_S))
                 requests_60 = sum(b.requests for b in long_)
                 errors_60 = sum(b.errors for b in long_)
                 out_tok = sum(b.out_tokens for b in long_)
                 dec_sum = sum(b.decode_tps_sum for b in long_)
                 dec_n = sum(b.decode_n for b in long_)
+                out_tok_short = sum(b.out_tokens for b in short_)
+                dec_sum_short = sum(b.decode_tps_sum for b in short_)
+                dec_n_short = sum(b.decode_n for b in short_)
                 ttfts = [t for b in long_ for t in b.ttft]
 
                 points = []
@@ -455,6 +459,8 @@ class LiveStats:
                     "error_rate_pct": round((errors_60 / requests_60) * 100, 2) if requests_60 else 0.0,
                     "tok_s_decode": round(dec_sum / dec_n, 2) if dec_n else None,
                     "tok_s_throughput": round(out_tok / WINDOW_S, 2),
+                    "tok_s_throughput_live": round(out_tok_short / SHORT_WINDOW_S, 2),
+                    "tok_s_decode_live": round(dec_sum_short / dec_n_short, 2) if dec_n_short else None,
                     "total_tokens": out_tok,
                     "ttft_p50_ms": round(statistics.median(ttfts) * 1000, 1) if ttfts else None,
                     "ttft_p90_ms": round(calculate_percentile([t * 1000 for t in ttfts], 0.9), 1) if ttfts else None,
@@ -490,6 +496,9 @@ class LiveStats:
                 dec_n = sum(b.decode_n for b in long_)
                 ttfts = [t for b in long_ for t in b.ttft]
                 requests_10 = sum(b.requests for b in short)
+                out_tok_short = sum(b.out_tokens for b in short)
+                dec_sum_short = sum(b.decode_tps_sum for b in short)
+                dec_n_short = sum(b.decode_n for b in short)
                 estimated = any(b.estimated for b in long_)
                 active = requests_60 or st.waiting or st.generating or st.inflight_bytes
                 if not active:
@@ -506,6 +515,10 @@ class LiveStats:
                     "generating": st.generating,
                     "tok_s_decode": round(dec_sum / dec_n, 2) if dec_n else None,
                     "tok_s_throughput": round(out_tok / WINDOW_S, 2),
+                    # Short-window (10 s) values approximate the *current* instantaneous
+                    # throughput much faster than the smoothed 60 s averages above.
+                    "tok_s_throughput_live": round(out_tok_short / SHORT_WINDOW_S, 2),
+                    "tok_s_decode_live": round(dec_sum_short / dec_n_short, 2) if dec_n_short else None,
                     "ttft_p50_ms": round(statistics.median(ttfts) * 1000, 1) if ttfts else None,
                     "inflight_bytes": st.inflight_bytes,
                     "tokens_estimated": estimated,

@@ -105,27 +105,32 @@ def merge_models(replica_rows: list[list[dict]]) -> list[dict]:
             m = acc.setdefault(key, {
                 "server": r.get("server"), "server_type": r.get("server_type"), "model": r.get("model"),
                 "rps_10s": 0.0, "rps_60s": 0.0, "requests_60s": 0, "errors_60s": 0,
-                "waiting": 0, "generating": 0, "tok_s_throughput": 0.0, "inflight_bytes": 0,
-                "tokens_estimated": False, "tok_s_decode": None, "ttft_p50_ms": None,
+                "waiting": 0, "generating": 0, "tok_s_throughput": 0.0, "tok_s_throughput_live": 0.0,
+                "inflight_bytes": 0,
+                "tokens_estimated": False, "tok_s_decode": None, "tok_s_decode_live": None, "ttft_p50_ms": None,
             })
-            for f in ("rps_10s", "rps_60s", "tok_s_throughput"):
+            for f in ("rps_10s", "rps_60s", "tok_s_throughput", "tok_s_throughput_live"):
                 m[f] += float(r.get(f) or 0.0)
             for f in ("requests_60s", "errors_60s", "waiting", "generating", "inflight_bytes"):
                 m[f] += int(r.get(f) or 0)
             m["tokens_estimated"] = m["tokens_estimated"] or bool(r.get("tokens_estimated"))
             if r.get("tok_s_decode") is not None:
                 decode.setdefault(key, []).append(float(r["tok_s_decode"]))
+            if r.get("tok_s_decode_live") is not None:
+                decode.setdefault(("live",) + key, []).append(float(r["tok_s_decode_live"]))
             if r.get("ttft_p50_ms") is not None:
                 ttft.setdefault(key, []).append(float(r["ttft_p50_ms"]))
     for key, m in acc.items():
         m["tok_s_decode"] = _mean(decode.get(key, []))
+        m["tok_s_decode_live"] = _mean(decode.get(("live",) + key, []))
         m["ttft_p50_ms"] = _mean(ttft.get(key, []))
     return list(acc.values())
 
 
 _GATEWAY_ZERO = {
     "rps_10s": 0.0, "rps_60s": 0.0, "requests_60s": 0, "errors_60s": 0, "waiting": 0, "generating": 0,
-    "tok_s_throughput": 0.0, "tok_s_decode": None, "ttft_p50_ms": None, "inflight_bytes": 0,
+    "tok_s_throughput": 0.0, "tok_s_throughput_live": 0.0, "tok_s_decode": None, "tok_s_decode_live": None,
+    "ttft_p50_ms": None, "inflight_bytes": 0,
     "tokens_estimated": False,
 }
 
@@ -468,6 +473,8 @@ async def history(
                     "error_rate_pct": 0.0,
                     "tok_s_decode": None,
                     "tok_s_throughput": 0.0,
+                    "tok_s_throughput_live": 0.0,
+                    "tok_s_decode_live": None,
                     "total_tokens": 0,
                     "ttft_p50_ms": None,
                     "ttft_p90_ms": None,

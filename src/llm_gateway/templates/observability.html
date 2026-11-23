@@ -59,6 +59,38 @@
       </div>
     </div>
 
+    <!-- Token Throughput Stat Cards (Avg + Live) -->
+    <div class="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="rounded-panel border border-hairline bg-surface-raised p-3 sm:p-4 flex items-center gap-3">
+        <div class="w-10 h-10 shrink-0 rounded-control bg-cyan-500/10 text-cyan-400 flex items-center justify-center" aria-hidden="true">
+          <i data-lucide="gauge" class="h-5 w-5"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted">Live Tokens / sec (all models)</div>
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <span id="obsLiveTokTotal" class="text-2xl font-extrabold text-ink tabular-nums" role="status" aria-live="polite">&ndash;</span>
+            <span class="text-caption text-ink-muted">tok/s</span>
+            <span id="obsLiveTokBreakdown" class="text-micro text-ink-muted"></span>
+          </div>
+          <div id="obsLiveTokSub" class="text-micro text-ink-muted mt-0.5">Instantaneous, measured over the last 10s</div>
+        </div>
+      </div>
+      <div class="rounded-panel border border-hairline bg-surface-raised p-3 sm:p-4 flex items-center gap-3">
+        <div class="w-10 h-10 shrink-0 rounded-control bg-emerald-500/10 text-emerald-400 flex items-center justify-center" aria-hidden="true">
+          <i data-lucide="bar-chart-3" class="h-5 w-5"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted">Average Tokens / sec (all models)</div>
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <span id="obsAvgTokTotal" class="text-2xl font-extrabold text-ink tabular-nums" role="status">&ndash;</span>
+            <span class="text-caption text-ink-muted">tok/s</span>
+            <span id="obsAvgTokWindow" class="text-micro text-ink-muted"></span>
+          </div>
+          <div class="text-micro text-ink-muted mt-0.5">Mean output-token throughput across the selected window</div>
+        </div>
+      </div>
+    </div>
+
     <div class="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Filter models">
       <input id="fModelsQ" type="search" placeholder="Filter server or model…" aria-label="Filter models by text" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:14rem" />
       <select id="fModelsServer" aria-label="Filter by server" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink"><option value="">All servers</option></select>
@@ -83,6 +115,7 @@
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="generating">Generating</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_decode">tok/s decode</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_throughput">tok/s total</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_throughput_live" title="Instantaneous output tokens/s over the last 10 seconds">tok/s live</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="ttft_p50_ms">TTFT p50</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_rps">Server RPS</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_tok_s">Server tok/s</th>
@@ -541,8 +574,8 @@
         </button>
       </div>
 
-      <!-- Overview Stat Cards (Peak RPS, Total Requests, Error Rate %, Avg TTFT, Total Tokens) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-4 bg-surface-base border-b border-hairline">
+      <!-- Overview Stat Cards (Peak RPS, Total Requests, Error Rate %, Avg TTFT, Total Tokens, Avg tok/s, Live tok/s) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 p-4 bg-surface-base border-b border-hairline">
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Peak RPS</div>
           <div id="telemetryStatPeakRps" class="text-xl sm:text-2xl font-extrabold text-ink tabular-nums">–</div>
@@ -562,6 +595,14 @@
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Total Tokens</div>
           <div id="telemetryStatTotalTokens" class="text-xl sm:text-2xl font-extrabold text-accent tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Avg tok/s</div>
+          <div id="telemetryStatAvgTps" class="text-xl sm:text-2xl font-extrabold text-cyan-300 tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Live tok/s</div>
+          <div id="telemetryStatLiveTps" class="text-xl sm:text-2xl font-extrabold text-emerald-400 tabular-nums">–</div>
         </div>
       </div>
 
