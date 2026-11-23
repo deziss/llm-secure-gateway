@@ -91,6 +91,15 @@
       </div>
     </div>
 
+    <!-- Per-model Tokens / sec Breakdown (Live + Avg) -->
+    <div id="obsTokPerModelWrap" class="mb-3 rounded-panel border border-hairline bg-surface-raised p-3 sm:p-4 hidden">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="text-micro font-bold uppercase tracking-wider text-ink-muted">Tokens / sec by model</div>
+        <div class="text-micro text-ink-muted" id="obsTokPerModelHint">live (last 10s) · average</div>
+      </div>
+      <div id="obsTokPerModel" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+    </div>
+
     <div class="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Filter models">
       <input id="fModelsQ" type="search" placeholder="Filter server or model…" aria-label="Filter models by text" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:14rem" />
       <select id="fModelsServer" aria-label="Filter by server" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink"><option value="">All servers</option></select>

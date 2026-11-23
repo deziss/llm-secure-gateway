@@ -609,6 +609,7 @@
     let liveTotal = 0;
     let liveDecode = 0, liveDecodeHas = false;
     let avgTotal = 0, avgHas = false;
+    const perModel = [];
     for (const m of models) {
       const s = m.summary || {};
       const srv = num(s.server_tok_s ?? m.server_tok_s);
@@ -619,7 +620,16 @@
       if (decLive != null) { liveDecode += decLive; liveDecodeHas = true; }
       const avg = num(s.tok_s_throughput ?? m.tok_s_throughput);
       if (avg != null) { avgTotal += avg; avgHas = true; }
+      perModel.push({
+        server: m.server || "?",
+        model: m.model || "?",
+        live: liveTok || 0,
+        liveSource: srv != null && isLive ? "server" : (live10s != null ? "10s" : "avg"),
+        decodeLive: decLive,
+        avg: avg,
+      });
     }
+    renderTokenThroughputPerModel(perModel, isLive);
 
     const liveEl = $("obsLiveTokTotal");
     if (liveEl) liveEl.textContent = liveTotal > 0 ? liveTotal.toFixed(1) : "0";
@@ -634,6 +644,56 @@
     if (avgEl) avgEl.textContent = avgHas && avgTotal > 0 ? avgTotal.toFixed(1) : "0";
     const winEl = $("obsAvgTokWindow");
     if (winEl) winEl.textContent = isLive ? "· over last 60s" : `· over last ${state.timeframe}`;
+  }
+
+  // Per-model live/avg tokens/sec chips, busiest model first.
+  function renderTokenThroughputPerModel(entries, isLive) {
+    const wrap = $("obsTokPerModelWrap");
+    const grid = $("obsTokPerModel");
+    const hint = $("obsTokPerModelHint");
+    if (!wrap || !grid) return;
+    if (!entries.length) {
+      wrap.classList.add("hidden");
+      grid.textContent = "";
+      return;
+    }
+    wrap.classList.remove("hidden");
+    if (hint) hint.textContent = isLive ? "live: last 10s · avg: last 60s" : `live: last 10s · avg: last ${state.timeframe}`;
+
+    const sorted = entries.slice().sort((a, b) => (b.live - a.live) || ((b.avg || 0) - (a.avg || 0)));
+    const cards = sorted.map((e) => {
+      const liveActive = e.live > 0;
+      const liveTitle = e.liveSource === "server"
+        ? "Server-reported instantaneous rate"
+        : e.liveSource === "10s"
+          ? "Gateway-measured over the last 10s"
+          : "No live traffic — showing window average";
+      const chips = [
+        el("span", {
+          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 " + (liveActive ? "bg-emerald-500/10 text-emerald-400" : "bg-surface-inset text-ink-muted"),
+          attrs: { title: liveTitle + (e.decodeLive != null && liveActive ? ` · decode ${e.decodeLive.toFixed(1)} tok/s` : "") }
+        }, [
+          el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "live" }),
+          el("span", { cls: "text-sm font-extrabold tabular-nums", text: e.live.toFixed(1) })
+        ]),
+        el("span", {
+          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 bg-cyan-500/10 text-cyan-400",
+          attrs: { title: `Average tok/s over ${isLive ? "the last 60s" : `the ${state.timeframe} window`}` }
+        }, [
+          el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "avg" }),
+          el("span", { cls: "text-sm font-extrabold tabular-nums", text: e.avg != null ? e.avg.toFixed(1) : DASH })
+        ])
+      ];
+      return el("div", { cls: "flex items-center gap-2 rounded-control border border-hairline bg-surface-inset px-2.5 py-2", attrs: { title: `${e.server} · ${e.model}` } }, [
+        el("div", { cls: "min-w-0 flex-1" }, [
+          el("div", { cls: "truncate font-mono text-xs text-ink", text: e.model }),
+          el("div", { cls: "truncate text-micro text-ink-muted", text: e.server })
+        ]),
+        el("div", { cls: "flex items-center gap-1.5 shrink-0", }, chips)
+      ]);
+    });
+    grid.textContent = "";
+    cards.forEach((c) => grid.appendChild(c));
   }
 
   // ── Model Telemetry Deep-Dive Modal & Charts ──────────────────────────
