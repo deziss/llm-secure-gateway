@@ -155,7 +155,12 @@ def get_backend_in_flight(
 # Persistent HTTPX client pool — one client per backend base_url.
 # ---------------------------------------------------------------------------
 _backend_clients: dict[str, httpx.AsyncClient] = {}
-_DEFAULT_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=15.0)
+# keepalive_expiry MUST be shorter than the idle keep-alive timeout of the upstreams
+# we proxy to. vLLM/uvicorn closes idle connections after VLLM_HTTP_TIMEOUT_KEEP_ALIVE
+# (5s by default); if we keep pooled sockets longer than that, concurrent requests pick
+# server-closed sockets from the pool and die with empty httpx.ReadError / connection
+# reset before headers. 4s guarantees the client always retires idle sockets first.
+_DEFAULT_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=4.0)
 
 DEFAULT_UPSTREAM_TIMEOUT = float(os.getenv("UPSTREAM_TIMEOUT", "120.0"))
 
@@ -653,6 +658,19 @@ def serialize_json_body(data: Any) -> bytes:
     return json.dumps(data, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
 
 
+def _retry_sleep(backoff: float) -> float:
+    """Equal-jitter retry delay: a random sleep in [backoff/2, backoff].
+
+    Without jitter, all concurrent requests that failed at the same instant wake
+    and retry at exactly the same time, stampeding a backend that just blipped
+    (retry storm). Jitter spreads retries so the backend recovers smoothly.
+    """
+    return random.uniform(backoff / 2.0, backoff)
+
+
+MAX_RETRY_BACKOFF = float(os.getenv("RETRY_BACKOFF_MAX", "8.0"))
+
+
 async def try_backend_with_fallback(
     backend: LLMBackend,
     path: str,
@@ -733,8 +751,8 @@ async def try_backend_with_fallback(
                     if attempt < max_attempts:
                         logger.warning(f"Backend {base_url} returned {r.status_code}, retrying (attempt {attempt}/{max_attempts})...")
                         await r.aclose()
-                        await asyncio.sleep(backoff)
-                        backoff *= 2.0
+                        await asyncio.sleep(_retry_sleep(backoff))
+                        backoff = min(backoff * 2.0, MAX_RETRY_BACKOFF)
                         continue
 
                 cb.record_success(base_url)
@@ -758,17 +776,19 @@ async def try_backend_with_fallback(
                 # Purge and close client to discard broken keepalive sockets from the pool
                 await _reset_client(base_url)
                 if attempt < max_attempts:
+                    sleep_s = _retry_sleep(backoff)
                     logger.warning(
-                        "Backend %s failed (%s: %s), retrying (attempt %d/%d) in %.1fs...",
+                        "Backend %s failed (%s: %s), retrying (attempt %d/%d) in %.2fs (jittered from %.1fs)...",
                         base_url,
                         type(exc).__name__,
                         exc,
                         attempt,
                         max_attempts,
+                        sleep_s,
                         backoff,
                     )
-                    await asyncio.sleep(backoff)
-                    backoff *= 2.0
+                    await asyncio.sleep(sleep_s)
+                    backoff = min(backoff * 2.0, MAX_RETRY_BACKOFF)
                     continue
                 else:
                     logger.warning(
