@@ -125,6 +125,7 @@
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_decode">tok/s decode</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_throughput">tok/s total</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="tok_s_throughput_live" title="Instantaneous output tokens/s over the last 10 seconds">tok/s live</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="delta_s_live" title="SSE delta (chunk) events per second — how often the backend pushes tokens">Δ events/s</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="ttft_p50_ms">TTFT p50</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_rps">Server RPS</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="server_tok_s">Server tok/s</th>
@@ -583,8 +584,8 @@
         </button>
       </div>
 
-      <!-- Overview Stat Cards (Peak RPS, Total Requests, Error Rate %, Avg TTFT, Total Tokens, Avg tok/s, Live tok/s) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 p-4 bg-surface-base border-b border-hairline">
+      <!-- Overview Stat Cards (Peak RPS, Total Requests, Error Rate %, Avg TTFT, Total Tokens, Δ Events, Avg tok/s, Live tok/s) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 p-4 bg-surface-base border-b border-hairline">
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Peak RPS</div>
           <div id="telemetryStatPeakRps" class="text-xl sm:text-2xl font-extrabold text-ink tabular-nums">–</div>
@@ -604,6 +605,10 @@
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Total Tokens</div>
           <div id="telemetryStatTotalTokens" class="text-xl sm:text-2xl font-extrabold text-accent tabular-nums">–</div>
+        </div>
+        <div class="rounded-panel border border-hairline bg-surface-raised p-3" title="SSE delta (chunk) events streamed for this model">
+          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Δ Events</div>
+          <div id="telemetryStatTotalDeltas" class="text-xl sm:text-2xl font-extrabold text-sky-400 tabular-nums">–</div>
         </div>
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Avg tok/s</div>

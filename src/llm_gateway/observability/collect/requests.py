@@ -62,6 +62,7 @@ class RequestTracker:
         "owner_id",
         "provider",
         "_live_tokens",
+        "_live_deltas",
     )
 
     def __init__(
@@ -85,6 +86,7 @@ class RequestTracker:
         self.owner_id = owner_id
         self.provider = provider
         self._live_tokens = 0
+        self._live_deltas = 0
 
     def retarget(self, server: str, server_type, model: str) -> None:
         """Re-key a still-waiting request after fallback chose a different server/model."""
@@ -111,18 +113,27 @@ class RequestTracker:
             self._inflight = total
             self._store.add_inflight_bytes(self.key, delta)
 
-    def progress(self, total_output_tokens: int) -> None:
-        """Report tokens produced so far by this still-running stream.
+    def progress(self, total_output_tokens: int, total_deltas: Optional[int] = None) -> None:
+        """Report tokens (and SSE delta events) produced so far by this still-running stream.
 
         Credits only the increment to the live second-buckets so tok/s updates while the
         request is in flight. The total is remembered so ``finish`` can avoid double-counting.
         """
-        if self.finished or total_output_tokens <= self._live_tokens:
+        if self.finished:
             return
-        delta = total_output_tokens - self._live_tokens
-        self._live_tokens = total_output_tokens
+        if total_output_tokens > self._live_tokens:
+            delta = total_output_tokens - self._live_tokens
+            self._live_tokens = total_output_tokens
+        else:
+            delta = 0
+        ddelta = 0
+        if total_deltas is not None and total_deltas > self._live_deltas:
+            ddelta = total_deltas - self._live_deltas
+            self._live_deltas = total_deltas
+        if delta <= 0 and ddelta <= 0:
+            return
         try:
-            self._store.progress(self.key, delta)
+            self._store.progress(self.key, delta, deltas=ddelta)
         except Exception:  # never let stats break a request
             logger.debug("live stats progress failed", exc_info=True)
 
@@ -147,6 +158,7 @@ class RequestTracker:
         cache_hit: bool = False,
         error_type: Optional[str] = None,
         phases: Optional[dict[str, float]] = None,
+        delta_events: int = 0,
         **kwargs,
     ) -> Optional[dict]:
         """Close the request. Returns timing figures on the first call, None afterwards.
@@ -179,6 +191,8 @@ class RequestTracker:
             itl_ms=itl_ms,
             estimated=estimated,
             already_counted=self._live_tokens,
+            delta_events=delta_events,
+            already_counted_deltas=self._live_deltas,
             now=now,
         )
         if self._inflight:

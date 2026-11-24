@@ -579,6 +579,17 @@
         liveCell.title = `decode ${fmt(tokDecodeLive, 1)} tok/s`;
       }
       tr.appendChild(liveCell);
+      // Delta (SSE chunk) events per second: how often the backend pushes chunks.
+      const deltaLive = summary.delta_s_live ?? m.delta_s_live;
+      const deltaAvg = summary.delta_s_avg ?? m.delta_s_avg;
+      const deltaVal = isLive && isNum(deltaLive) ? deltaLive : deltaAvg;
+      const deltaTitle = isNum(deltaLive) && isNum(deltaAvg)
+        ? `live ${fmt(deltaLive, 1)}/s · avg ${fmt(deltaAvg, 1)}/s`
+        : "SSE delta events per second";
+      const deltaCell = td(isNum(deltaVal) ? fmt(deltaVal, 1) : DASH, "text-right tabular-nums");
+      deltaCell.title = deltaTitle;
+      if (isLive && isNum(deltaLive) && deltaLive > 0) deltaCell.classList.add("text-sky-400");
+      tr.appendChild(deltaCell);
       tr.appendChild(td(fmtMs(ttftP50), "text-right tabular-nums"));
       tr.appendChild(td(fmt(srvRps, 2), "text-right tabular-nums"));
       tr.appendChild(td(fmt(srvTok, 1), "text-right tabular-nums"));
@@ -620,6 +631,8 @@
       if (decLive != null) { liveDecode += decLive; liveDecodeHas = true; }
       const avg = num(s.tok_s_throughput ?? m.tok_s_throughput);
       if (avg != null) { avgTotal += avg; avgHas = true; }
+      const dLive = num(s.delta_s_live ?? m.delta_s_live);
+      const dAvg = num(s.delta_s_avg ?? m.delta_s_avg);
       perModel.push({
         server: m.server || "?",
         model: m.model || "?",
@@ -627,6 +640,8 @@
         liveSource: srv != null && isLive ? "server" : (live10s != null ? "10s" : "avg"),
         decodeLive: decLive,
         avg: avg,
+        deltaLive: dLive,
+        deltaAvg: dAvg,
       });
     }
     renderTokenThroughputPerModel(perModel, isLive);
@@ -682,6 +697,13 @@
         }, [
           el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "avg" }),
           el("span", { cls: "text-sm font-extrabold tabular-nums", text: e.avg != null ? e.avg.toFixed(1) : DASH })
+        ]),
+        el("span", {
+          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 " + ((isFinite(e.deltaLive) && e.deltaLive > 0) ? "bg-sky-500/10 text-sky-400" : "bg-surface-inset text-ink-muted"),
+          attrs: { title: `SSE delta (chunk) events/s — live ${e.deltaLive != null ? e.deltaLive.toFixed(1) : DASH} · avg ${e.deltaAvg != null ? e.deltaAvg.toFixed(1) : DASH}` }
+        }, [
+          el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "Δ/s" }),
+          el("span", { cls: "text-sm font-extrabold tabular-nums", text: (isLive ? e.deltaLive : e.deltaAvg) != null ? (isLive ? e.deltaLive : e.deltaAvg).toFixed(1) : DASH })
         ])
       ];
       return el("div", { cls: "flex items-center gap-2 rounded-control border border-hairline bg-surface-inset px-2.5 py-2", attrs: { title: `${e.server} · ${e.model}` } }, [
@@ -842,6 +864,10 @@
     if (statTtft) statTtft.textContent = isNum(avgTtft) ? avgTtft.toFixed(1) + " ms" : DASH;
     const statTok = $("telemetryStatTotalTokens");
     if (statTok) statTok.textContent = integer.format(totalTokens || 0);
+    const totalDeltas = summary.total_deltas ?? modelData?.total_deltas
+      ?? timeseries.reduce((acc, p) => acc + (Number(p.deltas) || Number(p.delta_events) || (Number(p.delta_s) || 0) * (p.bucket_seconds || 1)), 0);
+    const statDeltas = $("telemetryStatTotalDeltas");
+    if (statDeltas) statDeltas.textContent = totalDeltas > 0 ? integer.format(totalDeltas) : DASH;
 
     // Avg & live tokens/sec for this model
     const avgTps = summary.tok_s_throughput ?? modelData?.tok_s_throughput ?? null;
@@ -980,6 +1006,22 @@
               tension: 0.25,
               pointRadius: 2,
               yAxisID: "yRate",
+            },
+            {
+              type: "line",
+              label: "Δ events / s",
+              data: timeseries.map((p) => {
+                if (p.delta_s != null) return Number(p.delta_s);
+                if (p.deltas != null) return Number(p.deltas);
+                const secs = Number(p.bucket_seconds || 60) || 60;
+                return Number(p.delta_events || 0) / secs;
+              }),
+              borderColor: "#38bdf8",
+              backgroundColor: "transparent",
+              borderDash: [4, 3],
+              tension: 0.25,
+              pointRadius: 1.5,
+              yAxisID: "yRate"
             }
           ]
         },

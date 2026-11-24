@@ -381,6 +381,7 @@ async def flush_telemetry_rollups(session: AsyncSession | None = None) -> int:
                     "prompt_tokens": ModelTelemetryRollup.prompt_tokens + stmt.excluded.prompt_tokens,
                     "completion_tokens": ModelTelemetryRollup.completion_tokens + stmt.excluded.completion_tokens,
                     "total_tokens": ModelTelemetryRollup.total_tokens + stmt.excluded.total_tokens,
+                    "delta_events": ModelTelemetryRollup.delta_events + stmt.excluded.delta_events,
                     "ttft_sum_ms": ModelTelemetryRollup.ttft_sum_ms + stmt.excluded.ttft_sum_ms,
                     "ttft_count": ModelTelemetryRollup.ttft_count + stmt.excluded.ttft_count,
                     "ttft_p50_ms": func.coalesce(stmt.excluded.ttft_p50_ms, ModelTelemetryRollup.ttft_p50_ms),

@@ -108,10 +108,11 @@ def merge_models(replica_rows: list[list[dict]]) -> list[dict]:
                 "waiting": 0, "generating": 0, "tok_s_throughput": 0.0, "tok_s_throughput_live": 0.0,
                 "inflight_bytes": 0,
                 "tokens_estimated": False, "tok_s_decode": None, "tok_s_decode_live": None, "ttft_p50_ms": None,
+                "delta_s_avg": 0.0, "delta_s_live": 0.0, "total_deltas": 0,
             })
-            for f in ("rps_10s", "rps_60s", "tok_s_throughput", "tok_s_throughput_live"):
+            for f in ("rps_10s", "rps_60s", "tok_s_throughput", "tok_s_throughput_live", "delta_s_avg", "delta_s_live"):
                 m[f] += float(r.get(f) or 0.0)
-            for f in ("requests_60s", "errors_60s", "waiting", "generating", "inflight_bytes"):
+            for f in ("requests_60s", "errors_60s", "waiting", "generating", "inflight_bytes", "total_deltas"):
                 m[f] += int(r.get(f) or 0)
             m["tokens_estimated"] = m["tokens_estimated"] or bool(r.get("tokens_estimated"))
             if r.get("tok_s_decode") is not None:
@@ -132,6 +133,7 @@ _GATEWAY_ZERO = {
     "tok_s_throughput": 0.0, "tok_s_throughput_live": 0.0, "tok_s_decode": None, "tok_s_decode_live": None,
     "ttft_p50_ms": None, "inflight_bytes": 0,
     "tokens_estimated": False,
+    "delta_s_avg": 0.0, "delta_s_live": 0.0, "total_deltas": 0,
 }
 
 

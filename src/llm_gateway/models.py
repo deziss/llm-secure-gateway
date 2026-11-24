@@ -363,6 +363,7 @@ class ModelTelemetryRollup(SQLModel, table=True):
     prompt_tokens: int = Field(default=0)
     completion_tokens: int = Field(default=0)
     total_tokens: int = Field(default=0)
+    delta_events: int = Field(default=0, description="SSE delta (chunk) events streamed")
 
     # Latency aggregates
     ttft_sum_ms: float = Field(default=0.0)

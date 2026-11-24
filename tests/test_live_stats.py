@@ -166,3 +166,40 @@ def test_progress_ignores_zero_and_regressions():
     tr.progress(-5)
     row = _row(st.snapshot())
     assert row["tok_s_throughput_live"] == 0.0
+
+
+def test_delta_events_counted_live_and_at_finish_without_double_counting():
+    clk = Clock()
+    st = LiveStats(clock=clk)
+    tr = track_dispatch("gpu-a", "vllm", "llama3", store=st)
+    tr.first_token()
+
+    tr.progress(40, total_deltas=40)
+    row = _row(st.snapshot())
+    assert row["delta_s_live"] == pytest.approx(40 / 10)
+
+    clk.t += 5
+    tr.progress(90, total_deltas=90)  # +50 deltas into a later second bucket
+    row = _row(st.snapshot())
+    assert row["delta_s_live"] == pytest.approx(9.0)
+
+    # Finish with the full figure: second-bucket deltas must stay 90, not 180,
+    # and the minute rollup credits the full count exactly once.
+    clk.t += 1
+    tr.finish(success=True, output_tokens=90, delta_events=90)
+    row = _row(st.snapshot())
+    assert row["delta_s_avg"] == pytest.approx(90 / 60)
+    assert row["total_deltas"] == 90
+    mb = next(iter(st._minute_buckets.values()))
+    assert mb.delta_events == 90
+
+
+def test_deltas_reported_even_without_tokens():
+    clk = Clock()
+    st = LiveStats(clock=clk)
+    tr = track_dispatch("gpu-a", "vllm", "llama3", store=st)
+    tr.first_token()
+    tr.progress(0, total_deltas=12)
+    row = _row(st.snapshot())
+    assert row["delta_s_live"] == pytest.approx(12 / 10)
+    assert row["tok_s_throughput_live"] == 0.0

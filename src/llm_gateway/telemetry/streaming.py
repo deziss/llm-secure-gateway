@@ -224,11 +224,11 @@ async def stream_with_telemetry(
         # real token isn't made to wait an extra 250 ms behind empty early chunks.
         if scan.usage_seen and scan.usage.completion_tokens > 0:
             _last_live_report = now
-            tracker.progress(scan.usage.completion_tokens)
+            tracker.progress(scan.usage.completion_tokens, total_deltas=scan.delta_count)
         elif scan.delta_count > 0:
             # No usage chunk yet: each content delta is roughly one token.
             _last_live_report = now
-            tracker.progress(scan.delta_count)
+            tracker.progress(scan.delta_count, total_deltas=scan.delta_count)
 
     # Determine whether the client expects OpenAI or Anthropic format
     # If translation_mode is anthropic_to_openai, final format is Anthropic (client sent Anthropic)
@@ -312,6 +312,7 @@ async def stream_with_telemetry(
             estimated=estimated, decode_seconds=decode_s,
             status_code=resp_status,
             error_type=err_type,
+            delta_events=scan.delta_count,
         )
         set_llm_attributes(
             span,

@@ -49,6 +49,7 @@ class _Bucket:
     requests: int = 0
     errors: int = 0
     out_tokens: int = 0
+    deltas: int = 0
     decode_tps_sum: float = 0.0
     decode_n: int = 0
     ttft: list[float] = field(default_factory=list)
@@ -59,6 +60,7 @@ class _Bucket:
         self.requests = 0
         self.errors = 0
         self.out_tokens = 0
+        self.deltas = 0
         self.decode_tps_sum = 0.0
         self.decode_n = 0
         self.ttft = []
@@ -76,6 +78,7 @@ class _MinuteBucket:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    delta_events: int = 0
     ttft_sum_ms: float = 0.0
     ttft_count: int = 0
     ttft_list: list[float] = field(default_factory=list)
@@ -231,19 +234,23 @@ class LiveStats:
                 st.waiting -= 1
             st.generating += 1
 
-    def progress(self, key: Key, tokens: int, now: Optional[float] = None) -> None:
-        """Partial output tokens for a still-running request.
+    def progress(self, key: Key, tokens: int, deltas: int = 0, now: Optional[float] = None) -> None:
+        """Partial output tokens (and SSE delta events) for a still-running request.
 
         Without this, ``tok_s_throughput(_live)`` stays at 0 for the whole duration of a
         stream and only jumps when the request finishes. Minute rollups are untouched:
         ``finish`` credits them with the request's full token count exactly once.
         """
-        if tokens <= 0:
+        if tokens <= 0 and deltas <= 0:
             return
         raw_now = self.now() if now is None or isinstance(now, datetime) else now
         with self._lock:
             st = self._state(key)
-            self._bucket(st, raw_now).out_tokens += tokens
+            b = self._bucket(st, raw_now)
+            if tokens > 0:
+                b.out_tokens += tokens
+            if deltas > 0:
+                b.deltas += deltas
 
     def finish(
         self,
@@ -261,6 +268,8 @@ class LiveStats:
         itl_ms: Optional[float] = None,
         estimated: bool = False,
         already_counted: int = 0,
+        delta_events: int = 0,
+        already_counted_deltas: int = 0,
         now: Optional[float | datetime] = None,
     ) -> None:
         raw_now = self.now() if now is None or isinstance(now, datetime) else now
@@ -281,6 +290,8 @@ class LiveStats:
                 if decode_seconds and decode_seconds > 0:
                     b.decode_tps_sum += output_tokens / decode_seconds
                     b.decode_n += 1
+            if delta_events > 0:
+                b.deltas += max(0, delta_events - already_counted_deltas)
             if ttft is not None and ttft >= 0 and len(b.ttft) < TTFT_SAMPLES_PER_BUCKET:
                 b.ttft.append(ttft)
             if estimated:
@@ -294,6 +305,7 @@ class LiveStats:
             mb.completion_tokens += output_tokens
             mb.prompt_tokens += prompt_tokens
             mb.total_tokens += (total_tokens if total_tokens else (prompt_tokens + output_tokens))
+            mb.delta_events += delta_events
 
             if decode_seconds and decode_seconds > 0 and output_tokens > 0:
                 mb.decode_tps_sum += output_tokens / decode_seconds
@@ -378,6 +390,7 @@ class LiveStats:
                 "prompt_tokens": b.prompt_tokens,
                 "completion_tokens": b.completion_tokens,
                 "total_tokens": b.total_tokens,
+                "delta_events": b.delta_events,
                 "ttft_sum_ms": b.ttft_sum_ms,
                 "ttft_count": b.ttft_count,
                 "ttft_list": list(b.ttft_list),
@@ -437,6 +450,8 @@ class LiveStats:
                 out_tok_short = sum(b.out_tokens for b in short_)
                 dec_sum_short = sum(b.decode_tps_sum for b in short_)
                 dec_n_short = sum(b.decode_n for b in short_)
+                deltas_60 = sum(b.deltas for b in long_)
+                deltas_short = sum(b.deltas for b in short_)
                 ttfts = [t for b in long_ for t in b.ttft]
 
                 points = []
@@ -446,6 +461,7 @@ class LiveStats:
                         p_req = b.requests
                         p_err = b.errors
                         p_tok = b.out_tokens
+                        p_del = b.deltas
                         p_tps = round(b.decode_tps_sum / b.decode_n, 2) if b.decode_n else 0.0
                         p_p50 = round(statistics.median(b.ttft) * 1000, 1) if b.ttft else None
                         p_p90 = round(calculate_percentile([t * 1000 for t in b.ttft], 0.9), 1) if b.ttft else None
@@ -453,6 +469,7 @@ class LiveStats:
                         p_req = 0
                         p_err = 0
                         p_tok = 0
+                        p_del = 0
                         p_tps = 0.0
                         p_p50 = None
                         p_p90 = None
@@ -462,8 +479,10 @@ class LiveStats:
                         "requests": p_req,
                         "errors": p_err,
                         "tokens": p_tok,
+                        "deltas": p_del,
                         "rps": float(p_req),
                         "tok_s": p_tps,
+                        "delta_s": float(p_del),
                         "ttft_p50_ms": p_p50,
                         "ttft_p90_ms": p_p90,
                     })
@@ -479,6 +498,9 @@ class LiveStats:
                     "tok_s_throughput": round(out_tok / WINDOW_S, 2),
                     "tok_s_throughput_live": round(out_tok_short / SHORT_WINDOW_S, 2),
                     "tok_s_decode_live": round(dec_sum_short / dec_n_short, 2) if dec_n_short else None,
+                    "delta_s_avg": round(deltas_60 / WINDOW_S, 2),
+                    "delta_s_live": round(deltas_short / SHORT_WINDOW_S, 2),
+                    "total_deltas": deltas_60,
                     "total_tokens": out_tok,
                     "ttft_p50_ms": round(statistics.median(ttfts) * 1000, 1) if ttfts else None,
                     "ttft_p90_ms": round(calculate_percentile([t * 1000 for t in ttfts], 0.9), 1) if ttfts else None,
@@ -517,6 +539,8 @@ class LiveStats:
                 out_tok_short = sum(b.out_tokens for b in short)
                 dec_sum_short = sum(b.decode_tps_sum for b in short)
                 dec_n_short = sum(b.decode_n for b in short)
+                deltas_60 = sum(b.deltas for b in long_)
+                deltas_short = sum(b.deltas for b in short)
                 estimated = any(b.estimated for b in long_)
                 active = requests_60 or st.waiting or st.generating or st.inflight_bytes
                 if not active:
@@ -537,6 +561,11 @@ class LiveStats:
                     # throughput much faster than the smoothed 60 s averages above.
                     "tok_s_throughput_live": round(out_tok_short / SHORT_WINDOW_S, 2),
                     "tok_s_decode_live": round(dec_sum_short / dec_n_short, 2) if dec_n_short else None,
+                    # SSE delta (chunk) events per second: how often the backend actually
+                    # pushes a token-chunk, averaged over 60 s and over the live 10 s window.
+                    "delta_s_avg": round(deltas_60 / WINDOW_S, 2),
+                    "delta_s_live": round(deltas_short / SHORT_WINDOW_S, 2),
+                    "total_deltas": deltas_60,
                     "ttft_p50_ms": round(statistics.median(ttfts) * 1000, 1) if ttfts else None,
                     "inflight_bytes": st.inflight_bytes,
                     "tokens_estimated": estimated,
