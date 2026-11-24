@@ -205,3 +205,62 @@ async def test_upstream_400_status_code_propagated_to_tracker():
         assert kwargs["status_code"] == 400
         assert kwargs["error_type"] == "bad_request"
         assert span.set_status.called
+
+
+def test_extract_deltas_counts_vllm_reasoning_deltas():
+    from llm_gateway.telemetry.streaming import _extract_deltas
+
+    text, thinking, has = _extract_deltas({"choices": [{"delta": {"reasoning": "We"}}]})
+    assert has and thinking == "We" and text == ""
+
+    text, thinking, has = _extract_deltas({"choices": [{"delta": {"reasoning_content": "hmm"}}]})
+    assert has and thinking == "hmm"
+
+    text, thinking, has = _extract_deltas({"choices": [{"delta": {"content": "hi"}}]})
+    assert has and text == "hi"
+
+    text, thinking, has = _extract_deltas({"choices": [{"delta": {"role": "assistant", "content": ""}}]})
+    assert not has
+
+
+@pytest.mark.asyncio
+async def test_pure_reasoning_stream_reports_tokens_without_usage():
+    """vLLM reasoning deltas (``delta.reasoning``) must feed live tok/s and the final
+    output count even when the stream carries no usage chunk."""
+    import json
+    from unittest.mock import MagicMock, patch
+    from llm_gateway.telemetry.streaming import stream_with_telemetry
+
+    def ev(d):
+        return ("data: " + json.dumps(
+            {"id": "x", "object": "chat.completion.chunk",
+             "choices": [{"index": 0, "delta": d}]}
+        ) + "\n\n").encode()
+
+    chunk1 = ev({"role": "assistant", "content": ""}) + ev({"reasoning": "The"}) + ev({"reasoning": " user"})
+    chunk2 = ev({"reasoning": " asks"}) + b"data: [DONE]\n\n"
+
+    span = MagicMock()
+    span.is_recording.return_value = False
+    tracker = MagicMock()
+    tracker.finished = False
+
+    resp = _ChunkedResponse([chunk1, chunk2], "text/event-stream")
+    with patch("llm_gateway.telemetry.streaming.track_done") as mock_done:
+        async for _ in stream_with_telemetry(
+            resp, 0, "http://vllm", "qwen3.8-flash-next", "/v1/chat/completions",
+            "anshu", span, tracker=tracker,
+        ):
+            pass
+
+        assert mock_done.called
+        assert mock_done.call_args.kwargs["output_tokens"] == 3
+        assert mock_done.call_args.kwargs["estimated"] is True
+
+    # progress() reports are throttled to one per 250 ms; in a fast test the whole
+    # stream fits in one window so only the first window's report fires. Live
+    # crediting itself is covered in tests/test_live_stats.py.
+    progressed = [c.args[0] for c in tracker.progress.call_args_list]
+    assert progressed, "expected at least one live progress report"
+    for p in progressed:
+        assert 0 < p <= 3

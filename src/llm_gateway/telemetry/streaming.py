@@ -65,7 +65,10 @@ def _extract_deltas(obj: dict) -> tuple[str, str, bool]:
         delta = choices[0].get("delta")
         if isinstance(delta, dict):
             raw_text = delta.get("content")
-            raw_thinking = delta.get("reasoning_content")
+            # vLLM reasoning-stream deltas use "reasoning"; OpenAI-compatible
+            # clients/proxies relabel it "reasoning_content". Count both — with
+            # neither, a pure-reasoning stream's tokens are invisible to live tok/s.
+            raw_thinking = delta.get("reasoning_content") or delta.get("reasoning")
             text = raw_text if isinstance(raw_text, str) else ""
             thinking = raw_thinking if isinstance(raw_thinking, str) else ""
             has_delta = bool(text or thinking)
@@ -217,11 +220,14 @@ async def stream_with_telemetry(
         now = time.monotonic()
         if now - _last_live_report < 0.25:
             return
-        _last_live_report = now
+        # Only stamp the throttle when there is something to report, so the first
+        # real token isn't made to wait an extra 250 ms behind empty early chunks.
         if scan.usage_seen and scan.usage.completion_tokens > 0:
+            _last_live_report = now
             tracker.progress(scan.usage.completion_tokens)
         elif scan.delta_count > 0:
             # No usage chunk yet: each content delta is roughly one token.
+            _last_live_report = now
             tracker.progress(scan.delta_count)
 
     # Determine whether the client expects OpenAI or Anthropic format
