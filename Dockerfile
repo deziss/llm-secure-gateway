@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 
 COPY src ./src
 COPY tests ./tests
+COPY sdk ./sdk
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 COPY scripts ./scripts
