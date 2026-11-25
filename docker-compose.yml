@@ -81,6 +81,7 @@ services:
     - ./alembic.ini:/app/alembic.ini
     - ./pyproject.toml:/app/pyproject.toml
     - ./tests:/app/tests
+    - ./sdk:/app/sdk
     extra_hosts:
     - "host.docker.internal:host-gateway"
     networks:

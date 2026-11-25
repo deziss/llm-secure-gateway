@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deziss-sdk"
+version = "0.1.0"
+description = "Thin Python SDK for DEZISS agent intelligence: run/agent attribution headers for any OpenAI-compatible client."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "DEZISS" }]
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai>=1.30"]
+
+[tool.setuptools.packages.find]
+include = ["deziss*"]
