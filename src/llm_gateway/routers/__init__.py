@@ -13,3 +13,4 @@ from .auth_aux import router as auth_aux_router
 
 from .aliases import router as aliases_router
 from .spend import router as spend_router
+from .alerts import router as alerts_router

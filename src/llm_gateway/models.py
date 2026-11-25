@@ -394,6 +394,52 @@ class ModelTelemetryRollup(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
+class AlertRule(SQLModel, table=True):
+    """A threshold rule evaluated by the alert engine on every poller tick."""
+    __tablename__ = "alert_rules"
+
+    id: str = Field(primary_key=True, max_length=64)
+    name: str = Field(max_length=128)
+    metric: str = Field(max_length=48, index=True)
+    comparator: str = Field(default=">=", max_length=8)
+    threshold: float = Field(default=95.0)
+    window_s: int = Field(default=60, description="Condition must hold for this many seconds")
+    severity: str = Field(default="warning", max_length=16)
+    cooldown_s: int = Field(default=300, description="Min seconds between notifications per episode")
+    target_kind: str = Field(default="gateway", max_length=16, description="server|model|gpu|gateway")
+    enabled: bool = Field(default=True)
+    channels: List[str] = Field(default_factory=lambda: ["webhook"], sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+
+
+class AlertIncident(SQLModel, table=True):
+    """One firing episode of (rule, target); closed with state=resolved."""
+    __tablename__ = "alert_incidents"
+    __table_args__ = (
+        Index("ix_alert_incidents_state", "state"),
+        Index("ix_alert_incidents_rule_target", "rule_id", "target"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    rule_id: str = Field(max_length=64, index=True)
+    rule_name: str = Field(default="", max_length=128)
+    metric: str = Field(default="", max_length=48)
+    target: str = Field(max_length=255, description="server / server:model / host/gpuN / 'gateway'")
+    severity: str = Field(default="warning", max_length=16)
+    state: str = Field(default="firing", max_length=16, description="firing|resolved")
+    started_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    resolved_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+    ack_by: Optional[str] = Field(default=None, max_length=128)
+    ack_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+    ack_note: Optional[str] = Field(default=None)
+    summary: str = Field(default="")
+    value: float = Field(default=0.0)
+    detail: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False, server_default="{}"))
+    notified_count: int = Field(default=0)
+    last_notified_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+
+
 # Pre-v0.13 names, kept so existing imports and plugins keep working.
 LLMBackend = ModelServer
 ServerType = BackendType

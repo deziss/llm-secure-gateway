@@ -42,6 +42,12 @@
     traces: [],
     tracesPollTimer: null,
     selectedTrace: null,
+    alertsSummary: null,
+    alertsFiring: [],
+    alertsResolved: [],
+    alertsRules: [],
+    alertsRulesLoaded: false,
+    alertsFetching: false,
   };
 
   const store = {
@@ -342,6 +348,7 @@
     if (state.tab === "gpus" && p) renderGpus(p);
     if (state.tab === "gateway" && p) renderGateway(p);
     if (state.tab === "integrations" && p) renderSinks(p);
+    if (state.tab === "alerts") refreshAlertCenter();
   }
 
   // ── Tabs ────────────────────────────────────────────────────────────
@@ -362,6 +369,10 @@
       startTracesPoll();
     } else {
       stopTracesPoll();
+    }
+    if (name === "alerts") {
+      loadAlertRules();
+      refreshAlertCenter();
     }
     if (state.payload) render();
   }
@@ -2093,6 +2104,10 @@
         render();
         break;
       case "traces-refresh": loadTraces(); break;
+      case "alerts-refresh": refreshAlertCenter(); loadAlertRules(); break;
+      case "alert-ack": ackAlertIncident(btn.dataset.id); break;
+      case "alert-detail": toggleAlertDetail(btn.dataset.id); break;
+      case "alert-rule-toggle": setAlertRuleEnabled(btn.dataset.id, btn.dataset.enabled !== "true"); break;
       case "traces-clear-filters":
         ["fTracesQ", "fTracesStatus", "fTracesCache"].forEach((id) => { const n = $(id); if (n) n.value = ""; });
         renderTraces();
@@ -2128,6 +2143,273 @@
         closeModelTelemetryModal();
       }
     });
+  }
+
+  // ── Alert Center ─────────────────────────────────────────────────────
+  function setAlertsAvailable(ok) {
+    const n = $("obsAlertsNote");
+    if (n) n.classList.toggle("hidden", ok);
+  }
+
+  async function alertsGet(url) {
+    const res = await fetch(url, { credentials: "include", cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  // "4m 12s" style duration between two ISO timestamps (missing end = now).
+  function fmtDuration(startIso, endIso) {
+    const s = window.parseIsoDate ? window.parseIsoDate(startIso) : new Date(startIso);
+    if (!s || Number.isNaN(s.getTime())) return DASH;
+    let e = endIso ? (window.parseIsoDate ? window.parseIsoDate(endIso) : new Date(endIso)) : new Date();
+    if (!e || Number.isNaN(e.getTime())) e = new Date();
+    const sec = Math.max(0, Math.round((e.getTime() - s.getTime()) / 1000));
+    if (sec < 60) return sec + "s";
+    const m = Math.floor(sec / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    if (d > 0) return d + "d " + (h % 24) + "h";
+    if (h > 0) return h + "h " + (m % 60) + "m";
+    return m + "m " + (sec % 60) + "s";
+  }
+
+  function severityBadge(sev) {
+    const s = norm(sev);
+    const tones = {
+      critical: "bg-red-500/10 text-red-400 border-red-500/30",
+      warning: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+      info: "bg-sky-500/10 text-sky-400 border-sky-500/30",
+    };
+    return el("span", {
+      cls: "inline-flex items-center rounded-control border px-2 py-0.5 text-caption font-semibold capitalize " + (tones[s] || "bg-surface-inset text-ink-muted border-hairline"),
+      text: s || DASH,
+    });
+  }
+
+  async function refreshAlertCenter() {
+    if (state.alertsFetching) return;
+    state.alertsFetching = true;
+    try {
+      const sev = norm(val("fAlertsSeverity"));
+      const sevQ = sev && sev !== "all" ? "&severity=" + encodeURIComponent(sev) : "";
+      const [summary, firing, resolved] = await Promise.all([
+        alertsGet("/admin/alerts/summary"),
+        alertsGet("/admin/alerts/incidents?state=firing&limit=100" + sevQ),
+        alertsGet("/admin/alerts/incidents?state=resolved&limit=10" + sevQ),
+      ]);
+      state.alertsSummary = summary || {};
+      state.alertsFiring = Array.isArray(firing.incidents) ? firing.incidents : [];
+      state.alertsResolved = Array.isArray(resolved.incidents) ? resolved.incidents : [];
+      setAlertsAvailable(true);
+      renderAlerts();
+      const updated = $("obsAlertsUpdated");
+      if (updated) updated.textContent = "updated " + (window.formatTime ? window.formatTime(new Date().toISOString()) : new Date().toLocaleTimeString());
+    } catch (err) {
+      console.debug("Alert Center refresh failed", err);
+      setAlertsAvailable(false);
+    } finally {
+      state.alertsFetching = false;
+    }
+  }
+
+  async function loadAlertRules() {
+    if (state.alertsRulesLoaded) return;
+    try {
+      const data = await alertsGet("/admin/alerts/rules");
+      state.alertsRules = Array.isArray(data.rules) ? data.rules : [];
+      state.alertsRulesLoaded = true;
+      setAlertsAvailable(true);
+      renderAlertRules();
+    } catch (err) {
+      console.debug("Alert rules load failed", err);
+      setAlertsAvailable(false);
+    }
+  }
+
+  function renderAlerts() {
+    const s = state.alertsSummary || {};
+    const firingEl = $("obsAlertsFiring");
+    if (firingEl) firingEl.textContent = fmtInt(s.firing);
+    const resolvedEl = $("obsAlertsResolved");
+    if (resolvedEl) resolvedEl.textContent = fmtInt(s.resolved_24h);
+    const rulesEl = $("obsAlertsRules");
+    if (rulesEl) rulesEl.textContent = fmtInt(s.rules_enabled);
+    renderAlertsFiring();
+    renderAlertsResolved();
+  }
+
+  function renderAlertsFiring() {
+    const tbody = $("obsAlertsFiringBody");
+    if (!tbody) return;
+    const emptyMsg = $("obsAlertsFiringEmpty");
+    const items = state.alertsFiring;
+    if (!items.length) {
+      tbody.replaceChildren();
+      if (emptyMsg) emptyMsg.classList.remove("hidden");
+      return;
+    }
+    if (emptyMsg) emptyMsg.classList.add("hidden");
+
+    const rows = [];
+    for (const inc of items) {
+      const timeStr = inc.started_at ? (window.formatDateTime ? window.formatDateTime(inc.started_at) : inc.started_at) : DASH;
+      const acked = !!inc.ack_at;
+      const detailText = formatAlertDetail(inc.detail);
+      const actions = el("div", { cls: "flex items-center justify-center gap-2" });
+      if (acked) {
+        actions.appendChild(el("span", { cls: "text-caption text-ink-muted", text: "Acked" + (inc.ack_by ? " by " + String(inc.ack_by) : "") }));
+      } else {
+        actions.appendChild(el("button", {
+          cls: "min-h-touch rounded-control border border-hairline px-2.5 py-1 text-xs font-semibold text-accent hover:bg-surface-inset",
+          text: "Ack",
+          attrs: { type: "button", "aria-label": "Acknowledge incident " + String(inc.id) },
+          data: { action: "alert-ack", id: String(inc.id) },
+        }));
+      }
+      if (detailText) {
+        actions.appendChild(el("button", {
+          cls: "min-h-touch rounded-control border border-hairline px-2.5 py-1 text-xs font-medium text-ink-muted hover:bg-surface-inset",
+          text: "Detail",
+          attrs: { type: "button", "aria-label": "Toggle detail for incident " + String(inc.id) },
+          data: { action: "alert-detail", id: String(inc.id) },
+        }));
+      }
+      rows.push(el("tr", { data: { alertRow: String(inc.id) } }, [
+        td(timeStr, "whitespace-nowrap text-caption"),
+        el("td", { cls: "px-3 py-2" }, [severityBadge(inc.severity)]),
+        td(inc.rule_name || inc.rule_id),
+        td(inc.target),
+        el("td", { cls: "px-3 py-2" }, [el("code", { cls: "text-caption text-ink-muted", text: inc.metric || DASH })]),
+        td(inc.started_at ? fmtDuration(inc.started_at, null) : DASH, "text-right font-mono text-caption"),
+        el("td", { cls: "px-3 py-2" }, [actions]),
+      ]));
+      if (detailText) {
+        rows.push(el("tr", { attrs: { hidden: "" }, data: { alertDetail: String(inc.id) } }, [
+          el("td", { attrs: { colspan: "7" }, cls: "px-3 pb-3 bg-surface-inset" }, [
+            el("pre", { cls: "max-h-64 overflow-auto text-caption text-ink whitespace-pre-wrap break-all p-2 rounded-control border border-hairline", text: detailText }),
+          ]),
+        ]));
+      }
+    }
+    replaceRows(tbody, rows);
+  }
+
+  function renderAlertsResolved() {
+    const tbody = $("obsAlertsResolvedBody");
+    if (!tbody) return;
+    const emptyMsg = $("obsAlertsResolvedEmpty");
+    const items = state.alertsResolved;
+    if (!items.length) {
+      tbody.replaceChildren();
+      if (emptyMsg) emptyMsg.classList.remove("hidden");
+      return;
+    }
+    if (emptyMsg) emptyMsg.classList.add("hidden");
+
+    const fmtTime = (iso) => (iso ? (window.formatDateTime ? window.formatDateTime(iso) : iso) : DASH);
+    replaceRows(tbody, items.map((inc) => el("tr", null, [
+      td(fmtTime(inc.started_at), "whitespace-nowrap text-caption"),
+      td(fmtTime(inc.resolved_at), "whitespace-nowrap text-caption"),
+      td(inc.rule_name || inc.rule_id),
+      td(inc.target),
+      td(inc.started_at ? fmtDuration(inc.started_at, inc.resolved_at) : DASH, "text-right font-mono text-caption"),
+    ])));
+  }
+
+  function formatAlertDetail(detail) {
+    if (detail === null || detail === undefined || detail === "") return "";
+    if (typeof detail === "string") return detail;
+    try {
+      return JSON.stringify(detail, null, 2);
+    } catch (e) {
+      return String(detail);
+    }
+  }
+
+  function alertConditionText(r) {
+    const win = isNum(r.window_s) && r.window_s > 0 ? " for " + r.window_s + "s" : "";
+    return `${r.metric || DASH} ${r.comparator || "?"} ${isNum(r.threshold) ? r.threshold : (r.threshold ?? "?")}${win}`;
+  }
+
+  function renderAlertRules() {
+    const tbody = $("obsAlertsRulesBody");
+    if (!tbody) return;
+    const emptyMsg = $("obsAlertsRulesEmpty");
+    const items = state.alertsRules;
+    if (!items.length) {
+      tbody.replaceChildren();
+      if (emptyMsg) emptyMsg.classList.remove("hidden");
+      return;
+    }
+    if (emptyMsg) emptyMsg.classList.add("hidden");
+
+    const rows = items.map((r) => {
+      const enabled = !!r.enabled;
+      const channels = Array.isArray(r.channels) ? r.channels.join(", ") : String(r.channels || "");
+      const toggle = el("button", {
+        cls: "min-h-touch rounded-control border px-3 py-1 text-xs font-semibold " + (enabled ? "border-hairline text-ok bg-emerald-500/10" : "border-hairline text-ink-muted hover:bg-surface-inset"),
+        text: enabled ? "Enabled" : "Disabled",
+        attrs: {
+          type: "button",
+          "aria-pressed": enabled ? "true" : "false",
+          "aria-label": (enabled ? "Disable rule " : "Enable rule ") + String(r.name || r.id),
+        },
+        data: { action: "alert-rule-toggle", id: String(r.id), enabled: enabled ? "true" : "false" },
+      });
+      return el("tr", null, [
+        td(r.name || r.id),
+        el("td", { cls: "px-3 py-2" }, [
+          el("code", { cls: "text-caption text-ink", text: r.metric || DASH }),
+          el("span", { cls: "block text-micro text-ink-muted", text: r.target_kind || "" }),
+        ]),
+        el("td", { cls: "px-3 py-2" }, [el("code", { cls: "text-caption", text: alertConditionText(r) })]),
+        el("td", { cls: "px-3 py-2" }, [severityBadge(r.severity)]),
+        td(isNum(r.cooldown_s) ? r.cooldown_s + "s" : DASH, "text-right font-mono text-caption"),
+        td(channels || DASH, "text-caption"),
+        el("td", { cls: "px-3 py-2 text-center" }, [toggle]),
+      ]);
+    });
+    replaceRows(tbody, rows);
+  }
+
+  async function ackAlertIncident(id) {
+    try {
+      const res = await fetchWithCsrf("/admin/alerts/incidents/" + encodeURIComponent(id) + "/ack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "HTTP " + res.status);
+      showToast("Alert", "Incident acknowledged");
+      await refreshAlertCenter();
+    } catch (err) {
+      showToast("Alert", String(err.message || err), "error");
+    }
+  }
+
+  async function setAlertRuleEnabled(id, enabled) {
+    try {
+      const res = await fetchWithCsrf("/admin/alerts/rules/" + encodeURIComponent(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "HTTP " + res.status);
+      const updated = await res.json().catch(() => null);
+      const idx = state.alertsRules.findIndex((r) => String(r.id) === String(id));
+      if (updated && typeof updated === "object" && updated.id !== undefined) {
+        state.alertsRules[idx] = updated;
+      } else if (idx >= 0) {
+        state.alertsRules[idx].enabled = enabled;
+      }
+      renderAlertRules();
+      showToast("Alert rule", updated && updated.name ? updated.name + " " + (enabled ? "enabled" : "disabled") : (enabled ? "Rule enabled" : "Rule disabled"));
+    } catch (err) {
+      showToast("Alert rule", String(err.message || err), "error");
+    }
+  }
+
+  function toggleAlertDetail(id) {
+    const row = document.querySelector(`#obsAlertsFiringBody [data-alert-detail="${CSS.escape(String(id))}"]`);
+    if (row) row.hidden = !row.hidden;
   }
 
   // ── Live Traces & Waterfall Explorer ─────────────────────────────────
@@ -2444,6 +2726,8 @@
     const n = $(id);
     if (n) n.addEventListener(n.tagName === "SELECT" ? "change" : "input", renderTraces);
   });
+  const alertsSeverity = $("fAlertsSeverity");
+  if (alertsSeverity) alertsSeverity.addEventListener("change", refreshAlertCenter);
 
   // ── Boot ────────────────────────────────────────────────────────────
   initSortHeaders();

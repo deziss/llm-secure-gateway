@@ -537,6 +537,14 @@ async def poller_loop() -> None:
                 raise
             except Exception as e:
                 logger.debug("observability: rollup flush skipped: %s", e)
+            try:
+                from ...alerts.incidents import alert_tick
+
+                await alert_tick()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.debug("observability: alert tick skipped: %s", e)
             if _clock() - _last_prune > 3600:
                 _last_prune = _clock()
                 try:

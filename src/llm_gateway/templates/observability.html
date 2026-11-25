@@ -36,6 +36,8 @@
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Live Traces</button>
     <button type="button" role="tab" id="tab-integrations" aria-controls="panel-integrations" aria-selected="false" data-action="tab" data-tab="integrations"
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Integrations</button>
+    <button type="button" role="tab" id="tab-alerts" aria-controls="panel-alerts" aria-selected="false" data-action="tab" data-tab="alerts"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Alert Center</button>
   </div>
 
   <!-- ── Models ─────────────────────────────────────────────── -->
@@ -555,6 +557,106 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ── Alert Center ──────────────────────────────────────── -->
+  <section id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts" data-panel="alerts" class="hidden space-y-4">
+    <p id="obsAlertsNote" class="rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-400 hidden" role="status">Alert Center unavailable — the alerts backend may not be deployed yet.</p>
+
+    <!-- Toolbar -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" id="obsAlertsRefreshBtn" data-action="alerts-refresh" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+        <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
+      </button>
+      <label class="flex items-center gap-2 text-caption text-ink-muted">
+        Severity
+        <select id="fAlertsSeverity" aria-label="Filter incidents by severity" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+          <option value="all">All severities</option>
+          <option value="critical">Critical</option>
+          <option value="warning">Warning</option>
+          <option value="info">Info</option>
+        </select>
+      </label>
+      <span id="obsAlertsUpdated" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
+    </div>
+
+    <!-- Summary stat cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="rounded-control border border-hairline bg-surface-inset p-3">
+        <span class="block text-caption text-ink-muted">Firing</span>
+        <span id="obsAlertsFiring" class="text-lg font-bold text-down">0</span>
+        <span class="block text-micro text-ink-muted mt-0.5">Incidents currently firing</span>
+      </div>
+      <div class="rounded-control border border-hairline bg-surface-inset p-3">
+        <span class="block text-caption text-ink-muted">Resolved 24h</span>
+        <span id="obsAlertsResolved" class="text-lg font-bold text-ink">0</span>
+        <span class="block text-micro text-ink-muted mt-0.5">Incidents resolved in the last 24 hours</span>
+      </div>
+      <div class="rounded-control border border-hairline bg-surface-inset p-3">
+        <span class="block text-caption text-ink-muted">Enabled rules</span>
+        <span id="obsAlertsRules" class="text-lg font-bold text-ink">0</span>
+        <span class="block text-micro text-ink-muted mt-0.5">Alert rules actively evaluating</span>
+      </div>
+    </div>
+
+    <!-- Active incidents -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <h2 class="px-4 pt-3 text-sm font-bold text-ink">Active incidents</h2>
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Active incidents">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Timestamp</th>
+            <th scope="col" class="p-3 border-b border-hairline">Severity</th>
+            <th scope="col" class="p-3 border-b border-hairline">Rule</th>
+            <th scope="col" class="p-3 border-b border-hairline">Target</th>
+            <th scope="col" class="p-3 border-b border-hairline">Metric</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Duration</th>
+            <th scope="col" class="p-3 border-b border-hairline text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody id="obsAlertsFiringBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsAlertsFiringEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No incidents are firing.</p>
+    </div>
+
+    <!-- Recently resolved -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <h2 class="px-4 pt-3 text-sm font-bold text-ink">Recently resolved</h2>
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Recently resolved incidents">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Started</th>
+            <th scope="col" class="p-3 border-b border-hairline">Resolved</th>
+            <th scope="col" class="p-3 border-b border-hairline">Rule</th>
+            <th scope="col" class="p-3 border-b border-hairline">Target</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Duration</th>
+          </tr>
+        </thead>
+        <tbody id="obsAlertsResolvedBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsAlertsResolvedEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No incidents resolved recently.</p>
+    </div>
+
+    <!-- Alert rules -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <h2 class="px-4 pt-3 text-sm font-bold text-ink">Alert rules</h2>
+      <p class="px-4 text-caption text-ink-muted">Read-only view; use the toggle to enable or disable a rule.</p>
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Alert rules">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Name</th>
+            <th scope="col" class="p-3 border-b border-hairline">Metric / target</th>
+            <th scope="col" class="p-3 border-b border-hairline">Condition</th>
+            <th scope="col" class="p-3 border-b border-hairline">Severity</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Cooldown</th>
+            <th scope="col" class="p-3 border-b border-hairline">Channels</th>
+            <th scope="col" class="p-3 border-b border-hairline text-center">Enabled</th>
+          </tr>
+        </thead>
+        <tbody id="obsAlertsRulesBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsAlertsRulesEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No alert rules configured.</p>
     </div>
   </section>
 

@@ -192,6 +192,7 @@ from .routers import (
     bots_router,
     aliases_router,
     spend_router,
+    alerts_router,
     ui_router,
     auth_aux_router,
 )
@@ -210,6 +211,7 @@ app.include_router(dashboard_router)
 app.include_router(bots_router)
 app.include_router(aliases_router)
 app.include_router(spend_router)
+app.include_router(alerts_router)
 
 app.mount("/static", StaticFiles(directory=str(pathlib.Path(__file__).resolve().parent / "static")), name="static")
 
