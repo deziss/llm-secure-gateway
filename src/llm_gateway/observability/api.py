@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from ..database import get_session
-from ..models import GpuHost, ModelServer, ModelTelemetryRollup, SystemSetting, _utcnow
+from ..models import GpuHost, ModelServer, ModelTelemetryRollup, NodeHost, SystemSetting, _utcnow
 from ..routers.admin import require_admin, require_manager
 from ..services.config_service import _backends_cache, _settings_cache
 from .collect import gpu as gpu_mod
@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/observability", tags=["observability"])
 
 GPU_SOURCES = Literal["agent", "dcgm", "nvidia_smi_exporter", "amd_exporter"]
+NODE_SOURCES = Literal["node_exporter", "cadvisor", "linux_agent"]
 
 
 # --------------------------------------------------------------------------- #
@@ -308,6 +309,7 @@ async def build_payload(overrides: dict[str, list[str]]) -> dict:
         "groups": groups,
         "servers": servers,
         "gpus": hosts,
+        "nodes": snap.get("nodes", []),
         "sinks": _sinks(),
     }
 
@@ -854,6 +856,121 @@ async def set_server_gpu(name: str, body: ServerGpuIn, session: AsyncSession = D
     await session.commit()
     _backends_cache.clear()
     return {"name": name, "gpu_host": server.gpu_host, "gpu_indices": server.gpu_indices}
+
+
+# --------------------------------------------------------------------------- #
+# Node hosts (Infrastructure Intelligence: CPU / RAM / disk / containers)
+# --------------------------------------------------------------------------- #
+class NodeHostIn(BaseModel):
+    name: str = Field(pattern=_NAME_PATTERN)
+    url: str
+    source: NODE_SOURCES
+    enabled: bool = True
+
+    @field_validator("url")
+    @classmethod
+    def _url(cls, v):
+        return _check_url(v)
+
+
+class NodeHostUpdate(BaseModel):
+    url: Optional[str] = None
+    source: Optional[NODE_SOURCES] = None
+    enabled: Optional[bool] = None
+
+    @field_validator("url")
+    @classmethod
+    def _url(cls, v):
+        return None if v is None else _check_url(v)
+
+
+def _node_out(h: NodeHost) -> dict:
+    return {
+        "name": h.name,
+        "url": h.url,
+        "source": h.source,
+        "enabled": bool(h.enabled),
+        "created_at": (h.created_at.isoformat() + "Z") if h.created_at else None,
+        "updated_at": (h.updated_at.isoformat() + "Z") if h.updated_at else None,
+    }
+
+
+@router.get("/node-hosts")
+async def list_node_hosts(session: AsyncSession = Depends(get_session), user=Depends(require_manager)) -> list:
+    from sqlmodel import select
+
+    rows = (await session.execute(select(NodeHost).order_by(NodeHost.name))).scalars().all()
+    return [_node_out(h) for h in rows]
+
+
+@router.post("/node-hosts", status_code=201)
+async def create_node_host(body: NodeHostIn, session: AsyncSession = Depends(get_session),
+                           user=Depends(require_admin)) -> dict:
+    if await session.get(NodeHost, body.name):
+        raise HTTPException(status_code=409, detail="a node with this name already exists")
+    now = _utcnow()
+    row = NodeHost(name=body.name, url=body.url, source=body.source, enabled=body.enabled,
+                   created_at=now, updated_at=now)
+    session.add(row)
+    await session.commit()
+    poller._backoff.pop(f"node:{body.name}", None)
+    return _node_out(row)
+
+
+@router.put("/node-hosts/{name}")
+async def update_node_host(name: str, body: NodeHostUpdate, session: AsyncSession = Depends(get_session),
+                           user=Depends(require_admin)) -> dict:
+    row = await session.get(NodeHost, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="node not found")
+    for field in ("url", "source", "enabled"):
+        value = getattr(body, field)
+        if value is not None:
+            setattr(row, field, value)
+    row.updated_at = _utcnow()
+    session.add(row)
+    await session.commit()
+    poller._backoff.pop(f"node:{name}", None)
+    return _node_out(row)
+
+
+@router.post("/node-hosts/{name}/test")
+async def test_node_host(name: str, session: AsyncSession = Depends(get_session),
+                         user=Depends(require_admin)) -> dict:
+    row = await session.get(NodeHost, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="node not found")
+    node_dict = {"name": row.name, "url": row.url, "source": row.source, "enabled": row.enabled}
+    t0 = time.monotonic()
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=3.0)) as client:
+        try:
+            result = await poller._fetch_node(client, node_dict)
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:160]}"}
+    elapsed_ms = round((time.monotonic() - t0) * 1000, 1)
+    if result.get("status") == "ok":
+        poller._backoff.pop(f"node:{name}", None)
+        poller._nodes[name] = {**node_dict, **result, "fetched_at": poller._iso()}
+        extra = (f"{len(result.get('containers') or [])} containers"
+                 if result.get("source") == "cadvisor"
+                 else f"mem {result.get('mem_used_pct')}% used")
+        return {"ok": True, "status": "ok", "latency_ms": elapsed_ms,
+                "message": f"Connected to {name}: {extra} ({elapsed_ms}ms)"}
+    return {"ok": False, "status": result.get("status"),
+            "error": result.get("error") or "Node probe failed", "latency_ms": elapsed_ms}
+
+
+@router.delete("/node-hosts/{name}")
+async def delete_node_host(name: str, session: AsyncSession = Depends(get_session),
+                           user=Depends(require_admin)) -> dict:
+    row = await session.get(NodeHost, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="node not found")
+    await session.delete(row)
+    await session.commit()
+    poller._nodes.pop(name, None)
+    poller._backoff.pop(f"node:{name}", None)
+    return {"deleted": name}
 
 
 # --------------------------------------------------------------------------- #

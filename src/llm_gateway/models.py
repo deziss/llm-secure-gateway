@@ -440,6 +440,19 @@ class AlertIncident(SQLModel, table=True):
     last_notified_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
 
 
+class NodeHost(SQLModel, table=True):
+    """A machine whose CPU/RAM/disk/container telemetry is scraped by the poller."""
+    __tablename__ = "node_hosts"
+
+    name: str = Field(primary_key=True, index=True, max_length=64, description="Unique node name")
+    url: str = Field(max_length=255, description="Base URL of node_exporter / cAdvisor")
+    source: str = Field(default="node_exporter", max_length=32,
+                        description="node_exporter | cadvisor | linux_agent")
+    enabled: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+
+
 # Pre-v0.13 names, kept so existing imports and plugins keep working.
 LLMBackend = ModelServer
 ServerType = BackendType

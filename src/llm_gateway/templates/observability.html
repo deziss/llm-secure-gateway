@@ -30,6 +30,8 @@
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Groups</button>
     <button type="button" role="tab" id="tab-gpus" aria-controls="panel-gpus" aria-selected="false" data-action="tab" data-tab="gpus"
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">GPUs</button>
+    <button type="button" role="tab" id="tab-infra" aria-controls="panel-infra" aria-selected="false" data-action="tab" data-tab="infra"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Infrastructure</button>
     <button type="button" role="tab" id="tab-gateway" aria-controls="panel-gateway" aria-selected="false" data-action="tab" data-tab="gateway"
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Gateway</button>
     <button type="button" role="tab" id="tab-traces" aria-controls="panel-traces" aria-selected="false" data-action="tab" data-tab="traces"
@@ -237,6 +239,46 @@
           </div>
         </form>
       </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ── Infrastructure (Node telemetry) ────────────────────── -->
+  <section id="panel-infra" role="tabpanel" aria-labelledby="tab-infra" data-panel="infra" class="hidden space-y-6">
+    <div id="obsNodeCards" class="space-y-4"></div>
+
+    {% if is_admin %}
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
+      <h2 class="text-sm font-bold text-ink">Node hosts</h2>
+      <p class="text-caption text-ink-muted">Scrape node_exporter for CPU/RAM/disk/uptime, or cAdvisor for per-container memory. The gateway appends /metrics to the URL.</p>
+      <ul id="obsNodeList" class="divide-y divide-hairline text-sm"></ul>
+      <form id="obsNodeForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" autocomplete="off">
+        <input type="hidden" name="original_name" value="" />
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Name</span>
+          <input type="text" name="name" required maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Source</span>
+          <select name="source" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
+            <option value="node_exporter">node_exporter</option>
+            <option value="cadvisor">cAdvisor</option>
+            <option value="linux_agent">Linux agent (not yet supported)</option>
+          </select>
+        </label>
+        <label class="block md:col-span-2">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Metrics URL</span>
+          <input type="url" name="url" required maxlength="255" placeholder="http://host:9100" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <label class="flex items-center gap-2 md:col-span-2 text-ink-muted">
+          <input type="checkbox" name="enabled" checked class="h-4 w-4" />
+          <span>Enabled</span>
+        </label>
+        <div class="md:col-span-2 flex gap-2">
+          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save node</button>
+          <button type="button" data-action="node-reset" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Clear</button>
+        </div>
+      </form>
     </div>
     {% endif %}
   </section>

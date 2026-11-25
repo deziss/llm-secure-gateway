@@ -27,9 +27,10 @@ from sqlalchemy import delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from ...models import GpuHost, ModelServer, ModelTelemetryRollup
+from ...models import GpuHost, ModelServer, ModelTelemetryRollup, NodeHost
 from ...proxy_helpers import get_circuit_breaker
 from . import gpu as gpu_mod
+from . import hosts as hosts_mod
 from .groups import group_key, load_overrides
 from .servers import scrape_server
 
@@ -46,6 +47,7 @@ LIVE_TTL_S = 10
 _clock: Callable[[], float] = time.monotonic
 _servers: dict[str, dict] = {}
 _hosts: dict[str, dict] = {}
+_nodes: dict[str, dict] = {}
 _backoff: dict[str, dict] = {}          # job key -> {"failures", "next_at", "error"}
 _targets: list[dict] = []               # last config read (models, gpu binding)
 _overrides: dict[str, list[str]] | None = None   # None until the first config read
@@ -67,10 +69,11 @@ def _iso(ts: float | None = None) -> str:
 # Public read API
 # --------------------------------------------------------------------------- #
 def get_snapshot() -> dict:
-    """{servers: [ServerStat], gpu_hosts: [GpuHost]} as of the last completed tick."""
+    """{servers, gpu_hosts, nodes} as of the last completed tick."""
     return {
         "servers": [dict(s) for s in _servers.values()],
         "gpu_hosts": [dict(h) for h in _hosts.values()],
+        "nodes": [dict(n) for n in _nodes.values()],
     }
 
 
@@ -87,12 +90,17 @@ def model_groups() -> list[tuple[str, str, str]]:
 # --------------------------------------------------------------------------- #
 # Config read (short DB session, closed before I/O)
 # --------------------------------------------------------------------------- #
-async def _read_config() -> tuple[list[dict], list[dict], dict[str, list[str]]]:
+async def _read_config() -> tuple[list[dict], list[dict], dict[str, list[str]], list[dict]]:
     from ...database import get_session_context
 
     async with get_session_context() as session:
         servers = (await session.execute(select(ModelServer))).scalars().all()
         hosts = (await session.execute(select(GpuHost))).scalars().all()
+        try:
+            node_rows_db = (await session.execute(select(NodeHost))).scalars().all()
+        except Exception:  # table missing until migration 013 is applied
+            await session.rollback()
+            node_rows_db = []
         overrides = await load_overrides(session)
         targets = [
             {
@@ -110,7 +118,11 @@ async def _read_config() -> tuple[list[dict], list[dict], dict[str, list[str]]]:
             {"name": h.name, "url": h.url, "source": h.source, "enabled": bool(h.enabled)}
             for h in hosts
         ]
-    return targets, host_rows, overrides
+        node_rows = [
+            {"name": n.name, "url": n.url, "source": n.source, "enabled": bool(n.enabled)}
+            for n in node_rows_db
+        ]
+    return targets, host_rows, overrides, node_rows
 
 
 # --------------------------------------------------------------------------- #
@@ -163,20 +175,45 @@ def _http_failure(e: BaseException) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Node (Infrastructure Intelligence) fetch
+# --------------------------------------------------------------------------- #
+async def _fetch_node(client: httpx.AsyncClient, node: dict) -> dict:
+    """Returns the update for _nodes[name]: {status, error, <parsed node fields>}."""
+    src = node["source"]
+    if src not in hosts_mod.PARSERS:
+        return {"status": "unsupported", "error": f"unknown source {src!r}"}
+    try:
+        r = await client.get(_metrics_url(node["url"]))
+    except httpx.NetworkError:
+        r = await client.get(_metrics_url(node["url"]))
+    r.raise_for_status()
+    parsed = hosts_mod.PARSERS[src](r.text, node["name"])
+    return {"status": "ok", "error": None, **parsed}
+
+
+# --------------------------------------------------------------------------- #
 # Job runner: backoff, circuit skip, deadline
 # --------------------------------------------------------------------------- #
+def _store_for(kind: str) -> dict:
+    return _servers if kind == "server" else _nodes if kind == "node" else _hosts
+
+
 def _carry(base: dict, prev: dict, status: str, error: str | None, kind: str) -> dict:
     """Skipped target: keep its last fetched_at (UI shows staleness). GPU hosts also keep
-    their last GPU list, since the GPUs did not go away; server metrics are cleared."""
+    their last GPU list and nodes their last metrics, since the hardware did not go away;
+    server metrics are cleared."""
     out = {**base, "status": status, "error": error, "fetched_at": prev.get("fetched_at")}
     if kind == "gpu":
         out["gpus"] = prev.get("gpus") or []
+    elif kind == "node":
+        if prev:
+            out = {**prev, **out}
     return out
 
 
 async def _run_job(key: str, kind: str, name: str, url: str | None, base: dict,
                    sem: asyncio.Semaphore, fn: Callable[[], Awaitable[dict]]) -> None:
-    store = _servers if kind == "server" else _hosts
+    store = _store_for(kind)
     now = _clock()
     bo = _backoff.get(key)
     prev = store.get(name, {})
@@ -198,6 +235,8 @@ async def _run_job(key: str, kind: str, name: str, url: str | None, base: dict,
                     result["gpus"] = prev["gpus"]
                 if prev.get("fetched_at"):
                     result["fetched_at"] = prev["fetched_at"]
+            elif kind == "node" and prev:
+                result = {**prev, **result}
         else:
             _backoff.pop(key, None)
         store[name] = result
@@ -231,16 +270,19 @@ async def poll_once(interval: float | None = None, client: httpx.AsyncClient | N
     interval = interval or _interval()
     deadline = max(3.5, 0.85 * interval) if interval >= 4.0 else 0.8 * interval
     try:
-        targets, hosts, overrides = await _read_config()
+        config = await _read_config()
+        targets, hosts, overrides = config[0], config[1], config[2]
+        node_rows = config[3] if len(config) > 3 else []
     except Exception:
         logger.exception("observability: config read failed; keeping last snapshot")
         return
     _targets = targets
     _overrides = overrides
 
-    # Drop state for servers and hosts that were deleted.
+    # Drop state for servers, hosts and nodes that were deleted.
     live_servers = {t["name"] for t in targets}
     live_hosts = {h["name"] for h in hosts}
+    live_nodes = {n["name"] for n in node_rows}
     for n in list(_servers):
         if n not in live_servers:
             _servers.pop(n, None)
@@ -249,6 +291,10 @@ async def poll_once(interval: float | None = None, client: httpx.AsyncClient | N
         if n not in live_hosts:
             _hosts.pop(n, None)
             _backoff.pop(f"gpu:{n}", None)
+    for n in list(_nodes):
+        if n not in live_nodes:
+            _nodes.pop(n, None)
+            _backoff.pop(f"node:{n}", None)
 
     own = client is None
     if client is None:
@@ -278,6 +324,16 @@ async def poll_once(interval: float | None = None, client: httpx.AsyncClient | N
             jobs.append(asyncio.ensure_future(_run_job(
                 f"gpu:{h['name']}", "gpu", h["name"], None, base, sem,
                 lambda h=h: _fetch_host(client, h, token),
+            )))
+        for nd in node_rows:
+            base = {"name": nd["name"], "source": nd["source"], "url": nd["url"], "enabled": nd["enabled"],
+                    "status": "disabled" if not nd["enabled"] else "unreachable", "error": None}
+            if not nd["enabled"]:
+                _nodes[nd["name"]] = {**base, "fetched_at": _iso()}
+                continue
+            jobs.append(asyncio.ensure_future(_run_job(
+                f"node:{nd['name']}", "node", nd["name"], None, base, sem,
+                lambda nd=nd: _fetch_node(client, nd),
             )))
         if jobs:
             _done, pending = await asyncio.wait(jobs, timeout=deadline)

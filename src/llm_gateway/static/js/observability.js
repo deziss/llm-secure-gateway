@@ -36,6 +36,8 @@
     memChart: null,
     hostsLoaded: false,
     gpuHosts: [],
+    nodesLoaded: false,
+    nodeHosts: [],
     overridesLoaded: false,
     tracemallocOn: null,
     view: "cards", // Groups tab: "cards" | "list"
@@ -346,6 +348,7 @@
     if (state.tab === "models") renderModels(p);
     if (state.tab === "groups" && p) renderGroups(p);
     if (state.tab === "gpus" && p) renderGpus(p);
+    if (state.tab === "infra" && p) renderNodes(p);
     if (state.tab === "gateway" && p) renderGateway(p);
     if (state.tab === "integrations" && p) renderSinks(p);
     if (state.tab === "alerts") refreshAlertCenter();
@@ -363,6 +366,7 @@
       b.classList.toggle("text-ink-muted", !on);
     });
     if (name === "gpus" && IS_ADMIN && !state.hostsLoaded) loadGpuHosts();
+    if (name === "infra" && IS_ADMIN && !state.nodesLoaded) loadNodeHosts();
     if (name === "gateway" && IS_ADMIN && !state.overridesLoaded) loadOverrides();
     if (name === "traces") {
       loadTraces();
@@ -1526,6 +1530,214 @@
     if (state.payload) fillLinkServers(state.payload);
   }
 
+  // ── Infrastructure tab (node telemetry) ─────────────────────────────
+  function fmtUptime(s) {
+    if (!isNum(s)) return DASH;
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d > 0) return d + "d " + h + "h";
+    if (h > 0) return h + "h " + m + "m";
+    return m + "m";
+  }
+
+  async function testNodeHost(name, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Testing…"; }
+    try {
+      const res = await fetchWithCsrf("/admin/observability/node-hosts/" + encodeURIComponent(name) + "/test", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) showToast("Node " + name, data.error || data.message || "Node probe failed", "error");
+      else showToast("Node " + name, data.message || "Connection successful");
+      pollOnce();
+    } catch (err) {
+      showToast("Node " + name, String(err.message || err), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Test / Retry"; }
+    }
+  }
+
+  function renderNodes(p) {
+    const nodes = (p.nodes || []).map(nodeHostCard);
+    if (!nodes.length) {
+      nodes.push(el("p", { cls: "text-sm text-ink-muted", text: "No nodes configured yet. Add node_exporter or cAdvisor endpoints below." }));
+    }
+    $("obsNodeCards").replaceChildren(...nodes);
+  }
+
+  function metricTile(label, value, sub) {
+    return el("div", { cls: "min-w-[7rem] flex-1" }, [
+      el("p", { cls: "text-micro font-bold uppercase tracking-widest text-ink-muted", text: label }),
+      el("p", { cls: "text-lg font-bold text-ink tabular-nums", text: value }),
+      sub ? el("p", { cls: "text-caption text-ink-muted tabular-nums", text: sub }) : null,
+    ]);
+  }
+
+  function nodeHostCard(n) {
+    const head = el("div", { cls: "flex flex-wrap items-center justify-between gap-2" }, [
+      el("div", null, [
+        el("h2", { cls: "text-sm font-bold text-ink break-all", text: n.name }),
+        el("p", { cls: "text-caption text-ink-muted break-all", text: `${n.source} · ${n.url}${n.nodename ? " · " + n.nodename : ""}` }),
+      ]),
+      el("div", { cls: "flex items-center gap-2" }, [
+        stalenessBadge(n),
+        n.enabled === false ? badge("disabled", "muted") : null,
+        IS_ADMIN ? el("button", {
+          cls: "text-caption px-2 py-0.5 rounded border border-hairline hover:bg-surface-inset text-ink-muted hover:text-ink transition-colors",
+          text: "Test / Retry",
+          attrs: { type: "button", title: "Immediately probe this node and clear backoff" },
+          on: { click: (e) => testNodeHost(n.name, e.currentTarget) },
+        }) : null,
+      ]),
+    ]);
+    if (n.error) head.appendChild(el("p", { cls: "w-full text-caption text-down break-all", text: "Error: " + n.error }));
+
+    const tiles = el("div", { cls: "flex flex-wrap gap-4" }, [
+      metricTile("CPU ≈", fmtPct(n.cpu_pct, 0),
+        isNum(n.cpu_count) ? "load-based · " + n.cpu_count + " cores (approx.)" : "load-based (approx.)"),
+      metricTile("Load 1/5/15",
+        isNum(n.load1) ? [n.load1, n.load5, n.load15].map((v) => fmt(v, 2)).join(" / ") : DASH, null),
+      metricTile("Memory", fmtPct(n.mem_used_pct, 0),
+        isNum(n.mem_used_bytes) || isNum(n.mem_total_bytes) ? `${fmtBytes(n.mem_used_bytes)} / ${fmtBytes(n.mem_total_bytes)}` : null),
+      metricTile("Disk /", fmtDiskFree(n), n.disk && isNum(n.disk.size_bytes) ? `${fmtBytes(n.disk.avail_bytes)} free of ${fmtBytes(n.disk.size_bytes)}` : null),
+      metricTile("Net rx / tx", `${fmtBytes(n.net_rx_bytes_total)} / ${fmtBytes(n.net_tx_bytes_total)}`, "counters since boot"),
+      metricTile("Uptime", fmtUptime(n.uptime_s), n.kernel ? "kernel " + n.kernel : null),
+    ]);
+    // CPU and memory bars under the tiles.
+    const bars = el("div", { cls: "grid grid-cols-1 md:grid-cols-2 gap-2" }, [
+      el("div", null, [el("p", { cls: "text-caption text-ink-muted", text: "CPU (approx.)" }), bar(n.cpu_pct, "ok")]),
+      el("div", null, [el("p", { cls: "text-caption text-ink-muted", text: "Memory used" }), bar(n.mem_used_pct, "ok")]),
+    ]);
+
+    const containers = nodeContainerTable(n);
+    return el("section", { cls: "rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-3" }, [
+      head,
+      n.source === "cadvisor" ? null : tiles,
+      n.source === "cadvisor" && !(n.containers || []).length ? null : bars,
+      containers,
+    ]);
+  }
+
+  function fmtDiskFree(n) {
+    if (n.disk && isNum(n.disk.used_pct)) return fmtPct(100 - n.disk.used_pct, 0) + " free";
+    return DASH;
+  }
+
+  function nodeContainerTable(n) {
+    const conts = n.containers || [];
+    if (!conts.length) return null;
+    const cols = [["Container", "w-[40%]", ""], ["Memory", "w-[20%]", "text-right"], ["CPU-sec (cum.)", "w-[20%]", "text-right"], ["Id", "w-[20%]", ""]];
+    const rows = conts.map((c) => el("tr", null, [
+      td(c.name, "truncate"),
+      td(fmtBytes(c.mem_used_bytes), "text-right tabular-nums"),
+      td(isNum(c.cpu_seconds_total) ? fmt(c.cpu_seconds_total, 0, "s") : DASH, "text-right tabular-nums"),
+      td(c.id, "text-caption text-ink-muted truncate"),
+    ]));
+    const more = isNum(n.container_count) && n.container_count > conts.length
+      ? el("p", { cls: "text-caption text-ink-muted", text: `Showing top ${conts.length} of ${n.container_count} containers by memory.` }) : null;
+    const table = el("table", { cls: "w-full table-fixed text-left text-sm border-separate border-spacing-0", attrs: { "aria-label": "Containers on " + n.name } }, [
+      el("thead", { cls: "bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest" }, [
+        el("tr", null, cols.map(([c, w, al]) => el("th", { cls: `${w} px-3 py-2 border-b border-hairline ${al}`, text: c, attrs: { scope: "col" } }))),
+      ]),
+      el("tbody", { cls: "divide-y divide-hairline text-ink" }, rows),
+    ]);
+    return el("div", { cls: "space-y-1" }, [
+      el("p", { cls: "text-caption text-ink-muted", text: "cpu-sec is cumulative CPU-seconds since container start (a single scrape cannot yield a rate)." }),
+      el("div", { cls: "overflow-x-auto" }, [table]),
+      more,
+    ]);
+  }
+
+  async function loadNodeHosts() {
+    try {
+      const res = await fetch("/admin/observability/node-hosts", { credentials: "include", cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      state.nodeHosts = await res.json();
+      state.nodesLoaded = true;
+      renderNodeList();
+    } catch (e) {
+      showToast("Nodes", "Could not load node hosts", "error");
+    }
+  }
+
+  function renderNodeList() {
+    const list = $("obsNodeList");
+    if (!list) return;
+    const items = state.nodeHosts.map((h) => {
+      const label = el("div", { cls: "min-w-0 flex-1" }, [
+        el("p", { cls: "font-medium text-ink break-all", text: h.name }),
+        el("p", { cls: "text-caption text-ink-muted break-all", text: `${h.source} · ${h.url}${h.enabled ? "" : " · disabled"}` }),
+      ]);
+      const actions = el("div", { cls: "flex shrink-0 gap-2" }, [
+        el("button", { cls: "min-h-touch px-2 text-accent", text: "Edit", attrs: { type: "button" }, data: { action: "node-edit", name: h.name } }),
+        el("button", { cls: "min-h-touch px-2 text-down", text: "Delete", attrs: { type: "button" }, data: { action: "node-delete", name: h.name } }),
+      ]);
+      return el("li", { cls: "flex items-start gap-3 py-2" }, [label, actions]);
+    });
+    if (!items.length) items.push(el("li", { cls: "py-2 text-ink-muted", text: "No nodes yet." }));
+    list.replaceChildren(...items);
+  }
+
+  function nodeFormReset() {
+    const f = $("obsNodeForm");
+    if (!f) return;
+    f.reset();
+    f.elements.original_name.value = "";
+    f.elements.name.disabled = false;
+  }
+
+  function nodeFormFill(name) {
+    const h = state.nodeHosts.find((x) => x.name === name);
+    const f = $("obsNodeForm");
+    if (!h || !f) return;
+    f.elements.original_name.value = h.name;
+    f.elements.name.value = h.name;
+    f.elements.url.value = h.url;
+    f.elements.source.value = h.source;
+    f.elements.enabled.checked = !!h.enabled;
+    f.elements.name.focus();
+  }
+
+  async function onNodeSubmit(e) {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const original = f.elements.original_name.value;
+    const body = {
+      name: f.elements.name.value.trim(),
+      url: f.elements.url.value.trim(),
+      source: f.elements.source.value,
+      enabled: f.elements.enabled.checked,
+    };
+    const url = original ? "/admin/observability/node-hosts/" + encodeURIComponent(original) : "/admin/observability/node-hosts";
+    try {
+      const res = await fetchWithCsrf(url, {
+        method: original ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(window.formatErrorMessage ? window.formatErrorMessage(err, "Save failed") : "Save failed");
+      }
+      showToast("Node", "Saved");
+      nodeFormReset();
+      await loadNodeHosts();
+    } catch (err) {
+      showToast("Node", String(err.message || err), "error");
+    }
+  }
+
+  async function deleteNodeHost(name) {
+    const ok = await showConfirm("Delete node", `Remove node '${name}' and stop scraping its telemetry?`);
+    if (!ok) return;
+    try {
+      const res = await fetchWithCsrf("/admin/observability/node-hosts/" + encodeURIComponent(name), { method: "DELETE" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      showToast("Node", "Deleted");
+      await loadNodeHosts();
+      pollOnce();
+    } catch (err) {
+      showToast("Node", String(err.message || err), "error");
+    }
+  }
+
   // ── Gateway tab ─────────────────────────────────────────────────────
   function renderGateway(p) {
     const pr = p.process || {};
@@ -2117,6 +2329,9 @@
       case "host-reset": hostFormReset(); break;
       case "host-edit": hostFormFill(btn.dataset.name); break;
       case "host-delete": deleteHost(btn.dataset.name); break;
+      case "node-reset": nodeFormReset(); break;
+      case "node-edit": nodeFormFill(btn.dataset.name); break;
+      case "node-delete": deleteNodeHost(btn.dataset.name); break;
       default: break;
     }
   });
@@ -2133,6 +2348,8 @@
 
   const hostForm = $("obsHostForm");
   if (hostForm) hostForm.addEventListener("submit", onHostSubmit);
+  const nodeForm = $("obsNodeForm");
+  if (nodeForm) nodeForm.addEventListener("submit", onNodeSubmit);
   const linkForm = $("obsLinkForm");
   if (linkForm) linkForm.addEventListener("submit", onLinkSubmit);
 
