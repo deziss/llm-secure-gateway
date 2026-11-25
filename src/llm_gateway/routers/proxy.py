@@ -300,7 +300,11 @@ async def anthropic_messages_endpoint(
         )
 
         start_time = time.time()
-        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown", is_stream=is_stream)
+        from ..observability.agents import extract_run_context
+        run_ctx = extract_run_context(request.headers, body if isinstance(body, dict) else None,
+                                      agent_name, owner_id)
+        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown",
+                                 is_stream=is_stream, run_ctx=run_ctx)
 
         api_key_hash = getattr(request.state.user, "key_hash", None) if hasattr(request.state, "user") else None
         enable_spend = await config_service.get_setting(session, "ENABLE_SPEND_TRACKING", "true")
@@ -835,7 +839,11 @@ async def _proxy_request_core(
             server_name=backend.name, server_type=backend_type_name(backend), user_id=owner_id,
             input_value=input_val, input_mime_type=input_mime,
         )
-        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown")
+        from ..observability.agents import extract_run_context
+        run_ctx = extract_run_context(request.headers, body if isinstance(body, dict) else None,
+                                      agent_name, owner_id)
+        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown",
+                                 run_ctx=run_ctx)
 
         try:
             r, used_url, backend, client = await try_with_cross_provider_fallback(

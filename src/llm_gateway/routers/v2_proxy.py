@@ -180,7 +180,11 @@ async def direct_proxy(
             span, model=model or "unknown", provider=provider, operation="chat",
             server_name=backend.name, server_type=backend_type_name(backend), user_id=owner_id,
         )
-        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown")
+        from ..observability.agents import extract_run_context
+        run_ctx = extract_run_context(request.headers, body if isinstance(body, dict) else None,
+                                      agent_name, owner_id)
+        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown",
+                                 run_ctx=run_ctx)
 
         try:
             r, used_url, backend, client = await try_with_cross_provider_fallback(
@@ -568,7 +572,11 @@ async def dynamic_proxy(
             span, model=model or "unknown", provider=provider, operation="chat",
             server_name=backend.name, server_type=backend_type_name(backend), user_id=owner_id,
         )
-        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown")
+        from ..observability.agents import extract_run_context
+        run_ctx = extract_run_context(request.headers, body if isinstance(body, dict) else None,
+                                      agent_name, owner_id)
+        tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown",
+                                 run_ctx=run_ctx)
 
         try:
             r, used_url, backend, client = await try_with_cross_provider_fallback(

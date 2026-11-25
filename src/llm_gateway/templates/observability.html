@@ -40,6 +40,8 @@
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Integrations</button>
     <button type="button" role="tab" id="tab-alerts" aria-controls="panel-alerts" aria-selected="false" data-action="tab" data-tab="alerts"
             class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Alert Center</button>
+    <button type="button" role="tab" id="tab-agents" aria-controls="panel-agents" aria-selected="false" data-action="tab" data-tab="agents"
+            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Agent Intelligence</button>
   </div>
 
   <!-- ── Models ─────────────────────────────────────────────── -->
@@ -699,6 +701,83 @@
         <tbody id="obsAlertsRulesBody" class="divide-y divide-hairline text-ink"></tbody>
       </table>
       <p id="obsAlertsRulesEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No alert rules configured.</p>
+    </div>
+  </section>
+
+  <!-- ── Agent Intelligence ────────────────────────────────── -->
+  <section id="panel-agents" role="tabpanel" aria-labelledby="tab-agents" data-panel="agents" class="hidden space-y-4">
+    <p id="obsAgentsNote" class="rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-400 hidden" role="status">Agent Intelligence unavailable — the agent-runs backend may not be deployed yet.</p>
+
+    <!-- Toolbar -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" id="obsAgentsRefreshBtn" data-action="agents-refresh" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+        <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
+      </button>
+      <input id="fAgentsQ" type="search" placeholder="Filter agent…" aria-label="Filter agent runs by agent name" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:12rem" />
+      <label class="flex items-center gap-2 text-caption text-ink-muted">
+        Status
+        <select id="fAgentsStatus" aria-label="Filter agent runs by status" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+        </select>
+      </label>
+      <span id="obsAgentsUpdated" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
+    </div>
+
+    <!-- Summary stat cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="rounded-control border border-hairline bg-surface-inset p-3">
+        <span class="block text-caption text-ink-muted">Active runs</span>
+        <span id="obsAgentsActiveRuns" class="text-lg font-bold text-sky-400">0</span>
+        <span class="block text-micro text-ink-muted mt-0.5">Agent runs currently in progress</span>
+      </div>
+      <div class="rounded-control border border-hairline bg-surface-inset p-3">
+        <span class="block text-caption text-ink-muted">Runs (1h)</span>
+        <span id="obsAgentsRuns1h" class="text-lg font-bold text-ink">0</span>
+        <span class="block text-micro text-ink-muted mt-0.5">Agent runs started in the last hour</span>
+      </div>
+    </div>
+
+    <!-- Per-agent rollup (last hour) -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <h2 class="px-4 pt-3 text-sm font-bold text-ink">Agents (last hour)</h2>
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Per-agent activity in the last hour">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Agent</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Runs</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Errors</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Tokens</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Cost</th>
+          </tr>
+        </thead>
+        <tbody id="obsAgentsSummaryBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsAgentsSummaryEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No agent activity in the last hour.</p>
+    </div>
+
+    <!-- Runs -->
+    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
+      <h2 class="px-4 pt-3 text-sm font-bold text-ink">Agent runs</h2>
+      <p class="px-4 text-caption text-ink-muted">Click a run row to expand its step waterfall (LLM / tool / MCP steps).</p>
+      <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Agent runs">
+        <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
+          <tr>
+            <th scope="col" class="p-3 border-b border-hairline">Started</th>
+            <th scope="col" class="p-3 border-b border-hairline">Duration</th>
+            <th scope="col" class="p-3 border-b border-hairline">Agent chain</th>
+            <th scope="col" class="p-3 border-b border-hairline">Status</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Requests</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Errors</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Tokens in / out</th>
+            <th scope="col" class="p-3 border-b border-hairline text-right">Cost</th>
+          </tr>
+        </thead>
+        <tbody id="obsAgentRunsBody" class="divide-y divide-hairline text-ink"></tbody>
+      </table>
+      <p id="obsAgentRunsEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No agent runs found.</p>
     </div>
   </section>
 

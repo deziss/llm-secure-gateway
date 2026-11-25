@@ -63,6 +63,7 @@ class RequestTracker:
         "provider",
         "_live_tokens",
         "_live_deltas",
+        "run_ctx",
     )
 
     def __init__(
@@ -74,6 +75,7 @@ class RequestTracker:
         request_id: Optional[str] = None,
         owner_id: Optional[str] = "anonymous",
         provider: Optional[str] = None,
+        run_ctx: Optional[dict] = None,
     ) -> None:
         self._store = store
         self.key = key
@@ -87,6 +89,8 @@ class RequestTracker:
         self.provider = provider
         self._live_tokens = 0
         self._live_deltas = 0
+        # Agent-intelligence context: {run_id, agent, parent_agent, session_key}.
+        self.run_ctx = run_ctx
 
     def retarget(self, server: str, server_type, model: str) -> None:
         """Re-key a still-waiting request after fallback chose a different server/model."""
@@ -251,6 +255,28 @@ class RequestTracker:
         except Exception:
             logger.debug("recording trace failed", exc_info=True)
 
+        # Agent intelligence: record this request as a step in its run (fire-and-forget).
+        try:
+            if self.run_ctx and self.run_ctx.get("run_id"):
+                from ..agents import record_llm_step
+
+                record_llm_step(
+                    run_ctx=self.run_ctx,
+                    model=trace_model,
+                    server=self.key[0] if self.key else None,
+                    owner_id=trace_owner,
+                    ok=success and status_code < 400,
+                    cancelled=cancelled,
+                    dur_ms=dur * 1000.0,
+                    ttft_ms=ttft * 1000.0 if ttft is not None else None,
+                    tokens_in=prompt_tokens,
+                    tokens_out=output_tokens,
+                    cost_usd=float(cost_usd or 0.0),
+                    error=trace_error,
+                )
+        except Exception:
+            logger.debug("agent step recording failed", exc_info=True)
+
         return {"ttft": ttft, "decode_seconds": decode_s, "duration": dur}
 
 
@@ -263,6 +289,7 @@ def track_dispatch(
     request_id: Optional[str] = None,
     owner_id: Optional[str] = "anonymous",
     provider: Optional[str] = None,
+    run_ctx: Optional[dict] = None,
     **kwargs,
 ) -> RequestTracker:
     store = store or get_live_stats()
@@ -277,6 +304,7 @@ def track_dispatch(
         request_id=request_id,
         owner_id=owner_id,
         provider=provider or _type_str(server_type),
+        run_ctx=run_ctx,
     )
 
 

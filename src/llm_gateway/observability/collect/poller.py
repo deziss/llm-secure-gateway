@@ -601,6 +601,14 @@ async def poller_loop() -> None:
                 raise
             except Exception as e:
                 logger.debug("observability: alert tick skipped: %s", e)
+            try:
+                from ..agents import flush_agent_records
+
+                await flush_agent_records()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.warning("observability: agent flush skipped: %s", e)
             if _clock() - _last_prune > 3600:
                 _last_prune = _clock()
                 try:

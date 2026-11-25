@@ -1242,3 +1242,35 @@ async def test_integration(name: str, body: IntegrationIn | None = None, session
     return {"ok": 200 <= r.status_code < 300, "stage": "http", "status_code": r.status_code, "latency_ms": ms,
             "endpoint": redact_url(preset.traces.endpoint),
             "message": "span accepted" if r.is_success else (hint or r.text[:200] or f"HTTP {r.status_code}")}
+
+
+# --------------------------------------------------------------------------- #
+# Agent intelligence: runs, steps (waterfall), per-agent summary
+# --------------------------------------------------------------------------- #
+@router.get("/agent-runs")
+async def agent_runs(limit: int = 50, agent: Optional[str] = None,
+                     status: Optional[str] = None,
+                     user=Depends(require_manager)) -> dict:
+    from .agents import agent_run_queries
+
+    limit = max(1, min(limit, 200))
+    if status not in ("active", "completed", "failed"):
+        status = None
+    return {"runs": await agent_run_queries(limit=limit, agent=agent, status=status)}
+
+
+@router.get("/agent-runs/{run_id}")
+async def agent_run_detail(run_id: str, user=Depends(require_manager)) -> dict:
+    from .agents import agent_run_detail as _detail
+
+    data = await _detail(run_id[:64])
+    if data is None:
+        raise HTTPException(status_code=404, detail="Unknown run")
+    return data
+
+
+@router.get("/agents/summary")
+async def agents_summary(hours: int = 1, user=Depends(require_manager)) -> dict:
+    from .agents import agents_summary as _summary
+
+    return await _summary(hours=max(1, min(hours, 168)))

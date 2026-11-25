@@ -453,6 +453,56 @@ class NodeHost(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
+class AgentRun(SQLModel, table=True):
+    """Aggregate view of one agent run (one logical task/turn across requests)."""
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        Index("ix_agent_runs_last_ts", "last_ts"),
+        Index("ix_agent_runs_agent", "agent"),
+    )
+
+    run_id: str = Field(primary_key=True, max_length=64)
+    agent: str = Field(default="unknown", max_length=64)
+    parent_agent: Optional[str] = Field(default=None, max_length=64)
+    session_key: Optional[str] = Field(default=None, max_length=128, index=True)
+    owner_id: Optional[str] = Field(default=None, max_length=128)
+    status: str = Field(default="active", max_length=16, description="active|completed|failed")
+    requests: int = Field(default=0)
+    errors: int = Field(default=0)
+    tokens_in: int = Field(default=0)
+    tokens_out: int = Field(default=0)
+    cost_usd: float = Field(default=0.0)
+    first_ts: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    last_ts: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    handoffs: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
+
+
+class AgentStep(SQLModel, table=True):
+    """One observed step (LLM call, tool or MCP invocation) within an agent run."""
+    __tablename__ = "agent_steps"
+    __table_args__ = (
+        Index("ix_agent_steps_run_seq", "run_id", "seq"),
+        Index("ix_agent_steps_ts", "ts"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    run_id: str = Field(max_length=64, index=True)
+    seq: int = Field(default=0)
+    ts: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    kind: str = Field(default="llm", max_length=8, description="llm|tool|mcp")
+    agent: str = Field(default="unknown", max_length=64)
+    model: str = Field(default="unknown", max_length=128)
+    server: Optional[str] = Field(default=None, max_length=64)
+    owner_id: Optional[str] = Field(default=None, max_length=128)
+    status: str = Field(default="ok", max_length=16, description="ok|error|cancelled")
+    dur_ms: float = Field(default=0.0)
+    ttft_ms: Optional[float] = Field(default=None)
+    tokens_in: int = Field(default=0)
+    tokens_out: int = Field(default=0)
+    tool: Optional[str] = Field(default=None, max_length=128)
+    error: Optional[str] = Field(default=None, max_length=256)
+
+
 # Pre-v0.13 names, kept so existing imports and plugins keep working.
 LLMBackend = ModelServer
 ServerType = BackendType

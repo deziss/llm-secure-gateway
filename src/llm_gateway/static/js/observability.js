@@ -50,6 +50,12 @@
     alertsRules: [],
     alertsRulesLoaded: false,
     alertsFetching: false,
+    agentsRunning: false,
+    agentRuns: [],
+    agentRunsLoaded: false,
+    agentRunsExpanded: new Set(),
+    agentDetails: new Map(), // run_id -> { steps, handoffs } (cleared on manual refresh)
+    agentDetailsPending: new Set(),
   };
 
   const store = {
@@ -352,6 +358,7 @@
     if (state.tab === "gateway" && p) renderGateway(p);
     if (state.tab === "integrations" && p) renderSinks(p);
     if (state.tab === "alerts") refreshAlertCenter();
+    if (state.tab === "agents") refreshAgentIntelligence();
   }
 
   // ── Tabs ────────────────────────────────────────────────────────────
@@ -378,6 +385,7 @@
       loadAlertRules();
       refreshAlertCenter();
     }
+    if (name === "agents") refreshAgentIntelligence();
     if (state.payload) render();
   }
 
@@ -2317,6 +2325,8 @@
         break;
       case "traces-refresh": loadTraces(); break;
       case "alerts-refresh": refreshAlertCenter(); loadAlertRules(); break;
+      case "agents-refresh": refreshAgentIntelligence({ force: true }); break;
+      case "agent-run-toggle": toggleAgentRunDetail(btn.dataset.run); break;
       case "alert-ack": ackAlertIncident(btn.dataset.id); break;
       case "alert-detail": toggleAlertDetail(btn.dataset.id); break;
       case "alert-rule-toggle": setAlertRuleEnabled(btn.dataset.id, btn.dataset.enabled !== "true"); break;
@@ -2945,6 +2955,347 @@
   });
   const alertsSeverity = $("fAlertsSeverity");
   if (alertsSeverity) alertsSeverity.addEventListener("change", refreshAlertCenter);
+  const agentsQ = $("fAgentsQ");
+  if (agentsQ) agentsQ.addEventListener("change", () => refreshAgentIntelligence());
+  const agentsStatus = $("fAgentsStatus");
+  if (agentsStatus) agentsStatus.addEventListener("change", () => refreshAgentIntelligence());
+
+  // ── Agent Intelligence ──────────────────────────────────────────────
+  // Surfaces agent-run rollups from /admin/observability/agent-runs. The
+  // backend may not be deployed yet: every fetch degrades to an inline note
+  // and the rest of the page keeps working.
+  function setAgentsAvailable(ok) {
+    const n = $("obsAgentsNote");
+    if (n) n.classList.toggle("hidden", ok);
+  }
+
+  function parseTs(iso) {
+    if (!iso) return null;
+    const d = window.parseIsoDate ? window.parseIsoDate(iso) : new Date(iso);
+    return d && !Number.isNaN(d.getTime()) ? d : null;
+  }
+
+  function fmtTsLocal(iso) {
+    if (!iso) return DASH;
+    if (window.formatTime) return window.formatTime(iso);
+    const d = parseTs(iso);
+    return d ? d.toLocaleTimeString() : String(iso);
+  }
+
+  function agentStatusLabel(status) {
+    return norm(status) || DASH;
+  }
+
+  function agentStatusBadge(status) {
+    const s = norm(status);
+    const tones = {
+      active: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+      completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+      failed: "bg-red-500/10 text-red-400 border-red-500/30",
+    };
+    return el("span", {
+      cls: "inline-flex items-center rounded-control border px-2 py-0.5 text-caption font-semibold " + (tones[s] || "bg-surface-inset text-ink-muted border-hairline"),
+      text: agentStatusLabel(status),
+    });
+  }
+
+  // "coder -> reviewer": parent on the left, this run's agent on the right.
+  function agentChainCell(run) {
+    const parts = [];
+    const parent = run.parent_agent ? String(run.parent_agent) : "";
+    const self = run.agent ? String(run.agent) : DASH;
+    if (parent) {
+      parts.push(el("span", { cls: "text-ink-muted", text: parent }));
+      parts.push(el("span", { cls: "mx-1 text-ink-muted", text: "\u2192" }));
+    }
+    parts.push(el("span", { cls: "font-medium text-ink", text: self }));
+    const wrap = el("div", { cls: "flex flex-wrap items-center text-sm" }, parts);
+    const meta = [];
+    if (run.session_key) meta.push("session: " + String(run.session_key));
+    if (run.owner_id) meta.push("owner: " + String(run.owner_id));
+    const tdWrap = el("td", { cls: "px-3 py-2 align-top" });
+    tdWrap.appendChild(wrap);
+    if (meta.length) tdWrap.appendChild(el("div", { cls: "text-micro text-ink-muted mt-0.5", text: meta.join(" · ") }));
+    if (run.run_id != null) tdWrap.setAttribute("title", "run " + String(run.run_id));
+    return tdWrap;
+  }
+
+  async function refreshAgentIntelligence(opts) {
+    if (state.agentsRunning) return;
+    state.agentsRunning = true;
+    if (opts && opts.force) {
+      state.agentDetails.clear(); // manual refresh invalidates cached waterfalls
+    }
+    try {
+      const agent = String(val("fAgentsQ") || "").trim();
+      const status = val("fAgentsStatus") || "all";
+      const agentQ = agent ? "&agent=" + encodeURIComponent(agent) : "";
+      const statusQ = status && status !== "all" ? "&status=" + encodeURIComponent(status) : "";
+      const [summary, runs] = await Promise.all([
+        agentsGet("/admin/observability/agents/summary"),
+        agentsGet("/admin/observability/agent-runs?limit=50" + agentQ + statusQ),
+      ]);
+      renderAgentSummary(summary || {});
+      state.agentRuns = Array.isArray(runs.runs) ? runs.runs : [];
+      state.agentRunsLoaded = true;
+      setAgentsAvailable(true);
+      renderAgentRuns();
+      const updated = $("obsAgentsUpdated");
+      if (updated) updated.textContent = "updated " + (window.formatTime ? window.formatTime(new Date().toISOString()) : new Date().toLocaleTimeString());
+    } catch (err) {
+      console.debug("Agent Intelligence refresh failed", err);
+      setAgentsAvailable(false);
+    } finally {
+      state.agentsRunning = false;
+    }
+  }
+
+  async function agentsGet(url) {
+    const res = await fetch(url, { credentials: "include", cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  function renderAgentSummary(summary) {
+    const activeEl = $("obsAgentsActiveRuns");
+    if (activeEl) activeEl.textContent = fmtInt(summary.active_runs);
+    const runsEl = $("obsAgentsRuns1h");
+    if (runsEl) runsEl.textContent = fmtInt(summary.runs_1h);
+    const tbody = $("obsAgentsSummaryBody");
+    const empty = $("obsAgentsSummaryEmpty");
+    const agents = Array.isArray(summary.agents) ? summary.agents : [];
+    if (!tbody) return;
+    if (!agents.length) {
+      tbody.replaceChildren();
+      if (empty) empty.classList.remove("hidden");
+      return;
+    }
+    if (empty) empty.classList.add("hidden");
+    const rows = agents.map((a) => el("tr", null, [
+      td(a.agent || DASH, "font-medium text-ink"),
+      td(fmtInt(a.runs_1h), "text-right tabular-nums"),
+      el("td", { cls: "px-3 py-2 text-right tabular-nums " + (Number(a.errors_1h) > 0 ? "text-down font-semibold" : ""), text: fmtInt(a.errors_1h) }),
+      td(fmtInt(a.tokens_1h), "text-right tabular-nums"),
+      td(isNum(a.cost_1h_usd) ? "$" + a.cost_1h_usd.toFixed(4) : DASH, "text-right tabular-nums text-emerald-400"),
+    ]));
+    tbody.replaceChildren(...rows);
+  }
+
+  function renderAgentRuns() {
+    if (state.tab !== "agents") return;
+    const tbody = $("obsAgentRunsBody");
+    if (!tbody) return;
+    const empty = $("obsAgentRunsEmpty");
+    const runs = state.agentRuns;
+    if (!runs.length) {
+      tbody.replaceChildren();
+      if (empty) empty.classList.remove("hidden");
+      return;
+    }
+    if (empty) empty.classList.add("hidden");
+
+    const nodes = [];
+    const detailRuns = [];
+    for (const run of runs) {
+      const runId = String(run.run_id != null ? run.run_id : "");
+      const expanded = state.agentRunsExpanded.has(runId);
+      const errors = Number(run.errors) || 0;
+      const tr = el("tr", {
+        cls: "cursor-pointer select-none hover:bg-surface-inset/50 transition-colors",
+        attrs: { "data-action": "agent-run-toggle", "data-run": runId, "aria-expanded": expanded ? "true" : "false" },
+      }, [
+        el("td", { cls: "px-3 py-2 font-mono text-xs text-ink-muted", text: fmtTsLocal(run.first_ts), attrs: { title: String(run.first_ts || DASH) } }),
+        // Active runs tick live against now; finished runs show first_ts..last_ts.
+        td(fmtDuration(run.first_ts, norm(run.status) === "active" ? null : run.last_ts), "font-mono text-xs tabular-nums"),
+        agentChainCell(run),
+        el("td", { cls: "px-3 py-2" }, [agentStatusBadge(run.status)]),
+        td(fmtInt(run.requests), "text-right tabular-nums"),
+        el("td", { cls: "px-3 py-2 text-right tabular-nums " + (errors > 0 ? "text-down font-semibold" : ""), text: fmtInt(run.errors) }),
+        td(`${fmtInt(run.tokens_in)} / ${fmtInt(run.tokens_out)}`, "text-right font-mono text-xs tabular-nums"),
+        td(isNum(run.cost_usd) ? "$" + run.cost_usd.toFixed(4) : DASH, "text-right font-mono text-xs tabular-nums text-emerald-400"),
+      ]);
+      nodes.push(tr);
+      if (expanded) {
+        detailRuns.push({ id: runId, run });
+        const detail = el("tr", { cls: "bg-surface-inset/30" }, [el("td", { attrs: { colspan: "8" }, cls: "p-3" }, [el("div", { attrs: { id: "obsAgentDetail-" + cssSafeId(runId) } })])]);
+        nodes.push(detail);
+      }
+    }
+    tbody.replaceChildren(...nodes);
+    // Fill detail rows only after they are attached to the document.
+    for (const d of detailRuns) fillAgentDetailContainer(d.id, d.run);
+  }
+
+  function cssSafeId(s) {
+    return String(s).replace(/[^A-Za-z0-9_-]/g, "_");
+  }
+
+  function toggleAgentRunDetail(runId) {
+    if (!runId) return;
+    const id = String(runId);
+    if (state.agentRunsExpanded.has(id)) {
+      state.agentRunsExpanded.delete(id);
+    } else {
+      state.agentRunsExpanded.add(id);
+    }
+    renderAgentRuns();
+    if (state.agentRunsExpanded.has(id)) loadAgentRunDetail(id);
+  }
+
+  async function loadAgentRunDetail(runId, retry) {
+    const id = String(runId);
+    const run = state.agentRuns.find((r) => String(r.run_id != null ? r.run_id : "") === id);
+    if (!run) return;
+    if (state.agentDetails.has(id) || state.agentDetailsPending.has(id)) {
+      fillAgentDetailContainer(id, run);
+      return;
+    }
+    state.agentDetailsPending.add(id);
+    fillAgentDetailContainer(id, run);
+    try {
+      const data = await agentsGet("/admin/observability/agent-runs/" + encodeURIComponent(id));
+      state.agentDetails.set(id, {
+        steps: Array.isArray(data.steps) ? data.steps : [],
+        handoffs: Array.isArray(data.run && data.run.handoffs) ? data.run.handoffs : [],
+      });
+    } catch (err) {
+      console.debug("Agent run detail fetch failed", err);
+      // One automatic retry covers a row expanded before its cache was warm;
+      // anything persistent (404) shows up inline in the detail row.
+      if (!retry) {
+        state.agentDetailsPending.delete(id);
+        setTimeout(() => {
+          if (state.agentRunsExpanded.has(id)) loadAgentRunDetail(id, true);
+        }, 3000);
+        return;
+      }
+      state.agentDetails.set(id, { error: true });
+    } finally {
+      state.agentDetailsPending.delete(id);
+      fillAgentDetailContainer(id, run);
+    }
+  }
+
+  function fillAgentDetailContainer(runId, run) {
+    const container = document.getElementById("obsAgentDetail-" + cssSafeId(runId));
+    if (!container) return;
+    const id = String(runId);
+    container.replaceChildren(buildAgentDetail(run, state.agentDetails.get(id)));
+  }
+
+  function buildAgentDetail(run, detail) {
+    const wrap = el("div", { cls: "space-y-2" });
+    // Handoff chips ("coder → reviewer") live next to a run's identity.
+    const handoffs = Array.isArray(run.handoffs) ? run.handoffs : [];
+    const idRow = el("div", { cls: "flex flex-wrap items-center gap-2" }, [
+      el("span", { cls: "text-micro font-bold uppercase tracking-wider text-ink-muted", text: "Run " + String(run.run_id || DASH) }),
+    ]);
+    if (handoffs.length) {
+      idRow.appendChild(el("span", { cls: "text-micro text-ink-muted", text: "handoffs:" }));
+      for (const h of handoffs) {
+        idRow.appendChild(el("span", {
+          cls: "inline-flex items-center rounded-control border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-micro font-medium text-violet-300",
+          text: `${h.from != null ? h.from : DASH} \u2192 ${h.to != null ? h.to : DASH}`,
+          attrs: { title: h.ts ? String(h.ts) : "" },
+        }));
+      }
+    }
+    wrap.appendChild(idRow);
+
+    if (!detail) {
+      wrap.appendChild(el("p", { cls: "text-caption text-ink-muted flex items-center gap-1.5", text: "Loading steps\u2026" }));
+      return wrap;
+    }
+    if (detail.error) {
+      wrap.appendChild(el("p", { cls: "text-caption text-amber-400", text: "Step detail unavailable — run-steps endpoint may not be deployed yet." }));
+      return wrap;
+    }
+
+    const steps = detail.steps;
+    if (!steps.length) {
+      wrap.appendChild(el("p", { cls: "text-caption text-ink-muted", text: "No steps recorded for this run." }));
+      return wrap;
+    }
+
+    // Time axis spans the run duration, extended if a step falls outside it.
+    const t0 = parseTs(run.first_ts);
+    let spanMs = 1;
+    if (t0) {
+      const t1 = parseTs(run.last_ts);
+      let end = t1 ? t1.getTime() : Date.now();
+      for (const s of steps) {
+        const st = parseTs(s.ts);
+        if (st) end = Math.max(end, st.getTime() + Math.max(isNum(s.dur_ms) ? s.dur_ms : 0, 0));
+      }
+      spanMs = Math.max(1, end - t0.getTime());
+    }
+
+    const KIND_CLS = {
+      llm: "bg-indigo-500",
+      tool: "bg-amber-500",
+      mcp: "bg-violet-500",
+    };
+    const ordered = steps.slice().sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0));
+
+    const grid = el("div", { cls: "rounded-control border border-hairline bg-surface-base p-2" });
+    const header = el("div", { cls: "grid grid-cols-[9rem_1fr] sm:grid-cols-[14rem_1fr] gap-2 mb-1" }, [
+      el("span", { cls: "text-micro font-bold uppercase tracking-wider text-ink-muted", text: "Step" }),
+      el("div", { cls: "flex justify-between text-micro text-ink-muted tabular-nums" }, [
+        el("span", { text: "0ms" }),
+        el("span", { text: fmtMs(spanMs) }),
+      ]),
+    ]);
+    grid.appendChild(header);
+
+    for (const s of ordered) {
+      const kind = norm(s.kind);
+      const st = parseTs(s.ts);
+      const offsetMs = st && t0 ? Math.max(0, st.getTime() - t0.getTime()) : 0;
+      const durMs = isNum(s.dur_ms) && s.dur_ms > 0 ? s.dur_ms : Math.max(spanMs * 0.005, 1);
+      const leftPct = Math.min(99.5, (offsetMs / spanMs) * 100);
+      const widthPct = Math.max(0.5, Math.min(100 - leftPct, (durMs / spanMs) * 100));
+      const failed = norm(s.status) === "failed" || norm(s.status) === "error";
+
+      const labelParts = [el("span", { cls: "text-micro text-ink-muted w-6 shrink-0 tabular-nums", text: "#" + (s.seq != null ? s.seq : DASH) }),
+        el("span", { cls: "inline-flex items-center rounded-control border border-hairline px-1 py-px text-micro uppercase font-bold text-ink-muted shrink-0", text: kind || DASH })];
+      const detailText = kind === "llm" ? (s.model || DASH) : (kind === "tool" || kind === "mcp" ? (s.tool || DASH) : (s.tool || s.model || DASH));
+      labelParts.push(el("span", { cls: "truncate font-mono text-xs text-ink", text: detailText, attrs: { title: String(detailText) } }));
+
+      const tipBits = [];
+      if (s.model) tipBits.push("model: " + s.model);
+      if (s.server) tipBits.push("server: " + s.server);
+      if (s.tool) tipBits.push("tool: " + s.tool);
+      tipBits.push("dur: " + fmtMs(s.dur_ms));
+      if (isNum(s.ttft_ms)) tipBits.push("ttft: " + fmtMs(s.ttft_ms));
+      tipBits.push(`tokens: ${(s.tokens_in || 0).toLocaleString()} in / ${(s.tokens_out || 0).toLocaleString()} out`);
+      if (s.error) tipBits.push("error: " + String(s.error));
+      if (s.agent) tipBits.push("agent: " + String(s.agent));
+
+      const bar = el("div", {
+        cls: "h-3 rounded-sm opacity-90 hover:opacity-100 " + (KIND_CLS[kind] || "bg-gray-500") + (failed ? " ring-2 ring-red-500" : ""),
+        attrs: { style: `margin-left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;`, title: tipBits.join(" · ") },
+      });
+      const labelTitle = [s.kind, s.agent, s.model, s.tool, s.server, s.error].filter(Boolean).join(" · ");
+
+      grid.appendChild(el("div", {
+        cls: "grid grid-cols-[9rem_1fr] sm:grid-cols-[14rem_1fr] gap-2 items-center py-0.5" + (failed ? " text-down" : ""),
+        attrs: { title: labelTitle },
+      }, [
+        el("div", { cls: "flex items-center gap-1.5 min-w-0" }, labelParts),
+        el("div", { cls: "relative h-3 rounded-sm bg-surface-inset overflow-hidden" }, [bar]),
+      ]));
+    }
+    wrap.appendChild(grid);
+
+    // Legend
+    wrap.appendChild(el("div", { cls: "flex flex-wrap items-center gap-3 text-micro text-ink-muted" }, [
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-indigo-500" }), el("span", { text: "LLM" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-amber-500" }), el("span", { text: "Tool" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-violet-500" }), el("span", { text: "MCP" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm ring-2 ring-red-500" }), el("span", { text: "Failed step" })]),
+    ]));
+    return wrap;
+  }
 
   // ── Boot ────────────────────────────────────────────────────────────
   initSortHeaders();
