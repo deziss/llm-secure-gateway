@@ -517,7 +517,7 @@ async def get_target_backend(
     setting_val = routing_strategy_setting if isinstance(routing_strategy_setting, str) else ""
     eff_strategy = (strat_val or setting_val).strip().lower()
 
-    use_dynamic = is_exp_enabled or (eff_strategy in ("least_busy", "least-busy", "queue_aware", "queue-aware", "random", "weighted_random", "gpu_aware", "gpu-aware", "infra_aware", "infra-aware"))
+    use_dynamic = is_exp_enabled or (eff_strategy in ("least_busy", "least-busy", "queue_aware", "queue-aware", "random", "weighted_random", "gpu_aware", "gpu-aware", "infra_aware", "infra-aware", "cost_aware", "cost-aware"))
 
     if not use_dynamic:
          # Original Static Logic
@@ -573,6 +573,56 @@ async def get_target_backend(
         selected_backend = random.choices(valid_backends, weights=effective_weights, k=1)[0]
         logger.info("Smart Routing selected backend '%s' for model '%s' (weight=%s). (%d candidates available)", selected_backend.name, model, getattr(selected_backend, "weight", 100), len(valid_backends))
         return selected_backend
+
+    # 2b. Cost-aware routing: cheapest healthy replica for this model, with a
+    # latency/queue tiebreaker. Pricing comes from model_pricing (TTL cache, local
+    # engines count free). Falls back gracefully when nothing is priced.
+    if eff_strategy in ("cost_aware", "cost-aware"):
+        from .routing.cost_aware import get_pricing_map, select_cost_aware
+
+        try:
+            from .observability.collect.poller import get_snapshot
+            snapshot = get_snapshot()
+        except Exception:
+            snapshot = {}
+        statuses = {s.get("name"): s.get("status") for s in (snapshot.get("servers") or [])}
+
+        pricing_map = await get_pricing_map(session)
+
+        # Rough cost estimate: chars/4 prompt tokens; output defaults to 512.
+        prompt_chars = 0
+        est_out = 512.0
+        if isinstance(messages, list):
+            for m in messages:
+                c = m.get("content") if isinstance(m, dict) else None
+                if isinstance(c, str):
+                    prompt_chars += len(c)
+                elif isinstance(c, list):  # multimodal content parts
+                    prompt_chars += sum(len(p.get("text", "")) for p in c if isinstance(p, dict))
+        est_in = max(1.0, prompt_chars / 4.0)
+
+        def _lat(b):
+            return get_backend_avg_latency(b.base_url)
+
+        def _inflight(b):
+            return get_backend_in_flight(get_live_stats(), b.name, b.base_url, getattr(b, "fallback_urls", None))
+
+        selected, ranked = select_cost_aware(
+            valid_backends, clean_model, pricing_map, _lat, _inflight, est_in, est_out, statuses)
+        if ranked and ranked[0].estimated_cost_usd is None and len(ranked) > 1:
+            # Nothing priced: cost routing has no signal — defer to capacity routing.
+            from .routing.gpu_aware import select_gpu_aware
+            selected, _ = select_gpu_aware(valid_backends, clean_model, snapshot, _lat, _inflight)
+            logger.info("Cost-aware routing had no pricing for '%s'; fell back to capacity scoring -> '%s'",
+                        model, selected.name)
+        else:
+            logger.info(
+                "Cost-aware routing selected backend '%s' for model '%s' (est_cost=$%s; %s); candidates=%s",
+                selected.name, model,
+                ranked[0].estimated_cost_usd, ranked[0].reasons,
+                [(c.backend.name, c.estimated_cost_usd, c.score) for c in ranked[:5]],
+            )
+        return selected
 
     # 2a. GPU/infrastructure-aware routing: rank candidates by live serving capacity
     # (KV cache, queue, VRAM headroom, latency, health) using the observability poller.
