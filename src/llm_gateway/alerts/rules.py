@@ -17,6 +17,7 @@ METRIC_REGISTRY: dict[str, tuple[str, str, str]] = {
     "gpu_memory_pct":       ("gpu", "%", "GPU memory used"),
     "gpu_temp_c":           ("gpu", "°C", "GPU temperature"),
     "gpu_xid":              ("gpu", "errors", "New GPU XID errors (requires DCGM)"),
+    "gpu_ecc_dbe":          ("gpu", "errors", "Cumulative double-bit ECC errors (requires DCGM)"),
     "backend_down":         ("server", "bool", "Model server unreachable"),
     "server_error_rate":    ("server", "%", "Gateway-observed error rate per server"),
     "server_avg_latency_ms": ("server", "ms", "Average TTFT observed through the gateway"),
@@ -70,12 +71,14 @@ def default_rules() -> list[AlertRule]:
           "critical", 600, "gateway", True, ["webhook"]),
         R("gateway_tps_drop", "Gateway throughput collapsed", "gateway_tps_drop", "drop_pct", 70,
           120, "warning", 600, "gateway", True, ["webhook"]),
-        # Seeded disabled: needs DCGM XID telemetry (wired in Phase 2.3) and hardware
-        # specs for safe temperature limits.
+        # gpu XID/ECC need DCGM extended telemetry (DCGM_FI_DEV_XID_ERRORS / ECC_DBE),
+        # which the dcgm parser collects; gpu temp works from every exporter that reports temp.
         R("gpu_temp_high", "GPU temperature high", "gpu_temp_c", ">=", 90, 60,
-          "warning", 600, "gpu", False, ["webhook"]),
+          "warning", 600, "gpu", True, ["webhook"]),
         R("gpu_xid_error", "GPU XID error", "gpu_xid", ">=", 1, 0,
-          "critical", 120, "gpu", False, ["webhook"]),
+          "critical", 120, "gpu", True, ["webhook"]),
+        R("gpu_ecc_dbe_error", "GPU double-bit ECC error", "gpu_ecc_dbe", ">=", 1, 60,
+          "critical", 3600, "gpu", True, ["webhook"]),
     ]
 
 

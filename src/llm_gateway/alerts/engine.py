@@ -92,8 +92,6 @@ def evaluate(rules: list[AlertRule], series: AlertSeries, now: float,
     findings: list[Finding] = []
     open_firing = open_firing or {}
     for rule in rules:
-        if rule.metric == "gpu_xid":
-            continue  # event-style metric, wired in Phase 2.3 (DCGM XID counter)
         for target in series.targets(rule.metric):
             samples = series.series(rule.metric, target)
             if not samples:
@@ -153,6 +151,26 @@ def evaluate(rules: list[AlertRule], series: AlertSeries, now: float,
                 now_bad = newest_v >= rule.threshold
                 ok_frac = rule.threshold * (1 - HYSTERESIS_FRAC)
             spanned = (in_win[-1][0] - in_win[0][0]) >= min(window - 15, window * 0.66)
+            if rule.window_s <= 0 and rule.comparator == ">=":
+                # Event-style metric (e.g. gpu_xid): the breach is transient, so fire on the
+                # instant sample instead of requiring the condition to span an evaluation window.
+                if now_bad:
+                    findings.append(Finding(
+                        rule_id=rule.id, rule_name=rule.name, metric=rule.metric,
+                        target=target, severity=rule.severity, value=round(newest_v, 3),
+                        threshold=rule.threshold, comparator=rule.comparator,
+                        summary=f"{rule.name}: {target} at {newest_v:g} {rule.comparator} {rule.threshold:g}",
+                        detail={"event": True},
+                    ))
+                elif target in open_firing.get(rule.id, set()):
+                    findings.append(Finding(
+                        rule_id=rule.id, rule_name=rule.name, metric=rule.metric,
+                        target=target, severity=rule.severity, value=round(newest_v, 3),
+                        threshold=rule.threshold, comparator=rule.comparator,
+                        summary=f"{rule.name}: {target} recovered",
+                        resolve=True,
+                    ))
+                continue
             if now_bad and breached and spanned:
                 findings.append(Finding(
                     rule_id=rule.id, rule_name=rule.name, metric=rule.metric,

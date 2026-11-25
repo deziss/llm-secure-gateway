@@ -35,6 +35,14 @@ DCGM_FI_DEV_POWER_USAGE{gpu="0",UUID="GPU-aaa",modelName="NVIDIA A100 80GB",Host
 DCGM_FI_DEV_GPU_UTIL{gpu="1",UUID="GPU-bbb",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 0
 DCGM_FI_DEV_FB_USED{gpu="1",UUID="GPU-bbb",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 512
 DCGM_FI_DEV_FB_FREE{gpu="1",UUID="GPU-bbb",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 81408
+DCGM_FI_DEV_SM_CLOCK{gpu="0",UUID="GPU-aaa",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 1410
+DCGM_FI_DEV_MEM_CLOCK{gpu="0",UUID="GPU-aaa",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 1593
+DCGM_FI_DEV_ECC_DBE_VOL_TOTAL_TOTAL{gpu="0",UUID="GPU-aaa",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 2
+DCGM_FI_DEV_XID_ERRORS{gpu="0",UUID="GPU-aaa",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 63
+DCGM_FI_DEV_POWER_MGMT_LIMIT{gpu="0",UUID="GPU-aaa",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 400
+DCGM_FI_DEV_SM_CLOCK{gpu="1",UUID="GPU-bbb",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 345
+DCGM_FI_DEV_MEM_CLOCK{gpu="1",UUID="GPU-bbb",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 1593
+DCGM_FI_DEV_XID_ERRORS{gpu="1",UUID="GPU-bbb",modelName="NVIDIA A100 80GB",Hostname="gpu-a"} 0
 """
 
 NVIDIA_EXPORTER = """# HELP nvidia_smi_utilization_gpu_ratio GPU utilization
@@ -44,6 +52,9 @@ nvidia_smi_memory_total_bytes{index="0",uuid="GPU-ccc",name="RTX 4090"} 25769803
 nvidia_smi_temperature_gpu{index="0",uuid="GPU-ccc",name="RTX 4090"} 55
 nvidia_smi_power_draw_watts{index="0",uuid="GPU-ccc",name="RTX 4090"} 150.25
 nvidia_smi_power_limit_watts{index="0",uuid="GPU-ccc",name="RTX 4090"} 450
+nvidia_smi_clocks_current_sm_mhz{index="0",uuid="GPU-ccc",name="RTX 4090"} 2520
+nvidia_smi_clocks_current_memory_mhz{index="0",uuid="GPU-ccc",name="RTX 4090"} 10501
+nvidia_smi_ecc_errors_double_aggregate_total{index="0",uuid="GPU-ccc",name="RTX 4090"} 1
 """
 
 AMD = """gpu_gfx_activity{gpu_id="0",card_model="MI300X"} 64
@@ -94,12 +105,33 @@ def test_dcgm_parser_computes_total_and_keeps_uuid():
     assert gpus[1]["util_pct"] == 0.0
 
 
+def test_dcgm_extended_telemetry_clocks_ecc_xid_power_limit():
+    gpus = sorted(gpu.parse_dcgm(DCGM, "gpu-a"), key=lambda g: g["index"])
+    g0, g1 = gpus[0], gpus[1]
+    assert g0["clock_sm_mhz"] == 1410 and g0["clock_mem_mhz"] == 1593
+    assert g0["ecc_dbe"] == 2
+    assert g0["xid_error"] == 1          # XID code 63 (non-zero) -> an error occurred
+    assert g0["power_limit_w"] == 400
+    assert g1["xid_error"] == 0          # XID metric present with value 0 -> healthy
+    assert g1["ecc_dbe"] is None         # metric absent for that GPU -> None
+    assert g1["clock_sm_mhz"] == 345
+
+
+def test_dcgm_xid_absent_is_none():
+    text = 'DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-x"} 5\n'
+    g = gpu.parse_dcgm(text, "h")[0]
+    assert g["xid_error"] is None and g["ecc_dbe"] is None
+    assert g["clock_sm_mhz"] is None and g["power_limit_w"] is None
+
+
 def test_nvidia_gpu_exporter_converts_ratio_and_bytes():
     g = gpu.parse_nvidia_exporter(NVIDIA_EXPORTER, "rig-1")[0]
     assert g["util_pct"] == pytest.approx(37.0)
     assert g["mem_used_mib"] == pytest.approx(4096.0)
     assert g["mem_total_mib"] == pytest.approx(24576.0)
     assert g["power_limit_w"] == 450.0 and g["name"] == "RTX 4090" and g["uuid"] == "GPU-ccc"
+    assert g["clock_sm_mhz"] == 2520 and g["clock_mem_mhz"] == 10501 and g["ecc_dbe"] == 1
+    assert g["xid_error"] is None  # exporter has no XID metric
 
 
 def test_amd_parser_uses_name_map_and_vendor():

@@ -38,6 +38,12 @@ DCGM_METRICS = {
     "fb_free": "DCGM_FI_DEV_FB_FREE",
     "temp": "DCGM_FI_DEV_GPU_TEMP",
     "power": "DCGM_FI_DEV_POWER_USAGE",
+    # Extended telemetry (DCGM exporter field group "gpu_watch"/"custom"):
+    "clock_sm": "DCGM_FI_DEV_SM_CLOCK",               # MHz
+    "clock_mem": "DCGM_FI_DEV_MEM_CLOCK",             # MHz
+    "ecc_dbe": "DCGM_FI_DEV_ECC_DBE_VOL_TOTAL_TOTAL",  # cumulative double-bit ECC errors
+    "xid": "DCGM_FI_DEV_XID_ERRORS",                  # most recent XID code; non-zero = error
+    "power_limit": "DCGM_FI_DEV_POWER_MGMT_LIMIT",    # watts, best-effort
 }
 
 NVIDIA_EXPORTER_METRICS = {
@@ -47,6 +53,10 @@ NVIDIA_EXPORTER_METRICS = {
     "temp": "nvidia_smi_temperature_gpu",
     "power": "nvidia_smi_power_draw_watts",
     "power_limit": "nvidia_smi_power_limit_watts",
+    # Plausible names from the nicolerenoux/nvidia-smi-exporter schema; absent ones are fine.
+    "clock_sm": "nvidia_smi_clocks_current_sm_mhz",
+    "clock_mem": "nvidia_smi_clocks_current_memory_mhz",
+    "ecc_dbe": "nvidia_smi_ecc_errors_double_aggregate_total",
 }
 
 SOURCES = ("agent", "dcgm", "nvidia_smi_exporter", "amd_exporter")
@@ -60,10 +70,18 @@ def _num(v: Any) -> float | None:
     return None if f != f else f  # NaN -> None
 
 
+def _xid_error(xid_code: Any) -> int | None:
+    """DCGM DCGM_FI_DEV_XID_ERRORS carries the most recent XID code: non-zero means an
+    error occurred. Returns 1/0 when the metric was present, None when it was absent."""
+    code = _num(xid_code)
+    return None if code is None else (1 if code != 0 else 0)
+
+
 def _gpu(host: str, index: Any, *, uuid: str | None = None, name: str | None = None, vendor: str,
          util_pct: Any = None, mem_used_mib: Any = None, mem_total_mib: Any = None,
          temp_c: Any = None, power_w: Any = None, power_limit_w: Any = None,
-         processes: list | None = None) -> dict:
+         clock_sm_mhz: Any = None, clock_mem_mhz: Any = None, ecc_dbe: Any = None,
+         xid_error: Any = None, processes: list | None = None) -> dict:
     used = _num(mem_used_mib)
     total = _num(mem_total_mib)
     mem_pct = (used / total * 100.0) if (used is not None and total) else None
@@ -84,6 +102,10 @@ def _gpu(host: str, index: Any, *, uuid: str | None = None, name: str | None = N
         "temp_c": _num(temp_c),
         "power_w": _num(power_w),
         "power_limit_w": _num(power_limit_w),
+        "clock_sm_mhz": _num(clock_sm_mhz),
+        "clock_mem_mhz": _num(clock_mem_mhz),
+        "ecc_dbe": _num(ecc_dbe),
+        "xid_error": xid_error,
         "processes": processes,
     }
 
@@ -106,6 +128,9 @@ def parse_agent(obj: dict, host: str) -> list[dict]:
             host, g.get("index"), uuid=g.get("uuid"), name=g.get("name"), vendor=g.get("vendor") or "nvidia",
             util_pct=g.get("util_pct"), mem_used_mib=g.get("mem_used_mib"), mem_total_mib=g.get("mem_total_mib"),
             temp_c=g.get("temp_c"), power_w=g.get("power_w"), power_limit_w=g.get("power_limit_w"),
+            clock_sm_mhz=g.get("clock_sm_mhz"), clock_mem_mhz=g.get("clock_mem_mhz"),
+            ecc_dbe=g.get("ecc_dbe"),
+            xid_error=(None if g.get("xid_error") is None else (1 if g.get("xid_error") else 0)),
             processes=procs,
         ))
     return out
@@ -120,7 +145,9 @@ def parse_dcgm(text: str, host: str) -> list[dict]:
         total = used + free if (used is not None and free is not None) else None
         out.append(_gpu(host, dev, uuid=lab.get("UUID"), name=lab.get("modelName"), vendor="nvidia",
                         util_pct=e.get("util"), mem_used_mib=used, mem_total_mib=total,
-                        temp_c=e.get("temp"), power_w=e.get("power")))
+                        temp_c=e.get("temp"), power_w=e.get("power"), power_limit_w=e.get("power_limit"),
+                        clock_sm_mhz=e.get("clock_sm"), clock_mem_mhz=e.get("clock_mem"),
+                        ecc_dbe=e.get("ecc_dbe"), xid_error=_xid_error(e.get("xid"))))
     return out
 
 
@@ -136,7 +163,9 @@ def parse_nvidia_exporter(text: str, host: str) -> list[dict]:
                         util_pct=util * 100.0 if util is not None else None,
                         mem_used_mib=used / MIB if used is not None else None,
                         mem_total_mib=total / MIB if total is not None else None,
-                        temp_c=e.get("temp"), power_w=e.get("power"), power_limit_w=e.get("power_limit")))
+                        temp_c=e.get("temp"), power_w=e.get("power"), power_limit_w=e.get("power_limit"),
+                        clock_sm_mhz=e.get("clock_sm"), clock_mem_mhz=e.get("clock_mem"),
+                        ecc_dbe=e.get("ecc_dbe")))
     return out
 
 

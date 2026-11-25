@@ -181,6 +181,12 @@ def _add_gpu_samples(g: dict, now: float, host: str = "") -> None:
         _series.add("gpu_memory_pct", tgt, 100.0 * used / total, now)
     if g.get("temp_c") is not None:
         _series.add("gpu_temp_c", tgt, float(g["temp_c"]), now)
+    xid = g.get("xid_error")
+    if xid is not None:
+        _series.add("gpu_xid", tgt, float(xid), now)
+    ecc = g.get("ecc_dbe")
+    if ecc is not None:
+        _series.add("gpu_ecc_dbe", tgt, float(ecc), now)
 
 
 async def alert_tick() -> dict:
