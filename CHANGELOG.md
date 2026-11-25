@@ -1,3 +1,37 @@
+## [0.17.0] - 2026-11-25
+
+### 🤖 Agent Intelligence (Phase 3)
+
+- **Agent Run Correlation (`observability/agents.py`)**: gateway requests are stitched into *runs* — one agent workflow, many LLM calls — derived from `x-deziss-run-id`, `x-deziss-agent`, `x-deziss-parent-agent`, `x-deziss-session-id` headers, or from body session signals (`user`, `metadata.session_id`/`user_id`), which yield a deterministic `ses-…` pseudo-run with no client changes. Unattributed requests are intentionally not grouped (no noise).
+- **Steps & Handoffs**: every dispatched request records an LLM step (kind, agent, model, server, status, duration, TTFT, tokens, error) via `RequestTracker.finish()` — fire-and-forget, so it can never break the request path. Agent identity changes mid-run are recorded as handoff edges; a run with ≥50% errors is marked failed, an idle run completed.
+- **Storage & Flushing**: new `agent_runs` / `agent_steps` tables (migration 014). Steps batch in a bounded in-memory queue and are flushed by the observability poller tick, so the request path never blocks on the database.
+- **Admin APIs**: `GET /admin/observability/agent-runs`, `GET /admin/observability/agent-runs/{run_id}` (run + step waterfall), `GET /admin/observability/agents/summary`.
+- **Agent Intelligence tab** in Observability: runs table, expandable per-step waterfalls, per-agent summary cards.
+- **`deziss-sdk` (`sdk/python`)**: zero-dependency Python SDK — `agent_run()` context manager, `run.handoff()`, `run.child()`, mapping duck-typing for OpenAI `extra_headers`, and `DEZISS_RUN_ID`/`DEZISS_SESSION_ID` env propagation across processes.
+
+### 🖥 Infrastructure & GPU Intelligence (Phase 2)
+
+- **Alert & Incident Engine (`alerts/`)**: declarative rules (metric, comparator, threshold, window, severity, cooldown, target kind) evaluated against live telemetry each poll tick; firing requires a sustained breach, recovery uses hysteresis; incidents dedupe per (rule, target) episode with notification cooldowns. Alert acknowledgement + incident history, and notification delivery over webhooks (HMAC-signed) and email. 10 default rules seeded (`backend_down`, KV-cache saturation, inference queue, GPU memory/temperature, TTFT degradation, gateway error rate, throughput collapse, …). New **Alert Center** UI tab; admin API `GET/PATCH /admin/alerts/rules`, `GET /admin/alerts/incidents`, `POST /admin/alerts/incidents/{id}/ack`.
+- **Event-style alerting**: window-0 `>=` rules (e.g. GPU XID errors) fire on the instant sample and resolve when the value drops.
+- **GPU extended telemetry**: DCGM parsers now collect XID errors, cumulative double-bit ECC errors, SM/memory clocks and power limits (clock/ECC fields also from the nvidia-smi exporter); XID present-and-non-zero maps to `xid_error=1`. Fields flow into the observability payload automatically. Rules `gpu_temp_high` and `gpu_xid_error` ship enabled, plus new `gpu_ecc_dbe_error`.
+- **Host & container telemetry (`collect/hosts.py`)**: scrape Node Exporter / cAdvisor endpoints registered as node hosts (CRUD at `/admin/observability/node-hosts`); CPU per-core/load, RAM/swap, disk I/O & capacity, network throughput, TCP retransmits, container CPU/memory limits, restarts and OOM kills surface in the payload and feed alerts. New **Infrastructure** tab.
+
+### 🧭 Routing & Observability
+
+- **Cost-aware routing (`ROUTING_STRATEGY=cost_aware`)**: ranks candidate backends by the estimated dollar cost of the request from `model_pricing` (per model/provider with `*` wildcard; 30 s TTL cache, 250 ms hard DB cap so routing never stalls), with latency/queue tiebreakers, poller health penalties, and local engines (vLLM/Ollama/…) counted as marginal-cost free. Falls back to capacity scoring when nothing is priced.
+- **GPU/infrastructure-aware routing (`ROUTING_STRATEGY=gpu_aware`)**: scores backends on KV-cache pressure, queue depth, free-VRAM headroom, GPU util/temperature, gateway-measured latency and health — with a human-readable rationale in the routing log line. Missing signals degrade to neutral instead of breaking selection.
+- **Live throughput**: avg & live tokens/sec per model during streaming (counting vLLM `delta.reasoning` so reasoning models update), plus SSE delta (chunk) events-per-second per model.
+
+### 🐛 Fixes
+
+- Equal-jitter retry backoff and a keepalive race that surfaced as `httpx.ReadError` on pooled connections.
+- Available-models popup on click in the models list, and a license plan upgrade flow in the license card.
+- Timezone handling standardized to explicit UTC serialization with local rendering across the admin UI.
+
+### ✅ Testing
+
+- 775 tests passing (was ~720 at v0.16.2): new suites for alert rules/engine/incidents/notifications, GPU extended telemetry parsing, event-style alerts, cost-aware routing, GPU-aware routing, node telemetry, agent recorder correlation, and the SDK header contract.
+
 ## [0.16.2] - 2026-11-19
 
 ### 🌐 Unified Local Timezone Rendering & UTC Standardization
