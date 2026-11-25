@@ -517,7 +517,7 @@ async def get_target_backend(
     setting_val = routing_strategy_setting if isinstance(routing_strategy_setting, str) else ""
     eff_strategy = (strat_val or setting_val).strip().lower()
 
-    use_dynamic = is_exp_enabled or (eff_strategy in ("least_busy", "least-busy", "queue_aware", "queue-aware", "random", "weighted_random"))
+    use_dynamic = is_exp_enabled or (eff_strategy in ("least_busy", "least-busy", "queue_aware", "queue-aware", "random", "weighted_random", "gpu_aware", "gpu-aware", "infra_aware", "infra-aware"))
 
     if not use_dynamic:
          # Original Static Logic
@@ -574,7 +574,32 @@ async def get_target_backend(
         logger.info("Smart Routing selected backend '%s' for model '%s' (weight=%s). (%d candidates available)", selected_backend.name, model, getattr(selected_backend, "weight", 100), len(valid_backends))
         return selected_backend
 
-    # 2. Least-Busy (Queue-Aware) Dynamic Load Balancing
+    # 2a. GPU/infrastructure-aware routing: rank candidates by live serving capacity
+    # (KV cache, queue, VRAM headroom, latency, health) using the observability poller.
+    if eff_strategy in ("gpu_aware", "gpu-aware", "infra_aware", "infra-aware"):
+        from .routing.gpu_aware import select_gpu_aware
+        try:
+            from .observability.collect.poller import get_snapshot
+            snapshot = get_snapshot()
+        except Exception:  # poller unavailable -> neutral scores, still ranks by latency/health
+            snapshot = {}
+
+        def _lat(b):
+            return get_backend_avg_latency(b.base_url)
+
+        def _inflight(b):
+            return get_backend_in_flight(get_live_stats(), b.name, b.base_url, getattr(b, "fallback_urls", None))
+
+        selected, ranked = select_gpu_aware(valid_backends, clean_model, snapshot, _lat, _inflight)
+        top = ranked[0].reasons
+        logger.info(
+            "GPU-aware routing selected backend '%s' for model '%s' (score=%.3f; %s); candidates=%s",
+            selected.name, model, ranked[0].score, top,
+            [(c.backend.name, c.score) for c in ranked[:5]],
+        )
+        return selected
+
+    # 2b. Least-Busy (Queue-Aware) Dynamic Load Balancing
     store = get_live_stats()
 
     candidate_evals = []
