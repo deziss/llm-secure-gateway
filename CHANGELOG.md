@@ -1,3 +1,12 @@
+## [0.20.1] - 2026-11-26
+
+### 🔌 WAF-safe upstream serialization (opaque 502 on HTML-looking payloads)
+
+Requests whose JSON body contains HTML/XSS-looking markup (`<script>alert(1)</script>`, `<svg onload=...>`, `<img src=x onerror=...>`, and even entity-encoded `&lt;script&gt;`) were being RST by an intermediary WAF / API edge in front of some backends — before any HTTP response was produced. httpx surfaced this as an empty `ReadError('')` retried twice, tripping the circuit breaker for that backend and returning an opaque `502 Upstream provider error`.
+
+- **`serialize_json_body()` now escapes `<`, `>` and `&` as `\u003c` / `\u003e` / `\u0026`** (on top of the existing `ensure_ascii=True`). This is fully lossless — every JSON parser decodes them back to the original characters, so the model receives byte-identical content — but the wire bytes no longer match XSS signatures. Verified live end-to-end against a production vLLM endpoint behind such a WAF: the exact adversarial payload now returns `200` in ~0.4 s instead of a retried 502, on both non-stream and streaming paths. Applied on all proxy planes (`/v1/chat/completions`, `/v1/messages`, both `/v2` planes, audio, bots relay).
+- **Actionable terminal error**: when every URL/attempt still dies before headers, the bare `ReadError('')` is replaced by `UpstreamConnectionReset` (subclass of `httpx.ReadError`, so all existing handlers/tests keep working) carrying the upstream URL and the likely causes (edge/WAF rejection, stale keep-alive, upstream restart) — visible in logs, traces and the client 502 message instead of an empty string.
+
 ## [0.20.0] - 2026-11-27
 
 ### 🛡 Streaming output guardrails

@@ -1,6 +1,6 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.20.1-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -227,7 +227,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.20.0"}
+# Output: {"version": "0.20.1"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags

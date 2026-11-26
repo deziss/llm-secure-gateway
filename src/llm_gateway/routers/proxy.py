@@ -404,7 +404,11 @@ async def anthropic_messages_endpoint(
                         background=BackgroundTask(_finish_anthropic, tracker, request),
                     )
                 else:
-                    resp = await client.post(dest_url, json=forward_body, headers=headers)
+                    resp = await client.post(
+                        dest_url,
+                        content=serialize_json_body(forward_body),
+                        headers=headers,
+                    )
                     if resp.status_code >= 400:
                         raise HTTPException(status_code=resp.status_code, detail=resp.text)
 

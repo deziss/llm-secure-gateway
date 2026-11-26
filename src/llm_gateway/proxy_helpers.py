@@ -819,15 +819,49 @@ def _get_all_urls(backend: LLMBackend) -> List[str]:
     return urls
 
 
+class UpstreamConnectionReset(httpx.ReadError):
+    """Raised when every transport attempt fails before response headers arrived.
+
+    A bare ``httpx.ReadError('')`` with no message reaches the client as an
+    opaque 502. This wrapper keeps the original exception accessible and names
+    the most common real-world causes -- an intermediary WAF/middlebox
+    rejecting hostile-looking payload content, the upstream closing a stale
+    keep-alive socket, or the upstream dying mid-attempt -- so operators get an
+    actionable message from the trace alone. Subclasses ``httpx.ReadError`` so
+    every existing handler (``except httpx.ReadError`` / ``RequestError``) and
+    test contract keeps working unchanged.
+    """
+
+    def __init__(self, base_url: str, original: BaseException) -> None:
+        self.base_url = base_url
+        self.original = original
+        super().__init__(
+            "Upstream connection reset before response headers were received "
+            f"from {base_url} ({type(original).__name__}). The upstream edge "
+            "(load balancer / WAF) may have rejected the request content, "
+            "closed a stale keep-alive socket, or restarted mid-request."
+        )
+
+
 def serialize_json_body(data: Any) -> bytes:
-    """Serialize dict to JSON bytes with ensure_ascii=True.
+    """Serialize dict to JSON bytes with ensure_ascii=True and markup escaping.
 
     Guarantees all non-ASCII characters (em-dashes, smart quotes, emojis, etc.)
     are safely escaped as ASCII \\uXXXX sequences. This prevents upstream LLM servers
     (specifically vLLM and llama.cpp HTTP engines) from abruptly terminating the
     connection with ConnectionResetError / httpx.ReadError on raw multibyte UTF-8.
+
+    ``<``, ``>`` and ``&`` are additionally escaped as \\u003c / \\u003e / \\u0026.
+    This is lossless -- every JSON parser decodes them back to the original
+    characters, so the model receives the exact same string -- but the wire
+    bytes no longer look like HTML/XSS markup. WAFs and API-gateway middleboxes
+    in front of backends (e.g. ModSecurity rejecting '<script>alert(1)</script>'
+    or '<svg onload=...>') otherwise RST the connection before sending any
+    response, which surfaces as an opaque empty httpx.ReadError and a 502.
     """
-    return json.dumps(data, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
+    text = json.dumps(data, ensure_ascii=True, separators=(",", ":"))
+    text = text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return text.encode("ascii")
 
 
 def _retry_sleep(backoff: float) -> float:
@@ -1029,6 +1063,11 @@ async def try_backend_with_fallback(
         last_exc = httpx.ConnectError(
             f"No healthy upstream URLs available for backend '{backend.name}' (configured URLs: {urls})"
         )
+    elif isinstance(last_exc, httpx.TransportError) and pending_5xx is None:
+        # Pure transport failure (reset/timeout/connect) on every URL and
+        # attempt. Wrap with an actionable message -- the bare ReadError from
+        # httpx often carries an empty string, which becomes an opaque 502.
+        last_exc = UpstreamConnectionReset(candidate_urls[idx] if candidate_urls else "", last_exc)
     raise last_exc
 
 

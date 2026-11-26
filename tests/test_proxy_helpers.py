@@ -668,3 +668,92 @@ class TestCircuitBreaker5xxRecording:
             for u in (primary, fallback):
                 _circuit_breaker._circuits.pop(u, None)
                 _circuit_breaker._clear_probe(u)
+
+
+# ---------------------------------------------------------------------------
+# serialize_json_body: WAF-evasion markup escaping
+# ---------------------------------------------------------------------------
+
+class TestSerializeJsonBody:
+    def test_lossless_roundtrip(self):
+        """\\u003c/\\u003e/\\u0026 escapes are decoded back to the original chars by any JSON parser."""
+        import json as _json
+        from llm_gateway.proxy_helpers import serialize_json_body
+
+        payload = {
+            "messages": [{"role": "user", "content": 'probe <script>alert(1)</script> q=""><svg onload=1> & AT&T'}],
+            "model": "qwen",
+        }
+        raw = serialize_json_body(payload)
+        assert _json.loads(raw.decode("utf-8")) == payload
+
+    def test_wire_bytes_contain_no_markup_characters(self):
+        """Raw wire bytes must not contain '<', '>' or '&' so signature WAFs can't match XSS patterns."""
+        from llm_gateway.proxy_helpers import serialize_json_body
+
+        payload = {"messages": [{"role": "user", "content": "<script>alert(1)</script><img src=x onerror=alert(1)>"}]}
+        raw = serialize_json_body(payload)
+        assert b"<" not in raw
+        assert b">" not in raw
+        assert b"&" not in raw
+        assert b"\\u003cscript\\u003e" in raw
+
+    def test_non_ascii_still_escaped(self):
+        """The pre-existing ensure_ascii behaviour for multibyte UTF-8 is preserved."""
+        from llm_gateway.proxy_helpers import serialize_json_body
+
+        raw = serialize_json_body({"t": "café \u2014 \U0001f600"})
+        raw.decode("ascii")  # must be pure ASCII
+        assert "café".encode("utf-8") not in raw
+
+    def test_unicode_escapes_in_input_not_double_escaped(self):
+        r"""Literal backslash-u sequences in content must survive as literal text."""
+        import json as _json
+        from llm_gateway.proxy_helpers import serialize_json_body
+
+        payload = {"q": "literal \\u003c tag"}
+        raw = serialize_json_body(payload)
+        assert _json.loads(raw.decode("utf-8")) == payload
+
+
+# ---------------------------------------------------------------------------
+# UpstreamConnectionReset wrapping
+# ---------------------------------------------------------------------------
+
+class TestUpstreamConnectionReset:
+    @pytest.mark.asyncio
+    async def test_terminal_transport_error_is_wrapped(self):
+        """Exhausted transport failures surface as UpstreamConnectionReset with an actionable message."""
+        import httpx
+        from llm_gateway.proxy_helpers import try_backend_with_fallback, UpstreamConnectionReset, _circuit_breaker
+
+        backend = MagicMock()
+        backend.base_url = "http://backend-reset-wrap:8000"
+        backend.fallback_urls = []
+        backend.name = "vllm-reset-wrap"
+
+        mock_client = AsyncMock()
+        mock_client.build_request = MagicMock(return_value=MagicMock())
+        mock_client.send = AsyncMock(side_effect=httpx.ReadError(""))  # empty message, like the real WAF reset
+        mock_client.is_closed = False
+
+        try:
+            with patch("llm_gateway.proxy_helpers._get_client", return_value=mock_client):
+                with patch("llm_gateway.proxy_helpers._reset_client", new_callable=AsyncMock):
+                    with pytest.raises(UpstreamConnectionReset) as ei:
+                        await try_backend_with_fallback(
+                            backend, "v1/chat/completions", "POST", {}, {"model": "qwen"}, None,
+                            enable_retry=False,
+                        )
+            # Still catchable as the original error types (handler compatibility)
+            assert isinstance(ei.value, httpx.ReadError)
+            assert isinstance(ei.value, httpx.TransportError)
+            assert "connection reset before response headers" in str(ei.value).lower()
+            assert "http://backend-reset-wrap:8000" in str(ei.value)
+            assert isinstance(ei.value.original, httpx.ReadError)
+        finally:
+            _circuit_breaker._circuits.pop(backend.base_url, None)
+            _circuit_breaker._clear_probe(backend.base_url)
+
+    def test_upstream_connection_reset_is_importable(self):
+        from llm_gateway.proxy_helpers import UpstreamConnectionReset  # noqa: F401

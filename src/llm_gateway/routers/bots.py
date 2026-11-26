@@ -328,8 +328,9 @@ async def telegram_webhook(
     
     assistant_reply = ""
     try:
+        from ..proxy_helpers import serialize_json_body
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(url, json=proxy_payload, headers=headers)
+            resp = await client.post(url, content=serialize_json_body(proxy_payload), headers={**headers, "content-type": "application/json"})
             if resp.status_code == 200:
                 resp_data = resp.json()
                 
