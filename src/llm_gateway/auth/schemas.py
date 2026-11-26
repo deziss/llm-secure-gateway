@@ -10,6 +10,10 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
 
 class UserCreate(schemas.BaseUserCreate):
     invite_code: Optional[str] = None
+    # Self-registration always produces a VIEWER.  The declared default is
+    # VIEWER and UserManager.create() overrides any client-supplied value, so
+    # posting role=ADMIN here has no effect.  Role changes go through the admin
+    # users router (UserUpdate) only.
     role: Optional[Role] = Role.VIEWER
 
 class UserUpdate(schemas.BaseUserUpdate):

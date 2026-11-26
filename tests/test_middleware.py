@@ -147,19 +147,84 @@ class TestAuthMiddleware:
         )
         call_next.assert_awaited_once_with(request)
 
-    def test_spiffe_id_sets_workload_user(self):
+    SPIFFE_ID = "spiffe://cluster/ns/default/sa/my-workload"
+
+    def test_spiffe_id_ignored_by_default(self):
+        """X-Spiffe-ID must NOT authenticate when SPIFFE_TRUSTED_HEADER is disabled (default)."""
         middleware = self._make_middleware()
-        request = self._make_request(
-            headers={"X-Spiffe-ID": "spiffe://cluster/ns/default/sa/my-workload"}
+        request = self._make_request(headers={"X-Spiffe-ID": self.SPIFFE_ID})
+        call_next = AsyncMock(return_value=MagicMock(status_code=200))
+
+        response = asyncio.get_event_loop().run_until_complete(
+            middleware.dispatch(request, call_next)
         )
+        assert response.status_code == 401
+        call_next.assert_not_awaited()
+
+    @patch("llm_gateway.config.SPIFFE_SIDECAR_TOKEN", "s3cret-token")
+    @patch("llm_gateway.config.SPIFFE_TRUSTED_HEADER", True)
+    def test_spiffe_accepted_with_trusted_header_and_token(self):
+        middleware = self._make_middleware()
+        request = self._make_request(headers={
+            "X-Spiffe-ID": self.SPIFFE_ID,
+            "X-Spiffe-Token": "s3cret-token",
+        })
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
         asyncio.get_event_loop().run_until_complete(
             middleware.dispatch(request, call_next)
         )
+        call_next.assert_awaited_once_with(request)
         assert request.state.user["type"] == "workload"
-        assert request.state.user["spiffe_id"] == "spiffe://cluster/ns/default/sa/my-workload"
+        assert request.state.user["spiffe_id"] == self.SPIFFE_ID
         assert request.state.auth_method == "spiffe"
+
+    @patch("llm_gateway.config.SPIFFE_SIDECAR_TOKEN", "s3cret-token")
+    @patch("llm_gateway.config.SPIFFE_TRUSTED_HEADER", True)
+    def test_spiffe_rejected_with_wrong_token(self):
+        middleware = self._make_middleware()
+        request = self._make_request(headers={
+            "X-Spiffe-ID": self.SPIFFE_ID,
+            "X-Spiffe-Token": "wrong-token",
+        })
+        call_next = AsyncMock(return_value=MagicMock(status_code=200))
+
+        response = asyncio.get_event_loop().run_until_complete(
+            middleware.dispatch(request, call_next)
+        )
+        assert response.status_code == 401
+        call_next.assert_not_awaited()
+
+    @patch("llm_gateway.config.SPIFFE_SIDECAR_TOKEN", "s3cret-token")
+    @patch("llm_gateway.config.SPIFFE_TRUSTED_HEADER", True)
+    def test_spiffe_rejected_when_token_header_missing(self):
+        middleware = self._make_middleware()
+        request = self._make_request(headers={"X-Spiffe-ID": self.SPIFFE_ID})
+        call_next = AsyncMock(return_value=MagicMock(status_code=200))
+
+        response = asyncio.get_event_loop().run_until_complete(
+            middleware.dispatch(request, call_next)
+        )
+        assert response.status_code == 401
+        call_next.assert_not_awaited()
+
+    @patch("llm_gateway.config.SPIFFE_SIDECAR_TOKEN", "")
+    @patch("llm_gateway.config.SPIFFE_TRUSTED_HEADER", True)
+    def test_spiffe_fails_closed_when_sidecar_token_unset(self):
+        """Trusted header enabled but SPIFFE_SIDECAR_TOKEN unset → refuse SPIFFE auth (fail closed)."""
+        middleware = self._make_middleware()
+        request = self._make_request(headers={
+            "X-Spiffe-ID": self.SPIFFE_ID,
+            "X-Spiffe-Token": "anything",
+        })
+        call_next = AsyncMock(return_value=MagicMock(status_code=200))
+
+        response = asyncio.get_event_loop().run_until_complete(
+            middleware.dispatch(request, call_next)
+        )
+        assert response.status_code == 401
+        call_next.assert_not_awaited()
+
 
     def test_no_credentials_returns_401(self):
         middleware = self._make_middleware()

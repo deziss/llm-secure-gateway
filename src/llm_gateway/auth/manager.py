@@ -6,7 +6,7 @@ from typing import AsyncGenerator, Optional
 from fastapi import Depends, Request, Response
 from fastapi_users import BaseUserManager, UUIDIDMixin
 
-from .models import User
+from .models import User, Role
 from .db import get_user_db
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,19 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                         detail="Invalid or expired invite code."
                     )
         
-        # Call original create
+        # Call original create.
+        # Security: self-registration (POST /auth/register) must NEVER honor a
+        # client-supplied role.  fastapi-users passes UserCreate straight
+        # through, so the authoritative fix is to force VIEWER here before the
+        # object is built.  Role elevation happens only via the admin users
+        # router (UserUpdate) or the admin create-user endpoint.
+        if getattr(user_create, "role", None) not in (None, Role.VIEWER):
+            logger.warning(
+                "Stripping client-supplied role %r on self-registration for %s",
+                user_create.role,
+                user_create.email,
+            )
+        user_create.role = Role.VIEWER
         created_user = await super().create(user_create, safe=safe, request=request)
         
         # If invite used, mark it as consumed

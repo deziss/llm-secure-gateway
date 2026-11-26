@@ -142,15 +142,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # UI user authenticated via cookie, defer to router dependencies
             return await call_next(request)
 
-        # Method 2: Check for SPIFFE ID (mTLS/Sidecar)
-        # In a real mesh, the sidecar validates the cert and passes the URI in a header
+        # Method 2: Check for SPIFFE ID (mTLS/Sidecar).
+        # A raw X-Spiffe-ID header is spoofable, so it is IGNORED unless
+        # SPIFFE_TRUSTED_HEADER is explicitly enabled (service-mesh deployments
+        # where a trusted sidecar overwrites the header on every request).
+        # Even then, the sidecar must present the shared secret
+        # X-Spiffe-Token == SPIFFE_SIDECAR_TOKEN; fail closed if unset.
         spiffe_id = request.headers.get("X-Spiffe-ID")
-        if spiffe_id:
-            # MVP: Trust the header (assuming boundary is secure)
-            # In validation phase, we would verify this against a sidecar config or similar.
-            request.state.user = {"type": "workload", "spiffe_id": spiffe_id}
-            request.state.auth_method = "spiffe"
-            return await call_next(request)
+        if spiffe_id and config.SPIFFE_TRUSTED_HEADER:
+            if not config.SPIFFE_SIDECAR_TOKEN:
+                logger.error(
+                    "SPIFFE_TRUSTED_HEADER is enabled but SPIFFE_SIDECAR_TOKEN is "
+                    "unset; refusing SPIFFE authentication (fail closed)."
+                )
+            elif request.headers.get("X-Spiffe-Token") == config.SPIFFE_SIDECAR_TOKEN:
+                request.state.user = {"type": "workload", "spiffe_id": spiffe_id}
+                request.state.auth_method = "spiffe"
+                return await call_next(request)
 
         return Response(content="Missing or invalid Authorization (Bearer Token or SPIFFE ID)", status_code=401)
 
