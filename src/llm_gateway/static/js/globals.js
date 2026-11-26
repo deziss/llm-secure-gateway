@@ -85,6 +85,7 @@ window.parseIsoDate = function (val) {
 window.formatTime = function (val, opts = {}) {
   const d = window.parseIsoDate(val);
   if (!d) return '—';
+  if (opts.dateStyle || opts.timeStyle) return d.toLocaleString(undefined, { hour12: false, ...opts });
   return d.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
@@ -98,6 +99,7 @@ window.formatTime = function (val, opts = {}) {
 window.formatDate = function (val, opts = {}) {
   const d = window.parseIsoDate(val);
   if (!d) return '—';
+  if (opts.dateStyle || opts.timeStyle) return d.toLocaleString(undefined, { hour12: false, ...opts });
   return d.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -107,9 +109,14 @@ window.formatDate = function (val, opts = {}) {
 };
 
 // Format local date and time, e.g. "Nov 19, 2026, 13:11:21"
+// When opts use dateStyle/timeStyle they must be passed alone (Intl throws if
+// component options like `year` are combined with dateStyle), so don't merge defaults.
 window.formatDateTime = function (val, opts = {}) {
   const d = window.parseIsoDate(val);
   if (!d) return '—';
+  if (opts.dateStyle || opts.timeStyle) {
+    return d.toLocaleString(undefined, { hour12: false, ...opts });
+  }
   return d.toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
