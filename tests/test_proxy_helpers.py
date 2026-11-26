@@ -210,7 +210,8 @@ class TestCheckOwnerPermissions:
         with pytest.raises(HTTPException) as exc:
             await check_owner_permissions(session, "user:alice", backend, "v1/chat/completions", "llama3")
         assert exc.value.status_code == 403
-        assert "no permissions" in exc.value.detail
+        assert exc.value.detail["error"]["code"] == "backend_not_allowed"
+        assert "no permissions" in exc.value.detail["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_raises_403_model_not_allowed(self):
@@ -226,6 +227,7 @@ class TestCheckOwnerPermissions:
         with pytest.raises(HTTPException) as exc:
             await check_owner_permissions(session, "user:alice", backend, "v1/chat/completions", "llama3")
         assert exc.value.status_code == 403
+        assert exc.value.detail["error"]["code"] == "model_not_allowed"
 
     @pytest.mark.asyncio
     async def test_raises_403_endpoint_blocked_by_backend(self):
@@ -242,7 +244,8 @@ class TestCheckOwnerPermissions:
         with pytest.raises(HTTPException) as exc:
             await check_owner_permissions(session, "user:alice", backend, "api/delete", None)
         assert exc.value.status_code == 403
-        assert "not allowed" in exc.value.detail
+        assert exc.value.detail["error"]["code"] == "endpoint_not_allowed"
+        assert "not allowed" in exc.value.detail["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_raises_403_empty_backend_allowed_endpoints(self):
@@ -254,7 +257,8 @@ class TestCheckOwnerPermissions:
         with pytest.raises(HTTPException) as exc:
             await check_owner_permissions(session, "user:alice", backend, "v1/chat/completions", None)
         assert exc.value.status_code == 403
-        assert "No endpoints" in exc.value.detail
+        assert exc.value.detail["error"]["code"] == "endpoint_not_allowed"
+        assert "No endpoints" in exc.value.detail["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_allows_specific_model_permission(self):

@@ -74,4 +74,53 @@ async def test_budget_enforcement(db_session):
     with pytest.raises(HTTPException) as exc_info:
         await check_budget(db_session, "budget-team", None)
     assert exc_info.value.status_code == 429
-    assert "budget exceeded" in exc_info.value.detail.lower()
+    assert exc_info.value.detail["error"]["code"] == "budget_exceeded"
+    assert "budget exceeded" in exc_info.value.detail["error"]["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_budget_warning_event_above_threshold(db_session, monkeypatch):
+    """Spend >= 80% of budget (but under the cap) emits a budget_warning audit event."""
+    owner = Owner(id="warn-team", name="Warn Team", type="project", monthly_budget_usd=1.00)
+    db_session.add(owner)
+    await db_session.commit()
+    db_session.add(SpendRecord(owner_id="warn-team", model="gpt-4o", provider="openai",
+                               input_tokens=1000, output_tokens=1000, cost_usd=0.85))
+    await db_session.commit()
+
+    events = []
+
+    class _FakeAudit:
+        def log(self, event_type, user, resource, decision, metadata=None, ip_address=None):
+            events.append((event_type, decision, metadata))
+
+    import llm_gateway.audit as audit_mod
+    monkeypatch.setattr(audit_mod, "get_audit_logger", lambda: _FakeAudit())
+
+    await check_budget(db_session, "warn-team", None)  # must NOT raise
+
+    assert any(e[0] == "budget_warning" and e[1] == "warn" for e in events)
+    meta = next(e[2] for e in events if e[0] == "budget_warning")
+    assert meta["budget_usd"] == 1.0 and meta["used_pct"] >= 80.0
+
+
+@pytest.mark.asyncio
+async def test_budget_no_warning_below_threshold(db_session, monkeypatch):
+    owner = Owner(id="ok-team", name="OK Team", type="project", monthly_budget_usd=10.00)
+    db_session.add(owner)
+    await db_session.commit()
+    db_session.add(SpendRecord(owner_id="ok-team", model="gpt-4o", provider="openai",
+                               input_tokens=1000, output_tokens=1000, cost_usd=0.50))
+    await db_session.commit()
+
+    events = []
+
+    class _FakeAudit:
+        def log(self, event_type, user, resource, decision, metadata=None, ip_address=None):
+            events.append(event_type)
+
+    import llm_gateway.audit as audit_mod
+    monkeypatch.setattr(audit_mod, "get_audit_logger", lambda: _FakeAudit())
+
+    await check_budget(db_session, "ok-team", None)
+    assert "budget_warning" not in events

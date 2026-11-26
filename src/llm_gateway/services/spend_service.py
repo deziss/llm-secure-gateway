@@ -235,10 +235,30 @@ async def get_monthly_spend_by_key(session: AsyncSession, key_hash: str) -> floa
     return float(result.scalar_one())
 
 
+BUDGET_WARN_FRACTION = 0.8  # emit budget_warning audit event once spend crosses 80% of budget
+
+
+def _emit_budget_warning(identity: str, scope: str, spent: float, budget: float) -> None:
+    try:
+        from ..audit import get_audit_logger
+        get_audit_logger().log(
+            "budget_warning", None, f"budget:{scope}:{identity}", "warn",
+            {"spent_usd": round(spent, 4), "budget_usd": round(budget, 2),
+             "used_pct": round(spent / budget * 100, 1) if budget else None},
+        )
+    except Exception:  # noqa: BLE001 - governance telemetry must never break the request path
+        pass
+
+
 async def check_budget(
     session: AsyncSession, owner_id: str, api_key_hash: Optional[str]
 ) -> None:
-    """Raise HTTP 429 if monthly budget is exceeded for owner or key."""
+    """Raise HTTP 429 if monthly budget is exceeded for owner or key.
+
+    Also emits a budget_warning audit event when spend crosses
+    BUDGET_WARN_FRACTION of the budget, so admins can react from the Audit
+    page before the hard stop.
+    """
     # Check owner budget
     if owner_id and owner_id != "anonymous":
         result = await session.execute(
@@ -250,9 +270,17 @@ async def check_budget(
             if spent >= budget:
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Monthly budget exceeded: ${spent:.2f} / ${budget:.2f}",
-                    headers={"X-Budget-Spent": f"{spent:.4f}", "X-Budget-Limit": f"{budget:.2f}"},
+                    detail={
+                        "error": {
+                            "code": "budget_exceeded",
+                            "message": f"Monthly budget exceeded: ${spent:.2f} / ${budget:.2f}",
+                            "param": "budget",
+                        }
+                    },
+                    headers={"X-Budget-Spent": f"{spent:.4f}", "X-Budget-Limit": f"{budget:.2f}", "X-Budget-Status": "exceeded"},
                 )
+            if budget and spent >= budget * BUDGET_WARN_FRACTION:
+                _emit_budget_warning(owner_id, "owner", spent, budget)
 
     # Check API key budget
     if api_key_hash:
@@ -265,9 +293,17 @@ async def check_budget(
             if spent >= budget:
                 raise HTTPException(
                     status_code=429,
-                    detail=f"API key monthly budget exceeded: ${spent:.2f} / ${budget:.2f}",
-                    headers={"X-Budget-Spent": f"{spent:.4f}", "X-Budget-Limit": f"{budget:.2f}"},
+                    detail={
+                        "error": {
+                            "code": "budget_exceeded",
+                            "message": f"API key monthly budget exceeded: ${spent:.2f} / ${budget:.2f}",
+                            "param": "budget",
+                        }
+                    },
+                    headers={"X-Budget-Spent": f"{spent:.4f}", "X-Budget-Limit": f"{budget:.2f}", "X-Budget-Status": "exceeded"},
                 )
+            if budget and spent >= budget * BUDGET_WARN_FRACTION:
+                _emit_budget_warning(api_key_hash[:12], "api_key", spent, budget)
 
 
 async def get_spend_summary(session: AsyncSession) -> list[dict]:

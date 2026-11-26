@@ -32,6 +32,11 @@ async def test_cache_store_and_retrieve(db_session):
     messages = [{"role": "user", "content": "Ping"}]
     key = compute_cache_key("mock-model", messages, 0.0)
 
+    # Remove leftovers from previous runs (Redis persists across sessions)
+    from llm_gateway.services import cache_service as _cs
+    if _cs._redis_client:
+        _cs._redis_client.delete(f"llmcache:{key}")
+
     # Empty lookup
     resp = await get_cached(key, db_session)
     assert resp is None
@@ -47,6 +52,9 @@ async def test_cache_store_and_retrieve(db_session):
     resp = await get_cached(key, db_session)
     assert resp is not None
     assert resp["choices"][0]["message"]["content"] == "Pong"
+
+    if _cs._redis_client:
+        _cs._redis_client.delete(f"llmcache:{key}")
 
 
 from llm_gateway.services.cache_service import (
@@ -151,3 +159,7 @@ async def test_store_cached_with_prompt_indexes_semantic(db_session):
     hit = await get_semantic_cached(model, "write a python function to compute fibonacci numbers", threshold=0.85, session=db_session)
     assert hit is not None
     assert "def fib" in hit[0]["choices"][0]["message"]["content"]
+
+    from llm_gateway.services import cache_service as _cs
+    if _cs._redis_client:
+        _cs._redis_client.delete(f"llmcache:{key}")

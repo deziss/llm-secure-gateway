@@ -72,3 +72,77 @@ async def audit_event_types(session: AsyncSession = Depends(get_session), user=D
     """Distinct event types present, for the filter dropdown."""
     res = await session.execute(select(AuditLog.event_type).distinct().order_by(AuditLog.event_type))
     return [r for (r,) in res.all()]
+
+
+@router.get("/compliance-report")
+async def compliance_report(
+    days: int = Query(30, ge=1, le=365, description="Reporting window in days"),
+    session: AsyncSession = Depends(get_session),
+    user=Depends(require_manager),
+) -> dict:
+    """Tenant compliance summary: denials, governance events and spend per owner.
+
+    A compact, exportable governance snapshot (who used what, what was denied,
+    budget pressure) built entirely from the audit + spend tables.
+    """
+    from ..models import SpendRecord
+
+    since = datetime.utcnow() - timedelta(days=days)
+
+    denials = (
+        await session.execute(
+            select(AuditLog.event_type, AuditLog.decision, func.count())
+            .where(AuditLog.timestamp >= since, AuditLog.decision != "allow")
+            .group_by(AuditLog.event_type, AuditLog.decision)
+            .order_by(func.count().desc())
+            .limit(50)
+        )
+    ).all()
+
+    governance_events = (
+        await session.execute(
+            select(AuditLog.event_type, func.count())
+            .where(
+                AuditLog.timestamp >= since,
+                AuditLog.event_type.in_(["budget_warning", "guardrail_block", "pii_detected", "backend_down", "backend_up"]),
+            )
+            .group_by(AuditLog.event_type)
+        )
+    ).all()
+
+    top_denied = (
+        await session.execute(
+            select(AuditLog.identity, func.count().label("c"))
+            .where(AuditLog.timestamp >= since, AuditLog.decision == "deny")
+            .group_by(AuditLog.identity)
+            .order_by(func.count().desc())
+            .limit(10)
+        )
+    ).all()
+
+    spend_rows = (
+        await session.execute(
+            select(
+                SpendRecord.owner_id,
+                func.count(SpendRecord.id),
+                func.coalesce(func.sum(SpendRecord.cost_usd), 0.0),
+                func.coalesce(func.sum(SpendRecord.input_tokens + SpendRecord.output_tokens), 0),
+            )
+            .where(SpendRecord.created_at >= since)
+            .group_by(SpendRecord.owner_id)
+            .order_by(func.coalesce(func.sum(SpendRecord.cost_usd), 0.0).desc())
+            .limit(50)
+        )
+    ).all()
+
+    return {
+        "window_days": days,
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "denials": [{"event_type": e, "decision": d, "count": c} for e, d, c in denials],
+        "governance_events": [{"event_type": e, "count": c} for e, c in governance_events],
+        "top_denied_identities": [{"identity": i, "denials": c} for i, c in top_denied],
+        "spend_by_owner": [
+            {"owner_id": o, "requests": n, "cost_usd": round(float(cost), 4), "tokens": int(tok)}
+            for o, n, cost, tok in spend_rows
+        ],
+    }

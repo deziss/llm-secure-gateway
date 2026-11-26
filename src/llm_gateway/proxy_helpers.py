@@ -323,7 +323,13 @@ async def check_owner_permissions(
         if len(backend.allowed_endpoints) == 0:
             raise HTTPException(
                 status_code=403,
-                detail="No endpoints are allowed for this backend. Please configure allowed_endpoints.",
+                detail={
+                    "error": {
+                        "code": "endpoint_not_allowed",
+                        "message": "No endpoints are allowed for this backend. Please configure allowed_endpoints.",
+                        "param": "endpoint",
+                    }
+                },
             )
         norm_path = _canonical_endpoint(path)
         if "*" not in backend.allowed_endpoints and not any(
@@ -331,7 +337,13 @@ async def check_owner_permissions(
         ):
             raise HTTPException(
                 status_code=403,
-                detail=f"Endpoint '{path}' is not allowed for this backend",
+                detail={
+                    "error": {
+                        "code": "endpoint_not_allowed",
+                        "message": f"Endpoint '{path}' is not allowed for this backend",
+                        "param": "endpoint",
+                    }
+                },
             )
 
     # Owner must have at least one permission for this backend
@@ -346,7 +358,13 @@ async def check_owner_permissions(
     if not perms:
         raise HTTPException(
             status_code=403,
-            detail=f"Owner '{owner_id}' has no permissions for backend '{backend.name}'",
+            detail={
+                "error": {
+                    "code": "backend_not_allowed",
+                    "message": f"Owner '{owner_id}' has no permissions for backend '{backend.name}'",
+                    "param": "backend",
+                }
+            },
         )
 
     # Check model access only (endpoint auth is in PolicyMiddleware)
@@ -356,7 +374,13 @@ async def check_owner_permissions(
 
     raise HTTPException(
         status_code=403,
-        detail=f"Owner '{owner_id}' is not permitted to access model '{model}' on backend '{backend.name}'",
+        detail={
+            "error": {
+                "code": "model_not_allowed",
+                "message": f"Owner '{owner_id}' is not permitted to access model '{model}' on backend '{backend.name}'",
+                "param": "model",
+            }
+        },
     )
 
 
