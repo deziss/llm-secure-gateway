@@ -44,7 +44,7 @@ async def get_federated_models(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Federated discoverable model catalog in standard OpenAI format."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     backends = await config_service.list_backends(session)
     models_set = set()
     models_list = []
@@ -71,7 +71,7 @@ async def direct_proxy(
     session: AsyncSession = Depends(get_session),
 ):
     """Direct Proxy: routes /direct/{backend_name}/{path} to the named backend."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
 
     body = None
     model = None
@@ -299,7 +299,7 @@ async def aggregate_v2_ollama_tags(
     if str(is_enabled).lower() != "true":
         raise HTTPException(status_code=404, detail="Federation disabled. Query /direct/{backend}/api/tags instead.")
 
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
 
     backends = await config_service.list_backends(session)
     models_set: set = set()
@@ -340,7 +340,7 @@ async def aggregate_v2_openai_models(
     if str(is_enabled).lower() != "true":
         raise HTTPException(status_code=404, detail="Federation disabled. Query /direct/{backend}/v1/models instead.")
 
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
 
     backends = await config_service.list_backends(session)
     models_set: set = set()
@@ -369,7 +369,7 @@ async def dynamic_proxy(
     session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
     """Flexible Proxy (v2): routes /provider/{provider}/{path} to the appropriate backend."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
 
     body = None
     model = None

@@ -51,7 +51,7 @@ async def aggregate_ollama_tags(
     if str(is_enabled).lower() != "true":
          raise HTTPException(status_code=404, detail="Federation disabled. Query /direct/{backend}/api/tags instead.")
 
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     try:
         backends = await config_service.list_backends(session)
         models_set = set()
@@ -79,16 +79,16 @@ async def aggregate_ollama_tags(
                     })
         return {"models": models_list}
     finally:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
 
 @router.get("/api/version")
 async def ollama_version(request: Request) -> dict:
     """Return an Ollama-compatible version payload for CLI and client handshakes."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     try:
         return {"version": "0.13.0"}
     finally:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
 
 @router.get("/v1/models")
 async def aggregate_openai_models(
@@ -103,7 +103,7 @@ async def aggregate_openai_models(
     is_enabled = await config_service.get_setting(session, "ENABLE_MODEL_FEDERATION", "false")
     if str(is_enabled).lower() != "true":
          raise HTTPException(status_code=404, detail="Federation disabled. Query /direct/{backend}/v1/models instead.")
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     try:
         backends = await config_service.list_backends(session)
         models_set = set()
@@ -121,7 +121,7 @@ async def aggregate_openai_models(
                     })
         return {"object": "list", "data": models_list}
     finally:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
 
 
 @router.post("/v1/messages")
@@ -132,7 +132,7 @@ async def anthropic_messages_endpoint(
     session: AsyncSession = Depends(get_session)
 ):
     """Native Anthropic Messages API endpoint (/v1/messages)."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     try:
         body = await request.json()
     except Exception:
@@ -311,13 +311,13 @@ async def anthropic_messages_endpoint(
         enable_spend = await config_service.get_setting(session, "ENABLE_SPEND_TRACKING", "true")
 
         async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes] = None, cancelled: bool = False):
-            release_rate_limit_concurrency(request)
+            await release_rate_limit_concurrency(request)
             total_tokens = in_tokens + out_tokens
             if total_tokens > 0 and hasattr(request.state, "user"):
                 user_key = getattr(request.state.user, "key_hash", None)
                 if user_key:
                     try:
-                        get_rate_limiter().record_tokens(user_key, total_tokens)
+                        await get_rate_limiter().record_tokens_async(user_key, total_tokens)
                     except Exception as e:
                         logger.warning("Failed to record tokens for TPM: %s", e)
 
@@ -358,10 +358,10 @@ async def anthropic_messages_endpoint(
                         raise HTTPException(status_code=raw_resp.status_code, detail=err_text.decode("utf-8", errors="ignore"))
 
                     translation_mode = "none" if is_native_anthropic else "anthropic_to_openai"
-                    def _finish_anthropic(trk, req):
+                    async def _finish_anthropic(trk, req):
                         if trk is not None:
                             finish_open_tracker(trk)
-                        release_rate_limit_concurrency(req)
+                        await release_rate_limit_concurrency(req)
 
                     return StreamingResponse(
                         stream_with_telemetry(
@@ -457,7 +457,7 @@ async def anthropic_messages_endpoint(
                     span.end()
 
                     await on_stream_complete(usage.prompt_tokens, usage.completion_tokens, chunks=[resp.content], cancelled=False)
-                    release_rate_limit_concurrency(request)
+                    await release_rate_limit_concurrency(request)
 
                     return JSONResponse(content=response_content, status_code=status_code)
 
@@ -470,7 +470,7 @@ async def anthropic_messages_endpoint(
         raise HTTPException(status_code=502, detail=f"Backend request failed: {last_err}")
 
     except HTTPException as exc:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
         duration = time.time() - start_time if 'start_time' in locals() else 0.0
         if tracker is not None and not tracker.finished:
             track_done(tracker, success=False, status_code=exc.status_code, error_type="upstream_failure" if exc.status_code >= 500 else "bad_request")
@@ -490,7 +490,7 @@ async def anthropic_messages_endpoint(
             span.end()
         raise
     except Exception as e:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
         duration = time.time() - start_time if 'start_time' in locals() else 0.0
         if tracker is not None and not tracker.finished:
             track_done(tracker, success=False, status_code=500, error_type="upstream_failure")
@@ -519,7 +519,7 @@ async def audio_speech_endpoint(
     session: AsyncSession = Depends(get_session)
 ):
     """OpenAI-compatible Text-to-Speech (TTS) endpoint."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     try:
         body = await request.json()
     except Exception:
@@ -572,10 +572,10 @@ async def audio_speech_endpoint(
             background=BackgroundTask(release_rate_limit_concurrency, request),
         )
     except HTTPException:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
         raise
     except Exception as e:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
         raise HTTPException(status_code=502, detail=f"TTS backend unreachable: {e}")
 
 
@@ -710,7 +710,7 @@ async def _proxy_request_core(
                 )
                 cached_resp = await get_cached(cache_key, session)
                 if cached_resp:
-                    release_rate_limit_concurrency(request)
+                    await release_rate_limit_concurrency(request)
                     return JSONResponse(content=cached_resp, headers={"X-Cache": "HIT"})
 
             if str(enable_semantic_cache).lower() == "true":
@@ -723,7 +723,7 @@ async def _proxy_request_core(
                     sem_res = await get_semantic_cached(model or "unknown", prompt_text, threshold=threshold, session=session)
                     if sem_res:
                         sem_resp, sim_score = sem_res
-                        release_rate_limit_concurrency(request)
+                        await release_rate_limit_concurrency(request)
                         return JSONResponse(
                             content=sem_resp,
                             headers={"X-Cache": "SEMANTIC-HIT", "X-Cache-Similarity": str(sim_score)},
@@ -863,13 +863,13 @@ async def _proxy_request_core(
             is_streaming = isinstance(body, dict) and body.get("stream", False)
 
             async def on_stream_complete(in_tokens: int, out_tokens: int, chunks: list[bytes], cancelled: bool = False):
-                release_rate_limit_concurrency(request)
+                await release_rate_limit_concurrency(request)
                 total_tokens = in_tokens + out_tokens
                 if total_tokens > 0 and hasattr(request.state, "user"):
                     user_key = getattr(request.state.user, "key_hash", None)
                     if user_key:
                         try:
-                            get_rate_limiter().record_tokens(user_key, total_tokens)
+                            await get_rate_limiter().record_tokens_async(user_key, total_tokens)
                         except Exception as e:
                             logger.warning("Failed to record tokens for TPM: %s", e)
 
@@ -916,10 +916,10 @@ async def _proxy_request_core(
                     except Exception as e:
                         logger.debug("Failed to store cache: %s", e)
 
-            def _finish_proxy(trk, req):
+            async def _finish_proxy(trk, req):
                 if trk is not None:
                     finish_open_tracker(trk)
-                release_rate_limit_concurrency(req)
+                await release_rate_limit_concurrency(req)
 
             # 3. Pass span to streaming generator which handles ending it
             return StreamingResponse(
@@ -935,7 +935,7 @@ async def _proxy_request_core(
 
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RequestError) as exc:
             # All URLs failed
-            release_rate_limit_concurrency(request)
+            await release_rate_limit_concurrency(request)
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
             span.record_exception(exc)
             
@@ -957,7 +957,7 @@ async def _proxy_request_core(
             )
                 
     except Exception as e:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
         # Dispatched but failed without reaching the stream (e.g. fallback chain exhausted):
         # record it, otherwise the failure is invisible to metrics.
         if tracker is not None and not tracker.finished:
@@ -983,11 +983,11 @@ async def proxy_request(
     session: AsyncSession = Depends(get_session)
 ) -> StreamingResponse:
     """Proxy request to the selected LLM backend with dynamic routing + fallback."""
-    apply_rate_limit(request)
+    await apply_rate_limit(request)
     try:
         return await _proxy_request_core(path, request, config_service, session)
     except Exception:
-        release_rate_limit_concurrency(request)
+        await release_rate_limit_concurrency(request)
         raise
 
 

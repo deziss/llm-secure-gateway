@@ -710,7 +710,7 @@ async def test_anthropic_messages_endpoint_non_streaming():
     mock_client.post = AsyncMock(return_value=mock_resp)
 
     recorded_metrics = {}
-    with patch("llm_gateway.routers.proxy.apply_rate_limit"), \
+    with patch("llm_gateway.routers.proxy.apply_rate_limit", AsyncMock()), \
          patch("llm_gateway.services.spend_service.check_budget", AsyncMock()), \
          patch("llm_gateway.routers.proxy.get_target_backend", AsyncMock(return_value=backend)), \
          patch("llm_gateway.routers.proxy.check_owner_permissions", AsyncMock()), \
@@ -780,7 +780,7 @@ async def test_anthropic_messages_endpoint_streaming():
     mock_client.send = AsyncMock(return_value=mock_resp)
 
     recorded_metrics = {}
-    with patch("llm_gateway.routers.proxy.apply_rate_limit"), \
+    with patch("llm_gateway.routers.proxy.apply_rate_limit", AsyncMock()), \
          patch("llm_gateway.services.spend_service.check_budget", AsyncMock()), \
          patch("llm_gateway.routers.proxy.get_target_backend", AsyncMock(return_value=backend)), \
          patch("llm_gateway.routers.proxy.check_owner_permissions", AsyncMock()), \
@@ -839,7 +839,7 @@ async def test_anthropic_messages_endpoint_error_handling():
     mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
     recorded_metrics = {}
-    with patch("llm_gateway.routers.proxy.apply_rate_limit"), \
+    with patch("llm_gateway.routers.proxy.apply_rate_limit", AsyncMock()), \
          patch("llm_gateway.services.spend_service.check_budget", AsyncMock()), \
          patch("llm_gateway.routers.proxy.get_target_backend", AsyncMock(return_value=backend)), \
          patch("llm_gateway.routers.proxy.check_owner_permissions", AsyncMock()), \

@@ -34,15 +34,19 @@ def _utcnow() -> datetime:
 
 
 def _init_redis():
-    """Lazily initialize Redis client if REDIS_URL is set."""
+    """Lazily initialize async Redis client if REDIS_URL is set.
+
+    Uses redis.asyncio so cache lookups never block the event loop. The
+    connection pool is lazy — creating the client opens no sockets, so the
+    health check happens on first use (fail-open flips _redis_healthy).
+    """
     global _redis_client, _redis_healthy
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
         return None
     try:
-        import redis
-        _redis_client = redis.from_url(redis_url, decode_responses=True)
-        _redis_client.ping()
+        from redis.asyncio import from_url as redis_from_url
+        _redis_client = redis_from_url(redis_url, decode_responses=True)
         logger.info("Cache service connected to Redis")
         return _redis_client
     except Exception as exc:
@@ -141,7 +145,7 @@ async def get_cached(cache_key: str, session: Optional[AsyncSession] = None) -> 
         _init_redis()
     if _redis_client and _redis_healthy:
         try:
-            data = _redis_client.get(f"llmcache:{cache_key}")
+            data = await _redis_client.get(f"llmcache:{cache_key}")
             if data:
                 logger.info("Cache HIT (Redis): %s", cache_key[:16])
                 return json.loads(data)
@@ -251,7 +255,7 @@ async def store_cached(
     global _redis_client, _redis_healthy
     if _redis_client and _redis_healthy:
         try:
-            _redis_client.setex(f"llmcache:{cache_key}", ttl_seconds, response_json)
+            await _redis_client.setex(f"llmcache:{cache_key}", ttl_seconds, response_json)
         except Exception:
             _redis_healthy = False
 

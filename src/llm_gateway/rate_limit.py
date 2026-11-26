@@ -153,6 +153,9 @@ class LocalRateLimiter:
         records.append((now, tokens))
         self._token_records[key] = records
 
+    async def check_rate_limit_async(self, key: str, limit_rpm: int) -> tuple[bool, float]:
+        return self.check_rate_limit(key, limit_rpm)
+
     async def acquire_concurrency_async(self, key: str, max_concurrent: int) -> tuple[bool, int]:
         return self.acquire_concurrency(key, max_concurrent)
 
@@ -172,31 +175,34 @@ class LocalRateLimiter:
 class RedisRateLimiter:
     """Sliding-window rate limiter stored in Redis.
 
-    Uses a simple INCR + EXPIRE pattern per minute window.
-    Falls back to LocalRateLimiter on any Redis error.
+    Uses a simple INCR + EXPIRE pattern per minute window.  All Redis I/O
+    goes through ``redis.asyncio`` so hot-path requests never block the
+    event loop.  The connection pool is lazy, so constructing this limiter
+    at import time opens no sockets.  Falls back to LocalRateLimiter on any
+    Redis error.
     """
 
     def __init__(self, redis_url: str) -> None:
-        import redis  # type: ignore[import-untyped]
+        from redis.asyncio import from_url as redis_from_url  # type: ignore[import-untyped]
 
-        self._redis = redis.from_url(redis_url, decode_responses=True, socket_timeout=1.0)
+        self._redis = redis_from_url(redis_url, decode_responses=True, socket_timeout=1.0)
         self._fallback = LocalRateLimiter()
         self._healthy = True
 
-    def check_rate_limit(self, key: str, limit_rpm: int) -> tuple[bool, float]:
-        """Synchronous Redis sliding window check with fallback to local limiter."""
+    async def check_rate_limit_async(self, key: str, limit_rpm: int) -> tuple[bool, float]:
+        """Async Redis sliding window check with fallback to local limiter."""
         if limit_rpm <= 0:
             return True, 0.0
 
         if not self._healthy:
-            return self._fallback.check_rate_limit(key, limit_rpm)
+            return await self._fallback.check_rate_limit_async(key, limit_rpm)
 
         try:
             window_key = f"rl:{key}:{int(time.time()) // 60}"
             pipe = self._redis.pipeline()
             pipe.incr(window_key)
             pipe.expire(window_key, 120)
-            results = pipe.execute()
+            results = await pipe.execute()
             count = results[0]
 
             if count <= limit_rpm:
@@ -207,58 +213,54 @@ class RedisRateLimiter:
         except Exception as exc:
             logger.warning("Redis rate limiter failed (%s), falling back to local", exc)
             self._healthy = False
-            return self._fallback.check_rate_limit(key, limit_rpm)
+            return await self._fallback.check_rate_limit_async(key, limit_rpm)
 
-    async def check_rate_limit_async(self, key: str, limit_rpm: int) -> tuple[bool, float]:
-        """Async wrapper delegating to synchronous Redis check."""
-        return self.check_rate_limit(key, limit_rpm)
-
-    def acquire_concurrency(self, key: str, max_concurrent: int) -> tuple[bool, int]:
-        """Atomic concurrency tracking via Redis INCR / DECR with fallback to LocalRateLimiter."""
+    async def acquire_concurrency_async(self, key: str, max_concurrent: int) -> tuple[bool, int]:
+        """Atomic concurrency tracking via Redis INCR / DECR with local fallback."""
         if max_concurrent <= 0:
             return True, 0
 
         if not self._healthy:
-            return self._fallback.acquire_concurrency(key, max_concurrent)
+            return await self._fallback.acquire_concurrency_async(key, max_concurrent)
 
         try:
             conc_key = f"concurrency:{key}"
-            val = self._redis.incr(conc_key)
+            val = await self._redis.incr(conc_key)
             if val > max_concurrent:
-                self._redis.decr(conc_key)
+                await self._redis.decr(conc_key)
                 return False, val - 1
 
             # Auto-expire concurrency key after 1 hour to prevent indefinite leaks on hard kill
-            self._redis.expire(conc_key, 3600)
+            await self._redis.expire(conc_key, 3600)
             return True, val
         except Exception as exc:
             logger.warning("Redis acquire_concurrency failed (%s), falling back to local", exc)
             self._healthy = False
-            return self._fallback.acquire_concurrency(key, max_concurrent)
+            return await self._fallback.acquire_concurrency_async(key, max_concurrent)
 
-    def release_concurrency(self, key: str) -> None:
+    async def release_concurrency_async(self, key: str) -> None:
         """Decrement active in-flight count safely, not dropping below 0."""
         if not self._healthy:
-            self._fallback.release_concurrency(key)
+            await self._fallback.release_concurrency_async(key)
             return
 
         try:
             conc_key = f"concurrency:{key}"
-            val = self._redis.decr(conc_key)
+            val = await self._redis.decr(conc_key)
             if val <= 0:
-                self._redis.delete(conc_key)
+                await self._redis.delete(conc_key)
         except Exception as exc:
             logger.warning("Redis release_concurrency failed (%s), falling back to local", exc)
             self._healthy = False
-            self._fallback.release_concurrency(key)
+            await self._fallback.release_concurrency_async(key)
 
-    def check_token_limit(self, key: str, limit_tpm: int, tokens_to_consume: int = 0) -> tuple[bool, float]:
+    async def check_token_limit_async(self, key: str, limit_tpm: int, tokens_to_consume: int = 0) -> tuple[bool, float]:
         """Sliding window TPM tracking via Redis with fallback to LocalRateLimiter."""
         if limit_tpm <= 0:
             return True, 0.0
 
         if not self._healthy:
-            return self._fallback.check_token_limit(key, limit_tpm, tokens_to_consume)
+            return await self._fallback.check_token_limit_async(key, limit_tpm, tokens_to_consume)
 
         try:
             window_key = f"tpm:{key}:{int(time.time()) // 60}"
@@ -267,16 +269,16 @@ class RedisRateLimiter:
                 pipe = self._redis.pipeline()
                 pipe.incrby(window_key, tokens_to_consume)
                 pipe.expire(window_key, 120)
-                results = pipe.execute()
+                results = await pipe.execute()
                 count = results[0]
 
                 if count <= limit_tpm:
                     return True, 0.0
 
-                self._redis.decrby(window_key, tokens_to_consume)
+                await self._redis.decrby(window_key, tokens_to_consume)
                 return False, seconds_left
             else:
-                val = self._redis.get(window_key)
+                val = await self._redis.get(window_key)
                 count = int(val) if val else 0
                 if count < limit_tpm:
                     return True, 0.0
@@ -284,15 +286,15 @@ class RedisRateLimiter:
         except Exception as exc:
             logger.warning("Redis check_token_limit failed (%s), falling back to local", exc)
             self._healthy = False
-            return self._fallback.check_token_limit(key, limit_tpm, tokens_to_consume)
+            return await self._fallback.check_token_limit_async(key, limit_tpm, tokens_to_consume)
 
-    def record_tokens(self, key: str, tokens: int) -> None:
+    async def record_tokens_async(self, key: str, tokens: int) -> None:
         """Record consumed tokens in current minute window via Redis INCRBY."""
         if tokens <= 0:
             return
 
         if not self._healthy:
-            self._fallback.record_tokens(key, tokens)
+            await self._fallback.record_tokens_async(key, tokens)
             return
 
         try:
@@ -300,27 +302,15 @@ class RedisRateLimiter:
             pipe = self._redis.pipeline()
             pipe.incrby(window_key, tokens)
             pipe.expire(window_key, 120)
-            pipe.execute()
+            await pipe.execute()
         except Exception as exc:
             logger.warning("Redis record_tokens failed (%s), falling back to local", exc)
             self._healthy = False
-            self._fallback.record_tokens(key, tokens)
+            await self._fallback.record_tokens_async(key, tokens)
 
-    async def acquire_concurrency_async(self, key: str, max_concurrent: int) -> tuple[bool, int]:
-        return self.acquire_concurrency(key, max_concurrent)
-
-    async def release_concurrency_async(self, key: str) -> None:
-        self.release_concurrency(key)
-
-    async def check_token_limit_async(self, key: str, limit_tpm: int, tokens_to_consume: int = 0) -> tuple[bool, float]:
-        return self.check_token_limit(key, limit_tpm, tokens_to_consume)
-
-    async def record_tokens_async(self, key: str, tokens: int) -> None:
-        self.record_tokens(key, tokens)
-
-    def close(self) -> None:
+    async def aclose(self) -> None:
         try:
-            self._redis.close()
+            await self._redis.aclose()
         except Exception:
             pass
 

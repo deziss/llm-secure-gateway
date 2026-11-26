@@ -10,7 +10,7 @@ Tests cover:
 """
 import time
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import HTTPException
 
 
@@ -226,82 +226,81 @@ class TestLocalRateLimiterTPM:
 # 3. RedisRateLimiter - Concurrency
 # ===========================================================================
 class TestRedisRateLimiterConcurrency:
-    def test_redis_concurrency_acquire_allowed(self):
+    async def test_redis_concurrency_acquire_allowed(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.incr = MagicMock(return_value=1)
-        limiter._redis.expire = MagicMock()
+        limiter._redis.incr = AsyncMock(return_value=1)
+        limiter._redis.expire = AsyncMock()
 
-        allowed, count = limiter.acquire_concurrency("redis_user", max_concurrent=2)
+        allowed, count = await limiter.acquire_concurrency_async("redis_user", max_concurrent=2)
         assert allowed is True
         assert count == 1
         limiter._redis.incr.assert_called_once_with("concurrency:redis_user")
         limiter._redis.expire.assert_called_once_with("concurrency:redis_user", 3600)
 
-    def test_redis_concurrency_acquire_exceeded(self):
+    async def test_redis_concurrency_acquire_exceeded(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.incr = MagicMock(return_value=3)  # Exceeds max_concurrent=2
-        limiter._redis.decr = MagicMock()
+        limiter._redis.incr = AsyncMock(return_value=3)  # Exceeds max_concurrent=2
+        limiter._redis.decr = AsyncMock()
 
-        allowed, count = limiter.acquire_concurrency("redis_user", max_concurrent=2)
+        allowed, count = await limiter.acquire_concurrency_async("redis_user", max_concurrent=2)
         assert allowed is False
         assert count == 2
         limiter._redis.decr.assert_called_once_with("concurrency:redis_user")
 
-    def test_redis_concurrency_release(self):
+    async def test_redis_concurrency_release(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.decr = MagicMock(return_value=1)
-        limiter._redis.delete = MagicMock()
+        limiter._redis.decr = AsyncMock(return_value=1)
+        limiter._redis.delete = AsyncMock()
 
-        limiter.release_concurrency("redis_user")
+        await limiter.release_concurrency_async("redis_user")
         limiter._redis.decr.assert_called_once_with("concurrency:redis_user")
         limiter._redis.delete.assert_not_called()
 
         # When decr drops to <= 0, delete is called
-        limiter._redis.decr.return_value = 0
-        limiter.release_concurrency("redis_user")
+        limiter._redis.decr = AsyncMock(return_value=0)
+        await limiter.release_concurrency_async("redis_user")
         limiter._redis.delete.assert_called_once_with("concurrency:redis_user")
 
-    def test_redis_concurrency_zero_unlimited(self):
+    async def test_redis_concurrency_zero_unlimited(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.incr = MagicMock()
+        limiter._redis.incr = AsyncMock()
 
-        allowed, count = limiter.acquire_concurrency("unlimited", max_concurrent=0)
+        allowed, count = await limiter.acquire_concurrency_async("unlimited", max_concurrent=0)
         assert allowed is True
         assert count == 0
         limiter._redis.incr.assert_not_called()
 
-    def test_redis_concurrency_fallback_on_error(self):
+    async def test_redis_concurrency_fallback_on_error(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.incr = MagicMock(side_effect=Exception("Redis connection dropped"))
+        limiter._redis.incr = AsyncMock(side_effect=Exception("Redis connection dropped"))
 
-        allowed, count = limiter.acquire_concurrency("fallback_user", max_concurrent=2)
+        allowed, count = await limiter.acquire_concurrency_async("fallback_user", max_concurrent=2)
         assert allowed is True
         assert count == 1
         assert limiter._healthy is False
 
         # Release also falls back safely
-        limiter.release_concurrency("fallback_user")
+        await limiter.release_concurrency_async("fallback_user")
         assert limiter._fallback._concurrency.get("fallback_user", 0) == 0
 
-    @pytest.mark.asyncio
     async def test_redis_concurrency_async_wrappers(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.incr = MagicMock(return_value=1)
-        limiter._redis.expire = MagicMock()
-        limiter._redis.decr = MagicMock(return_value=0)
-        limiter._redis.delete = MagicMock()
+        limiter._redis.incr = AsyncMock(return_value=1)
+        limiter._redis.expire = AsyncMock()
+        limiter._redis.decr = AsyncMock(return_value=0)
+        limiter._redis.delete = AsyncMock()
 
         allowed, count = await limiter.acquire_concurrency_async("async_redis", max_concurrent=2)
         assert allowed is True
@@ -315,14 +314,15 @@ class TestRedisRateLimiterConcurrency:
 # 4. RedisRateLimiter - TPM
 # ===========================================================================
 class TestRedisRateLimiterTPM:
-    def test_redis_tpm_record_tokens(self):
+    async def test_redis_tpm_record_tokens(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
         mock_pipe = MagicMock()
+        mock_pipe.execute = AsyncMock()
         limiter._redis.pipeline = MagicMock(return_value=mock_pipe)
 
-        limiter.record_tokens("tpm_user", 500)
+        await limiter.record_tokens_async("tpm_user", 500)
         mock_pipe.incrby.assert_called_once()
         args = mock_pipe.incrby.call_args[0]
         assert args[0].startswith("tpm:tpm_user:")
@@ -331,88 +331,89 @@ class TestRedisRateLimiterTPM:
         assert mock_pipe.expire.call_args[0][1] == 120
         mock_pipe.execute.assert_called_once()
 
-    def test_redis_tpm_check_under_limit(self):
+    async def test_redis_tpm_check_under_limit(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.get = MagicMock(return_value="300")
+        limiter._redis.get = AsyncMock(return_value="300")
 
-        allowed, retry = limiter.check_token_limit("tpm_user", limit_tpm=1000)
+        allowed, retry = await limiter.check_token_limit_async("tpm_user", limit_tpm=1000)
         assert allowed is True
         assert retry == 0.0
 
-    def test_redis_tpm_check_exceeded(self):
+    async def test_redis_tpm_check_exceeded(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.get = MagicMock(return_value="1200")
+        limiter._redis.get = AsyncMock(return_value="1200")
 
-        allowed, retry = limiter.check_token_limit("tpm_user", limit_tpm=1000)
+        allowed, retry = await limiter.check_token_limit_async("tpm_user", limit_tpm=1000)
         assert allowed is False
         assert retry > 0.0
         assert retry <= 60.0
 
-    def test_redis_tpm_tokens_to_consume_allowed(self):
+    async def test_redis_tpm_tokens_to_consume_allowed(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
         mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [800]  # new total after incrby 500 is 800 <= 1000
+        mock_pipe.execute = AsyncMock(return_value=[800])  # new total after incrby 500 is 800 <= 1000
         limiter._redis.pipeline = MagicMock(return_value=mock_pipe)
 
-        allowed, retry = limiter.check_token_limit("consume_user", limit_tpm=1000, tokens_to_consume=500)
+        allowed, retry = await limiter.check_token_limit_async("consume_user", limit_tpm=1000, tokens_to_consume=500)
         assert allowed is True
         assert retry == 0.0
 
-    def test_redis_tpm_tokens_to_consume_exceeded_rolls_back(self):
+    async def test_redis_tpm_tokens_to_consume_exceeded_rolls_back(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
         mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [1200]  # new total exceeds limit 1000
+        mock_pipe.execute = AsyncMock(return_value=[1200])  # new total exceeds limit 1000
         limiter._redis.pipeline = MagicMock(return_value=mock_pipe)
-        limiter._redis.decrby = MagicMock()
+        limiter._redis.decrby = AsyncMock()
 
-        allowed, retry = limiter.check_token_limit("consume_user", limit_tpm=1000, tokens_to_consume=500)
+        allowed, retry = await limiter.check_token_limit_async("consume_user", limit_tpm=1000, tokens_to_consume=500)
         assert allowed is False
         assert retry > 0.0
         limiter._redis.decrby.assert_called_once()
         assert limiter._redis.decrby.call_args[0][1] == 500
 
-    def test_redis_tpm_zero_unlimited(self):
+    async def test_redis_tpm_zero_unlimited(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.get = MagicMock()
+        limiter._redis.get = AsyncMock()
 
-        allowed, retry = limiter.check_token_limit("unlimited", limit_tpm=0)
+        allowed, retry = await limiter.check_token_limit_async("unlimited", limit_tpm=0)
         assert allowed is True
         assert retry == 0.0
         limiter._redis.get.assert_not_called()
 
-    def test_redis_tpm_fallback_on_error(self):
+    async def test_redis_tpm_fallback_on_error(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
-        limiter._redis.get = MagicMock(side_effect=Exception("Redis down"))
+        limiter._redis.get = AsyncMock(side_effect=Exception("Redis down"))
 
-        allowed, retry = limiter.check_token_limit("fallback_user", limit_tpm=1000)
+        allowed, retry = await limiter.check_token_limit_async("fallback_user", limit_tpm=1000)
         assert allowed is True
         assert limiter._healthy is False
 
         # Subsequent record falls back to local
-        limiter.record_tokens("fallback_user", 1500)
-        allowed2, _ = limiter.check_token_limit("fallback_user", limit_tpm=1000)
+        await limiter.record_tokens_async("fallback_user", 1500)
+        allowed2, _ = await limiter.check_token_limit_async("fallback_user", limit_tpm=1000)
         assert allowed2 is False
 
-    @pytest.mark.asyncio
     async def test_redis_tpm_async_wrappers(self):
         from llm_gateway.rate_limit import RedisRateLimiter
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
         mock_pipe = MagicMock()
+        mock_pipe.execute = AsyncMock()
         limiter._redis.pipeline = MagicMock(return_value=mock_pipe)
-        limiter._redis.get = MagicMock(return_value="200")
+        limiter._redis.get = AsyncMock(return_value="200")
+        limiter._redis.expire = AsyncMock()
 
         await limiter.record_tokens_async("async_user", 100)
         mock_pipe.incrby.assert_called_once()
@@ -439,16 +440,16 @@ class TestApplyRateLimitIntegration:
         req.state.concurrency_key = None
         return req
 
-    def test_apply_rate_limit_tpm_passes(self):
+    async def test_apply_rate_limit_tpm_passes(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
         limiter = LocalRateLimiter()
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             req = self._create_mock_request(rpm=60, tpm=10000, key_hash="user_tpm_ok")
-            apply_rate_limit(req)  # Should not raise
+            await apply_rate_limit(req)  # Should not raise
 
-    def test_apply_rate_limit_tpm_exceeded_raises_429(self):
+    async def test_apply_rate_limit_tpm_exceeded_raises_429(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -458,24 +459,24 @@ class TestApplyRateLimitIntegration:
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             req = self._create_mock_request(rpm=60, tpm=10000, key_hash="user_tpm_over")
             with pytest.raises(HTTPException) as exc_info:
-                apply_rate_limit(req)
+                await apply_rate_limit(req)
             assert exc_info.value.status_code == 429
             assert "Retry-After" in exc_info.value.headers
 
-    def test_apply_rate_limit_concurrency_passes_and_sets_state(self):
+    async def test_apply_rate_limit_concurrency_passes_and_sets_state(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
         limiter = LocalRateLimiter()
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             req = self._create_mock_request(max_concurrency=2, key_hash="conc_ok")
-            apply_rate_limit(req)
+            await apply_rate_limit(req)
 
             assert req.state.concurrency_acquired is True
             assert req.state.concurrency_key == "conc_ok"
             assert limiter._concurrency["conc_ok"] == 1
 
-    def test_apply_rate_limit_concurrency_exceeded_raises_429(self):
+    async def test_apply_rate_limit_concurrency_exceeded_raises_429(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -485,30 +486,30 @@ class TestApplyRateLimitIntegration:
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             req = self._create_mock_request(max_concurrency=1, key_hash="conc_limit")
             with pytest.raises(HTTPException) as exc_info:
-                apply_rate_limit(req)
+                await apply_rate_limit(req)
             assert exc_info.value.status_code == 429
             assert exc_info.value.headers.get("Retry-After") == "1"
 
-    def test_release_rate_limit_concurrency(self):
+    async def test_release_rate_limit_concurrency(self):
         from llm_gateway.proxy_helpers import apply_rate_limit, release_rate_limit_concurrency
         from llm_gateway.rate_limit import LocalRateLimiter
 
         limiter = LocalRateLimiter()
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             req = self._create_mock_request(max_concurrency=1, key_hash="rel_key")
-            apply_rate_limit(req)
+            await apply_rate_limit(req)
             assert limiter._concurrency.get("rel_key") == 1
 
             # Release
-            release_rate_limit_concurrency(req)
+            await release_rate_limit_concurrency(req)
             assert req.state.concurrency_acquired is False
             assert limiter._concurrency.get("rel_key", 0) == 0
 
             # Calling again is idempotent (safe no-op)
-            release_rate_limit_concurrency(req)
+            await release_rate_limit_concurrency(req)
             assert limiter._concurrency.get("rel_key", 0) == 0
 
-    def test_release_concurrency_noop_when_not_acquired(self):
+    async def test_release_concurrency_noop_when_not_acquired(self):
         from llm_gateway.proxy_helpers import release_rate_limit_concurrency
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -519,7 +520,7 @@ class TestApplyRateLimitIntegration:
 
         limiter = LocalRateLimiter()
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
-            release_rate_limit_concurrency(req)
+            await release_rate_limit_concurrency(req)
             assert limiter._concurrency.get("unacquired", 0) == 0
 
 

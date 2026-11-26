@@ -259,7 +259,7 @@ def get_owner_id_from_request(request: Request) -> tuple[str, bool]:
     return owner_id, is_admin_ui
 
 
-def apply_rate_limit(request: Request) -> None:
+async def apply_rate_limit(request: Request) -> None:
     """Raise HTTP 429 with Retry-After if the requesting API key has exceeded its rate limit.
 
     Checks:
@@ -279,7 +279,7 @@ def apply_rate_limit(request: Request) -> None:
         limit_rpm = getattr(user, "rate_limit_rpm", None)
         rpm_val = 60 if limit_rpm is None else limit_rpm
         if rpm_val > 0:
-            allowed, retry_after = limiter.check_rate_limit(user_key, rpm_val)
+            allowed, retry_after = await limiter.check_rate_limit_async(user_key, rpm_val)
             if not allowed:
                 raise HTTPException(
                     status_code=429,
@@ -290,7 +290,7 @@ def apply_rate_limit(request: Request) -> None:
     # 2. TPM Rate Limit
     limit_tpm = getattr(user, "rate_limit_tpm", None)
     if isinstance(limit_tpm, int) and limit_tpm > 0:
-        allowed, retry_after = limiter.check_token_limit(user_key, limit_tpm)
+        allowed, retry_after = await limiter.check_token_limit_async(user_key, limit_tpm)
         if not allowed:
             raise HTTPException(
                 status_code=429,
@@ -301,7 +301,7 @@ def apply_rate_limit(request: Request) -> None:
     # 3. Concurrency Limit
     limit_concurrency = getattr(user, "max_concurrency", None)
     if isinstance(limit_concurrency, int) and limit_concurrency > 0:
-        acquired, _ = limiter.acquire_concurrency(user_key, limit_concurrency)
+        acquired, _ = await limiter.acquire_concurrency_async(user_key, limit_concurrency)
         if not acquired:
             raise HTTPException(
                 status_code=429,
@@ -312,7 +312,7 @@ def apply_rate_limit(request: Request) -> None:
         request.state.concurrency_key = user_key
 
 
-def release_rate_limit_concurrency(request: Request) -> None:
+async def release_rate_limit_concurrency(request: Request) -> None:
     """Safely release concurrency slot if acquired during apply_rate_limit."""
     if getattr(request.state, "concurrency_acquired", False):
         user_key = getattr(request.state, "concurrency_key", None)
@@ -320,7 +320,7 @@ def release_rate_limit_concurrency(request: Request) -> None:
         if user_key:
             limiter = get_rate_limiter()
             try:
-                limiter.release_concurrency(user_key)
+                await limiter.release_concurrency_async(user_key)
             except Exception as e:
                 logger.warning("Failed to release concurrency for key %s: %s", user_key, e)
 

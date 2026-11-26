@@ -35,7 +35,7 @@ async def test_cache_store_and_retrieve(db_session):
     # Remove leftovers from previous runs (Redis persists across sessions)
     from llm_gateway.services import cache_service as _cs
     if _cs._redis_client:
-        _cs._redis_client.delete(f"llmcache:{key}")
+        await _cs._redis_client.delete(f"llmcache:{key}")
 
     # Empty lookup
     resp = await get_cached(key, db_session)
@@ -54,7 +54,7 @@ async def test_cache_store_and_retrieve(db_session):
     assert resp["choices"][0]["message"]["content"] == "Pong"
 
     if _cs._redis_client:
-        _cs._redis_client.delete(f"llmcache:{key}")
+        await _cs._redis_client.delete(f"llmcache:{key}")
 
 
 from llm_gateway.services.cache_service import (
@@ -162,4 +162,4 @@ async def test_store_cached_with_prompt_indexes_semantic(db_session):
 
     from llm_gateway.services import cache_service as _cs
     if _cs._redis_client:
-        _cs._redis_client.delete(f"llmcache:{key}")
+        await _cs._redis_client.delete(f"llmcache:{key}")

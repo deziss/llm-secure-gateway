@@ -98,7 +98,7 @@ class TestApplyRateLimit:
         req.state.user = user
         return req
 
-    def test_allows_when_under_limit(self):
+    async def test_allows_when_under_limit(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -106,9 +106,9 @@ class TestApplyRateLimit:
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             req = self._make_request(rate_limit_rpm=60)
             # Should not raise
-            apply_rate_limit(req)
+            await apply_rate_limit(req)
 
-    def test_raises_429_when_exceeded(self):
+    async def test_raises_429_when_exceeded(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -124,10 +124,10 @@ class TestApplyRateLimit:
 
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             with pytest.raises(HTTPException) as exc_info:
-                apply_rate_limit(req)
+                await apply_rate_limit(req)
             assert exc_info.value.status_code == 429
 
-    def test_429_includes_retry_after_header(self):
+    async def test_429_includes_retry_after_header(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -143,18 +143,18 @@ class TestApplyRateLimit:
 
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
             with pytest.raises(HTTPException) as exc_info:
-                apply_rate_limit(req)
+                await apply_rate_limit(req)
             assert exc_info.value.status_code == 429
             assert "Retry-After" in exc_info.value.headers
 
-    def test_no_user_does_not_raise(self):
+    async def test_no_user_does_not_raise(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
 
         req = MagicMock()
         req.state = MagicMock(spec=[])  # no 'user' attr
-        apply_rate_limit(req)
+        await apply_rate_limit(req)
 
-    def test_none_rpm_defaults_to_60(self):
+    async def test_none_rpm_defaults_to_60(self):
         from llm_gateway.proxy_helpers import apply_rate_limit
         from llm_gateway.rate_limit import LocalRateLimiter
 
@@ -166,7 +166,7 @@ class TestApplyRateLimit:
         req.state.user = user
 
         with patch("llm_gateway.proxy_helpers.get_rate_limiter", return_value=limiter):
-            apply_rate_limit(req)
+            await apply_rate_limit(req)
 
 
 # ---------------------------------------------------------------------------

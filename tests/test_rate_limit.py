@@ -114,30 +114,30 @@ class TestRateLimiterFactory:
             except Exception:
                 # If redis package not installed, should still get a limiter
                 limiter = LocalRateLimiter()
-            assert hasattr(limiter, "check_rate_limit")
+            assert hasattr(limiter, "check_rate_limit_async")
 
 
 class TestRedisRateLimiter:
-    def test_redis_limiter_allows_and_blocks(self):
+    async def test_redis_limiter_allows_and_blocks(self):
         from llm_gateway.rate_limit import RedisRateLimiter
-        from unittest.mock import MagicMock
+        from unittest.mock import MagicMock, AsyncMock
 
         limiter = RedisRateLimiter("redis://dummy:6379/0")
         mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [5]  # 5 requests in current minute
+        mock_pipe.execute = AsyncMock(return_value=[5])  # 5 requests in current minute
         limiter._redis.pipeline = MagicMock(return_value=mock_pipe)
 
-        allowed, retry = limiter.check_rate_limit("test_key", 10)
+        allowed, retry = await limiter.check_rate_limit_async("test_key", 10)
         assert allowed is True
         assert retry == 0.0
 
         # Now simulate exceeded limit
-        mock_pipe.execute.return_value = [15]  # 15 requests, limit is 10
-        allowed, retry = limiter.check_rate_limit("test_key", 10)
+        mock_pipe.execute = AsyncMock(return_value=[15])  # 15 requests, limit is 10
+        allowed, retry = await limiter.check_rate_limit_async("test_key", 10)
         assert allowed is False
         assert retry > 0.0
 
-    def test_redis_limiter_fallback_on_error(self):
+    async def test_redis_limiter_fallback_on_error(self):
         from llm_gateway.rate_limit import RedisRateLimiter
         from unittest.mock import MagicMock
 
@@ -145,6 +145,6 @@ class TestRedisRateLimiter:
         limiter._redis.pipeline = MagicMock(side_effect=Exception("Connection lost"))
 
         # Falls back to local limiter transparently
-        allowed, retry = limiter.check_rate_limit("fallback_key", 10)
+        allowed, retry = await limiter.check_rate_limit_async("fallback_key", 10)
         assert allowed is True
         assert limiter._healthy is False
