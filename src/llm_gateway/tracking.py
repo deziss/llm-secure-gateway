@@ -1,5 +1,3 @@
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Request, Response
 import time
 
 _ACTIVE_WINDOW = 300      # seconds — IPs inactive longer than this are dropped
@@ -16,39 +14,65 @@ _traffic_buckets: dict[int, int] = {}
 _traffic_last_prune: float = 0.0
 
 
-class IPTrackingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
-        global _last_cleanup, _traffic_last_prune
+def _track_request(client_ip: str, path: str) -> None:
+    """Record an IP sighting + per-minute proxy request count.
 
+    Module-level so both the ASGI entrypoint and the legacy dispatch shim
+    share one implementation (and the ``global`` statements live in one
+    place).
+    """
+    global _last_cleanup, _traffic_last_prune
+
+    now = time.time()
+    _active_ips[client_ip] = now
+
+    # Count only proxy requests (LLM traffic), not admin/auth/static/health
+    is_proxy = not (
+        path in ("/", "/health", "/docs", "/openapi.json", "/favicon.ico")
+        or path.startswith(("/admin", "/auth", "/static"))
+    )
+    if is_proxy:
+        minute_key = int(now) // 60
+        _traffic_buckets[minute_key] = _traffic_buckets.get(minute_key, 0) + 1
+
+    if now - _last_cleanup >= _CLEANUP_INTERVAL:
+        cutoff = now - _ACTIVE_WINDOW
+        stale = [ip for ip, ts in list(_active_ips.items()) if ts < cutoff]
+        for ip in stale:
+            del _active_ips[ip]
+        _last_cleanup = now
+
+    # Prune old traffic buckets every 60s
+    if now - _traffic_last_prune >= 60:
+        cutoff_minute = int(now) // 60 - _TRAFFIC_WINDOW
+        old_keys = [k for k in _traffic_buckets if k < cutoff_minute]
+        for k in old_keys:
+            del _traffic_buckets[k]
+        _traffic_last_prune = now
+
+
+class IPTrackingMiddleware:
+    """Pure ASGI accounting middleware — no response inspection at all."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        client = scope.get("client")
+        client_ip = client[0] if client else "unknown"
+        _track_request(client_ip, scope["path"])
+
+        await self.app(scope, receive, send)
+
+    # Kept for backward compatibility with callers/tests that drive it
+    # dispatch-style.
+    async def dispatch(self, request, call_next):
         client_ip = request.client.host if request.client else "unknown"
-        now = time.time()
-        _active_ips[client_ip] = now
-
-        # Count only proxy requests (LLM traffic), not admin/auth/static/health
-        path = request.url.path
-        is_proxy = not (
-            path in ("/", "/health", "/docs", "/openapi.json", "/favicon.ico")
-            or path.startswith(("/admin", "/auth", "/static"))
-        )
-        if is_proxy:
-            minute_key = int(now) // 60
-            _traffic_buckets[minute_key] = _traffic_buckets.get(minute_key, 0) + 1
-
-        if now - _last_cleanup >= _CLEANUP_INTERVAL:
-            cutoff = now - _ACTIVE_WINDOW
-            stale = [ip for ip, ts in list(_active_ips.items()) if ts < cutoff]
-            for ip in stale:
-                del _active_ips[ip]
-            _last_cleanup = now
-
-        # Prune old traffic buckets every 60s
-        if now - _traffic_last_prune >= 60:
-            cutoff_minute = int(now) // 60 - _TRAFFIC_WINDOW
-            old_keys = [k for k in _traffic_buckets if k < cutoff_minute]
-            for k in old_keys:
-                del _traffic_buckets[k]
-            _traffic_last_prune = now
-
+        _track_request(client_ip, request.url.path)
         return await call_next(request)
 
 

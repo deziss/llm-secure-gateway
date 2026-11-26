@@ -24,4 +24,4 @@ USER gateway
 
 EXPOSE 8000
 
-CMD ["uvicorn", "llm_gateway.main:app", "--host", "0.0.0.0", "--port", "8000", "--loop", "asyncio"]
+CMD ["uvicorn", "llm_gateway.main:app", "--host", "0.0.0.0", "--port", "8000", "--loop", "uvloop"]
