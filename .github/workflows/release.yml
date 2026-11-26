@@ -1,0 +1,51 @@
+name: Release on Tag
+
+# Auto-creates (or refreshes) the GitHub Release for every version tag,
+# with a title and a highlighted "What's inside" summary generated from
+# CHANGELOG.md via scripts/release_notes.py. Keep the CHANGELOG section
+# for the tagged version up to date before pushing the tag, or this job
+# fails with a clear message.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # annotated tag message is used for the title
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate title & body from CHANGELOG
+        id: notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python scripts/release_notes.py "$TAG" --title-out .release_title.md --body-out .release_body.md
+          echo "title<<EOF_TITLE" >> "$GITHUB_OUTPUT"
+          cat .release_title.md >> "$GITHUB_OUTPUT"
+          echo "EOF_TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          TITLE="$(cat .release_title.md)"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" --notes-file .release_body.md
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" --notes-file .release_body.md --verify-tag
+          fi

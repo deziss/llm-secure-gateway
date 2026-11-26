@@ -1,3 +1,3 @@
 """llm-gpu-agent: exposes GPU and GPU-process data from one host to llm-secure-gateway."""
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"

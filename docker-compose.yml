@@ -82,6 +82,7 @@ services:
     - ./pyproject.toml:/app/pyproject.toml
     - ./tests:/app/tests
     - ./sdk:/app/sdk
+    - ./scripts:/app/scripts
     extra_hosts:
     - "host.docker.internal:host-gateway"
     networks:

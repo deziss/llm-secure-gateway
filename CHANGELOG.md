@@ -1,3 +1,28 @@
+## [0.18.0] - 2026-11-26
+
+### 🔧 Customizable Alert Rules
+
+- **Target filters**: every rule takes glob patterns (`wardha*`, `vllm-42:llama3`, `*/gpu[0-3]`; a plain term like `wardha` also matches `wardha/gpu0` and `wardha:llama3`), so one metric rule can be scoped to a single host, server, or model. Changing a filter auto-resolves incidents whose target no longer matches.
+- **Create/delete rules from the UI or API**: `POST /admin/alerts/rules` creates rules over any catalog metric; `DELETE` removes custom rules and closes their open incidents; built-in rules are edit/toggle-only (405 on delete). `GET /admin/alerts/metrics` returns the metric catalog for form dropdowns.
+- **Rule testing**: `POST /admin/alerts/rules/{id}/test` dry-runs a rule against live telemetry (which targets currently violate + the live target list) and can send a real `[TEST]` notification without creating incidents; `POST /admin/alerts/test-alert` pings webhook/email/URL channels.
+- **Per-rule webhook URLs**: channel lists now accept `https://…` endpoints (Slack/Discord/Teams incoming webhooks), delivered HMAC-signed like the global webhook.
+- **Richer editing**: PATCH now covers name, comparator, target filter, description, cooldown and channels, with validating 422s that list the valid options.
+- Alert Center UI: New-rule form with metric dropdown, per-row Edit / Test / Delete, target-filter and description columns, and a channel-aware "Send test alert".
+- Migration `015_alert_rule_customise`: `alert_rules.target_filter` + `description`.
+
+### 🚀 Release Automation
+
+- **GitHub Releases are now automated for every tag**: `.github/workflows/release.yml` creates/refreshes the release via `scripts/release_notes.py`, which generates the release **title** and a highlighted **"What's inside"** summary from the CHANGELOG section (tag message wins for the title when present), followed by the full section and pull instructions. A tag pushed without a matching CHANGELOG section fails the workflow with a clear error.
+- `scripts/release_notes.py` doubles as a local preview CLI: `python3 scripts/release_notes.py --latest --print`.
+
+### 🐛 Fixes
+
+- `sdk/` is now `COPY`'d into the gateway image (compose bind-mounted it, so only image builds/CI missed it, breaking `tests/test_deziss_sdk.py` collection).
+
+### ✅ Testing
+
+- 788 tests passing: alert customization (filters, engine scoping, filtered auto-resolve, id helpers), release-notes generator, SDK contract.
+
 ## [0.17.0] - 2026-11-25
 
 ### 🤖 Agent Intelligence (Phase 3)
