@@ -104,6 +104,45 @@ Notes for an honest reading:
 | Air-gap capable | ✅ | ✅ | ⚠️ VPC ent. | ✅ Enterprise | ⚠️ | ✅ |
 | Zero markup on tokens | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
+## Archestra (archestra-ai/archestra) — different category, worth the fine print
+
+Archestra is not a gateway; it is an **enterprise AI platform** (TypeScript,
+~4.5k stars, AGPL core + open-core enterprise license, $13.5M funded, CNCF
+member) that *includes* an LLM gateway as one of ~12 products: internal Chat UI
+with Slack/Teams/email front-ends, a developer portal (one token for Claude
+Code/Codex/Cursor), MCP gateway with OAuth on-behalf-of, private MCP registry +
+K8s orchestrator, A2A gateway, a hosted **agent runtime** (scheduled/webhook
+triggers, sub-agents, sandboxed code execution), RAG knowledge base, mini-app
+builder, deterministic guardrails ("Lethal Trifecta" data-leak prevention), SSO/
+RBAC, per-environment egress + cost policies.
+
+Key numbers (their published pages, Nov 2026): 1 worker ≈ 279–287 rps vs
+LiteLLM's 86–87 (same hardware); **median added latency 169 ms / p95 258 ms at
+50 concurrent requests** because it awaits database log writes in the request
+path (their disclosed methodology) — their README's "31 ms at p95" is a
+different, lighter scenario. Free for ≤30 users on the enterprise license;
+RBAC/SSO/retention/encryption-at-rest/guardrails are **Enterprise tier**, not
+the AGPL core.
+
+| Dimension | DEZISS | Archestra |
+| :--- | :--- | :--- |
+| Scope | Gateway only — inference data plane | Whole AI platform: chat, agents, MCP, RAG, guardrails + gateway |
+| Agent story | **Observes** agent traffic (run/step correlation, waterfalls) — agents run on your infra | **Runs** agents for you (K8s runtime, sandboxed execution, triggers) |
+| MCP | Not started | Registry + gateway + OAuth OBO + K8s orchestrator (their core strength) |
+| GPU/node awareness | ✅ KV-cache/queue/VRAM/XID telemetry, queue-aware routing | ❌ model-plane only |
+| Native alerting/incidents | ✅ rule engine + ack + notification | ⚠️ OTel/Prometheus export (alert in your stack) |
+| Added latency | ~**10 ms p95** governance plane on (low concurrency) | 169–258 ms median/p95 **at 50 concurrency** (awaits DB log writes) |
+| RBAC/SSO | Local RBAC + API keys + JWT sessions (SSO not built in) | SSO/SAML/OIDC, team sync, resource ACLs — **Enterprise tier** |
+| Guardrails | Hooks; packs not bundled | Deterministic policy-as-code engine — **Enterprise tier** |
+| Encryption at rest, retention, audit | ✅ in the free AGPL binary | Enterprise tier |
+| Deployment | One container + Postgres + Redis; air-gap friendly | Docker/Helm/K8s multi-service; mounts docker.sock for sandboxes |
+| License economics | AGPL-3.0, every feature in the binary | Open core; 30-user free enterprise; quote beyond |
+
+**Rule of thumb:** adopting Archestra means migrating your teams onto *their*
+platform (chat, portal, MCP, agents — the gateway is the entry point). Adopting
+DEZISS means putting a governance + routing + GPU-aware gate in front of models
+you already run, with nothing to migrate your workflows into.
+
 ## Bottom line
 
 - **Pick DEZISS** when you self-host LLMs (vLLM/Ollama on your own GPUs), need the
