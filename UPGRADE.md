@@ -1,5 +1,15 @@
 # Upgrade Guide
 
+## Upgrading to v0.19.0: governance hardening + async hot path
+
+Migrations `016` (observability retention) and `017` (`policy_profiles`) apply automatically at startup (compose `migrate` service). Notes:
+
+- **Backend API keys are now encrypted at rest.** Set `GATEWAY_SECRET_KEY` to a stable Fernet key *before* upgrading (or ensure `ENCRYPTION_KEY` / `SECRET_KEY` / `AUTH_SECRET` is stable — a fallback is derived from it). If only an ephemeral fallback is available, keys encrypt with a throwaway key and won't decrypt after restart. Upgrade existing plaintext keys with `POST /admin/backends/encrypt-keys`. After rotation of the secret, re-encrypt is required.
+- **`X-Spiffe-ID` is no longer trusted by default.** Workload identity headers are only honoured when `SPIFFE_TRUSTED_HEADER=true` *and* the `X-Spiffe-Token` shared secret matches — deploy behind a trusted sidecar/mesh and set both variables.
+- **Event loop is now uvloop** (`--loop uvloop` in the image CMD) and Redis ops (rate limits, prompt cache) are non-blocking async. No configuration change; rebuild the image rather than pinning your own CMD with `--loop asyncio`.
+- New governance surfaces: `/admin/policy-profiles` (per-tenant policy), `POST /admin/retention/run` + `RETENTION_DAYS_*` tiers, `GET /admin/audit/compliance-report`, `OBSERVABILITY_CAPTURE_LEVEL` (default `metadata` — trace content capture is opt-in now).
+- Performance: p95 overhead on authenticated API paths dropped from ~25 ms to ~10 ms; middleware is pure ASGI. `BackpressureMiddleware` now holds its concurrency slot until a streamed response completes (stricter, intended).
+
 ## Upgrading to v0.13.0: "backends" become "model servers"
 
 Migration `005_model_server` renames the table `llmbackend` to `model_server`. Foreign keys from `ownerpermission`, `modelalias` and `llmbot` follow it automatically, and column names (`backend_name`, `backend_type`) are unchanged.

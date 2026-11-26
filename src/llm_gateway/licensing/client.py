@@ -23,7 +23,7 @@ except ImportError:
 try:
     from ..observability import VERSION
 except ImportError:
-    VERSION = "0.18.0"
+    VERSION = "0.19.0"
 
 from .fingerprint import generate_hardware_id
 from .models import (

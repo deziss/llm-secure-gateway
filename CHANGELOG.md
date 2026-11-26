@@ -1,3 +1,38 @@
+## [0.19.0] - 2026-11-26
+
+### 🛡 Governance: per-tenant policies, retention, compliance evidence
+
+- **Per-tenant policy profiles** (`policy_profiles` table, migration 017): tri-state owner-scoped overrides — `allowed_models`, `denied_models` (prefix wildcards + `*` deny-all, deny wins) and informational `daily_budget_usd` — merged into every policy decision (denial code `model_not_allowed_by_policy_profile`). TTL-cached, admin CRUD at `/admin/policy-profiles`.
+- **Observability capture levels**: `OBSERVABILITY_CAPTURE_LEVEL=metadata|redacted|full` (default `metadata` — content capture is opt-in per OTel GenAI semconv), `OBSERVABILITY_MAX_CONTENT_CHARS` truncation cap after redaction (redact-then-truncate at span finish).
+- **Retention tiers**: `RETENTION_DAYS_AUDIT|TRACES|SPEND_METRICS` (`0` = keep forever) with a background sweep plus manual `POST /admin/retention/run` (migration 016).
+- **Compliance report**: `GET /admin/audit/compliance-report?days=N` — denials by code, budget/governance events and spend per owner, for audit evidence export.
+- **Structured denial codes**: governance rejections return `{"error": {"code", "message", "param"}}` (e.g. `model_not_allowed_by_policy_profile`, `budget_exceeded`) instead of prose.
+- **Budget soft warnings**: at ≥80% of `monthly_budget_usd` responses carry `X-Budget-Status` and a one-time `budget_warning` audit event; the block itself stays `429 budget_exceeded`.
+
+### 🔐 Security
+
+- **`X-Spiffe-ID` fails closed**: the header is ignored unless `SPIFFE_TRUSTED_HEADER=true` and `SPIFFE_SIDECAR_TOKEN` matches (`X-Spiffe-Token`), i.e. only behind a trusted mesh sidecar; workload identities are additionally checked against a per-backend allowlist.
+- **Role-escalation closed**: `UserManager.create` forces `Role.VIEWER`; `UserCreate.role` can no longer mint admins. New regression tests (`tests/test_auth_role_escalation.py`).
+- **Backend API keys encrypted at rest**: `llmbackend.api_key` stored Fernet-encrypted (`enc:v1:`) under `GATEWAY_SECRET_KEY` (fallback chain `ENCRYPTION_KEY` → `SECRET_KEY` → `AUTH_SECRET` → ephemeral), masked in admin responses, one-call upgrade endpoint `POST /admin/backends/encrypt-keys`.
+- **Circuit breaker hardening**: 5xx responses trip circuits even with retries disabled; half-open admits a single probe with stale-probe auto-release; thresholds via `CIRCUIT_BREAKER_FAILURE_THRESHOLD` / `CIRCUIT_BREAKER_RECOVERY_TIMEOUT`; `get_failure_counts()` exposed for alerting.
+
+### ⚡ Latency (pure gateway hot path)
+
+- **Pure-ASGI middleware stack**: all seven middlewares rewritten off `BaseHTTPMiddleware` — no per-request task-group/body buffering; streaming responses forward frames untouched. `BackpressureMiddleware` now holds its slot until a streamed body completes. +8 middleware tests.
+- **uvloop** in the container CMD (`uvicorn --loop uvloop`).
+- **Non-blocking Redis**: `RedisRateLimiter` and the prompt cache move to `redis.asyncio`; `apply_rate_limit`/`release_rate_limit_concurrency` are async end-to-end through both proxy planes (BackgroundTask callbacks await).
+- Measured (pooled keep-alive, governance plane on): `/health` p50 3.4 / p95 5.1 ms; authenticated `/v1/models` p50 8.3 / p95 ~10 ms — down from p95 25.5 / 13.7 ms.
+
+### 🧰 Misc
+
+- `/api/version` now reports the real gateway version instead of a hard-coded `0.13.0`.
+- New `docs/GATEWAY_COMPARISON.md`: DEZISS vs Respan, Bifrost, LiteLLM, Agent Router, Vercel, Cloudflare, OpenRouter, Portkey, TrueFoundry, Kong — pricing, speed, and a feature scorecard.
+- Docs refresh: README governance/perf configuration tables, ARCHITECTURE middleware chain + 22-table data model, OBSERVABILITY capture/retention, API_REFERENCE governance endpoints, UPGRADE v0.19.0 notes. 15 new env vars documented in `.env.example`.
+
+### ✅ Testing
+
+- 879 tests passing (was 788): pure-ASGI streaming/state, role-escalation, policy-profile tenancy, retention sweeps, key crypto round-trips, breaker half-open/5xx behaviour, async-redis fail-open + slot release.
+
 ## [0.18.0] - 2026-11-26
 
 ### 🔧 Customizable Alert Rules

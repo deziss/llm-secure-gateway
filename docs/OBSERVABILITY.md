@@ -136,6 +136,25 @@ To check a preset, set `OBS_EXPORTERS`, restart the gateway, send one streaming 
 non-streaming request, then look at the Integrations tab. `last_ok` should update within a
 minute, and `failed` should stay at zero.
 
+## Content capture & retention tiers (v0.19.0)
+
+What trace/span content the gateway keeps is governed by two environment
+variables, following the OTel GenAI semantic-convention stance that capturing
+prompts and completions is explicitly opt-in:
+
+| `OBSERVABILITY_CAPTURE_LEVEL` | Captures |
+| :--- | :--- |
+| `metadata` (default) | Model, token counts, latency, status — never prompt or completion text |
+| `redacted` | Content after pattern redaction (keys, emails, IDs), truncated to `OBSERVABILITY_MAX_CONTENT_CHARS` (default 2000) |
+| `full` | Full content, truncated |
+
+Retention sweeps delete observability data per tier on a background loop
+(or on demand via `POST /admin/retention/run`): `RETENTION_DAYS_TRACES`
+(agent runs/steps + spans, default 90), `RETENTION_DAYS_SPEND_METRICS`
+(rollups, default 0 = keep forever), and `RETENTION_DAYS_AUDIT` (audit log,
+default 0 — audit entries are compliance evidence, keep them unless you have
+a policy that says otherwise).
+
 ## The admin page
 
 `/admin/observability` is visible to admins and managers. Managers see read-only views.

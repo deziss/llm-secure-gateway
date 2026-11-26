@@ -86,7 +86,8 @@ async def ollama_version(request: Request) -> dict:
     """Return an Ollama-compatible version payload for CLI and client handshakes."""
     await apply_rate_limit(request)
     try:
-        return {"version": "0.13.0"}
+        from ..observability import VERSION
+        return {"version": VERSION}
     finally:
         await release_rate_limit_concurrency(request)
 

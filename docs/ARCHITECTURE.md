@@ -138,16 +138,21 @@ The gateway implements multi-tier resilience across proxies:
 
 ## Middleware Chain
 
-Middleware is applied in this order (innermost executes first):
+All middlewares are **pure ASGI** implementations (since v0.19.0) — no `BaseHTTPMiddleware` task-group buffering, so streaming responses pass through frame-by-frame with no per-request body copying. Middleware is applied with `app.add_middleware` (first registered = outermost); outermost-to-innermost order:
 
 | Order | Class | Purpose |
 |---|---|---|
-| 1 (outermost) | `IPTrackingMiddleware` | Records client IP + last-seen timestamp |
-| 2 | `CSRFMiddleware` | Double-submit cookie CSRF protection for `/admin` and `/auth` POST/PUT/DELETE |
-| 3 | `PolicyMiddleware` | Evaluates scope policy; writes to audit log |
-| 4 (innermost) | `AuthMiddleware` | Validates API key or passes cookie-auth to router |
+| 1 (outermost) | `SecurityHeadersMiddleware` | Adds HSTS/CSP/X-Frame-Options etc. to every response |
+| 2 | `IPTrackingMiddleware` | Records client IP + last-seen timestamp |
+| 3 | `CSRFMiddleware` | Double-submit cookie CSRF protection for `/admin` and `/auth` POST/PUT/DELETE |
+| 4 | `LoginRateLimitMiddleware` | Brute-force protection on login endpoints |
+| 5 | `BackpressureMiddleware` | Caps in-flight requests; the concurrency slot is held until a streamed response body completes |
+| 6 | `PolicyMiddleware` | Evaluates scope policy; writes to audit log |
+| 7 (innermost) | `AuthMiddleware` | Validates API key (Bearer / x-api-key, cached) or passes cookie-auth to router |
 
 Routes exempt from `AuthMiddleware`: `/`, `/health`, `/docs`, `/openapi.json`, `/admin/*`, `/auth/*`.
+
+The event loop runs on **uvloop**, and rate limiting / prompt caching use **redis.asyncio**, so no Redis I/O blocks the request path.
 
 ---
 
@@ -246,6 +251,21 @@ erDiagram
     USER ||--o| OWNER : "linked to"
 ```
 
+Beyond the core entities above, the data layer (22 tables as of v0.19.0) includes:
+
+| Table | Purpose |
+|---|---|
+| `ModelServer` | Registered model servers/backends (table `model_server`); `api_key` Fernet-encrypted at rest (`enc:v1:`) |
+| `FallbackChain`, `ModelAlias` | Multi-model fallback chains and alias → model+backend mapping used by both proxy planes |
+| `SpendRecord`, `ModelPricing`, `ModelTelemetryRollup` | Per-request spend attribution, USD pricing catalog, time-bucketed telemetry rollups |
+| `CachedResponse` | Persistent exact-match prompt cache (with hit counts and expiry) |
+| `AlertRule`, `AlertIncident` | Declarative alert rules (metric/comparator/window/target filter) + deduped incident episodes with ack workflow |
+| `AgentRun`, `AgentStep` | Agent-run correlation: one workflow, many gateway LLM calls, with step waterfalls and handoff edges |
+| `GpuHost`, `NodeHost` | Infrastructure inventory reported by the GPU/node agents |
+| `ObsIntegration` | External observability export destinations |
+| `PolicyProfile` | Per-tenant (owner-scoped) policy overrides merged into `PolicyEngine` decisions; TTL-cached, admin CRUD under `/admin/policy-profiles` |
+| `AuditLog` | Tamper-evidence audit trail; retention configured per tier (`RETENTION_DAYS_AUDIT`) |
+
 ---
 
 ## Routing Strategies
@@ -300,7 +320,7 @@ Each backend can configure `fallback_urls`. The gateway manages persistent poole
 
 ### Encryption
 
-Provider keys stored in `providerkey.encrypted_key` are Fernet-encrypted using `ENCRYPTION_KEY`. The key is never logged or returned in API responses.
+Provider keys (`providerkey.encrypted_key`) and model-server API keys (`llmbackend.api_key`, since v0.19.0, stored with an `enc:v1:` prefix) are Fernet-encrypted at rest using `GATEWAY_SECRET_KEY` (falling back to `ENCRYPTION_KEY` → `SECRET_KEY` → `AUTH_SECRET`, then an ephemeral key). Existing plaintext backend keys can be upgraded in place via `POST /admin/backends/encrypt-keys`. Keys are masked in admin API responses and never logged.
 
 ---
 

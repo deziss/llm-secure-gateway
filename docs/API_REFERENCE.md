@@ -563,6 +563,49 @@ curl -X POST http://localhost:6130/provider/ollama/api/chat \
 
 ---
 
+## Governance (v0.19.0)
+
+### `GET /admin/audit/compliance-report?days=30`
+
+Tenant compliance summary over the window (1–365 days): governance denials by code, budget events, and spend per owner. Manager role; intended for audit evidence export.
+
+### `GET /admin/policy-profiles`
+
+Lists per-tenant policy profiles. Each profile is owner-scoped and tri-state — unset fields inherit the global defaults:
+
+```json
+{
+  "owner_id": "user:alice",
+  "allowed_models": ["llama-3.1-8b", "gpt-4o"],
+  "denied_models": ["gpt-4*"],
+  "daily_budget_usd": 25.0
+}
+```
+
+`denied_models` supports prefix wildcards (`gpt-4*`) and `*` deny-all; deny wins over allow. A model blocked by the profile is rejected with `403` and error code `model_not_allowed_by_policy_profile`.
+
+### `PUT /admin/policy-profiles/{owner_id}`
+
+Create or replace the profile for an owner (body as above). Admin role. Profile changes take effect within the policy cache TTL (seconds), no restart needed. `daily_budget_usd` is informational (surfaced to alerts), not spend-enforced.
+
+### `DELETE /admin/policy-profiles/{owner_id}`
+
+Removes the profile; the owner inherits global defaults again.
+
+### `POST /admin/retention/run`
+
+Runs the observability retention sweep immediately instead of waiting for the background loop (admin role). Deletes expired rows per the `RETENTION_DAYS_*` tiers (audit, traces, spend metrics; `0` = keep forever — audit logs are kept by default as compliance evidence). Response reports deleted counts.
+
+### `POST /admin/backends/encrypt-keys`
+
+One-time upgrade that rewrites plaintext `llmbackend.api_key` values as Fernet-encrypted (`enc:v1:`). Safe to re-run (already-encrypted rows are skipped). Requires `GATEWAY_SECRET_KEY` (or a fallback secret) to be stable, or previously encrypted values won't decrypt. Admin role.
+
+### Budget soft warnings
+
+When a key crosses 80% of `monthly_budget_usd`, subsequent responses carry an `X-Budget-Status` header and a `budget_warning` audit event is recorded once. Exceeding the budget returns `429` with error code `budget_exceeded`.
+
+---
+
 ## Error Response Format
 
 All errors return JSON:

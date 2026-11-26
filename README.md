@@ -1,6 +1,6 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.15.1-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -226,7 +226,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.13.0"}
+# Output: {"version": "0.19.0"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -257,7 +257,7 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `AUTH_SECRET` | **Yes** | — | Secret key for JWT user session signature verification |
 | `DEFAULT_ADMIN_EMAIL` | **Yes** | — | Initial administrator account email |
 | `DEFAULT_ADMIN_PASSWORD` | **Yes** | — | Initial administrator account password |
-| `APP_VERSION` | No | `0.13.0` | Gateway release version emitted in logs & telemetry |
+| `GATEWAY_SECRET_KEY` | No | — | Fernet key used to encrypt model-server API keys at rest. Falls back to `ENCRYPTION_KEY` / `SECRET_KEY` / `AUTH_SECRET`. Set once and back it up — see [UPGRADE.md](UPGRADE.md) |
 
 ### Performance & Scaling Options
 
@@ -270,6 +270,25 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `ENABLE_TELEMETRY` | `false` | Master on/off switch for all OpenTelemetry / Phoenix **export**. Off by default — no exporter is created, so an unreachable collector cannot produce retry spam |
 | `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Target endpoint for Arize Phoenix OTLP traces (only used when `ENABLE_TELEMETRY=true`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTLP collector endpoint. Inside Docker this must **not** be `localhost` — that resolves to the container itself. Use `host.docker.internal` or the collector's service name |
+| `CIRCUIT_BREAKER_FAILURE_THRESHOLD` | `5` | Consecutive failures (including 5xx when retries are on) before a backend's circuit opens |
+| `CIRCUIT_BREAKER_RECOVERY_TIMEOUT` | `30` | Seconds an open circuit waits before admitting a single half-open probe |
+
+### Governance & Security Options
+
+| Variable | Default | Purpose |
+| :--- | :--- | :--- |
+| `GATEWAY_SECRET_KEY` | — | Fernet key that encrypts model-server API keys at rest (`enc:v1:` prefix). Falls back to `ENCRYPTION_KEY` → `SECRET_KEY` → `AUTH_SECRET` → ephemeral key |
+| `SPIFFE_TRUSTED_HEADER` | `false` | Fail-closed by default: `X-Spiffe-ID` is only trusted behind a trusted mesh sidecar when explicitly opted in |
+| `SPIFFE_SIDECAR_TOKEN` | — | Shared secret (`X-Spiffe-Token`) required when header trust is enabled |
+| `OBSERVABILITY_CAPTURE_LEVEL` | `metadata` | Prompt/content capture in traces: `metadata` (never capture content), `redacted`, or `full` |
+| `OBSERVABILITY_MAX_CONTENT_CHARS` | `2000` | Truncation cap applied after redaction for `redacted`/`full` capture |
+| `RETENTION_DAYS_AUDIT` | `0` | Audit-log retention (0 = keep forever — audit logs are compliance evidence) |
+| `RETENTION_DAYS_TRACES` | `90` | Agent trace/run retention |
+| `RETENTION_DAYS_SPEND_METRICS` | `0` | Spend/telemetry rollup retention |
+
+### Latency Profile (v0.19.0)
+
+The gateway hot path is fully non-blocking: pure-ASGI middleware (no per-request body buffering, streaming passed through frame-by-frame), `uvloop`, and `redis.asyncio` for rate limiting and prompt caching. Measured overhead on the API path (pooled keep-alive clients, admin-plane routes exercising auth + policy + rate limiting): **p50 ≈ 8ms, p95 ≈ 10ms** with `/health` near bare-ASGI at p50 3.4ms / p95 5ms — under the sub-10ms p95 overhead benchmark used by commercial gateways.
 
 ### Running on a LAN IP without HTTPS (dev mode)
 
@@ -359,6 +378,7 @@ See **[TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md)** for Phoenix projects, per-tenan
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | In-depth architectural designs, sequence diagrams, and security models |
 | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) | Observability: admin page, `/metrics`, GPU agent, export presets and metric reference |
 | [TELEMETRY_GUIDE.md](TELEMETRY_GUIDE.md) | Configuration guide for Arize Phoenix, OpenTelemetry, and Prometheus |
+| [docs/GATEWAY_COMPARISON.md](docs/GATEWAY_COMPARISON.md) | Side-by-side comparison with Respan, Bifrost, LiteLLM, Portkey, TrueFoundry, Kong and other LLM gateways |
 | [UPGRADE.md](UPGRADE.md) | Migration guidelines, version upgrade procedures, and breaking changes |
 | [CHANGELOG.md](CHANGELOG.md) | Chronological release notes and changelog history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution standards, local dev setup & PR rules |
