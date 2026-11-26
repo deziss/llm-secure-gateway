@@ -113,3 +113,32 @@ async def notify_key_expired(prefix: str, owner_id: str) -> None:
         "owner": owner_id,
         "message": f"API key {prefix} for owner '{owner_id}' has expired",
     })
+
+
+def is_webhook_url(value: str) -> bool:
+    """True when a configured channel value is a direct webhook URL."""
+    return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+
+async def send_webhook_url(url: str, event: str, data: dict) -> None:
+    """Fire a webhook to a specific URL (per-alert-rule channel). Never raises."""
+    payload = json.dumps({
+        "event": event,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "data": data,
+    })
+    try:
+        client = _get_client()
+        r = await client.post(
+            url,
+            content=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-Webhook-Signature": f"sha256={_sign_payload(payload)}",
+                "X-Webhook-Event": event,
+            },
+        )
+        if r.status_code >= 400:
+            logger.warning("Webhook %s returned %d for event %s", url, r.status_code, event)
+    except Exception as exc:
+        logger.warning("Webhook delivery failed for %s: %s", url, exc)

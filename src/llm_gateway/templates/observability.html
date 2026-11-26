@@ -684,8 +684,92 @@
 
     <!-- Alert rules -->
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
-      <h2 class="px-4 pt-3 text-sm font-bold text-ink">Alert rules</h2>
-      <p class="px-4 text-caption text-ink-muted">Read-only view; use the toggle to enable or disable a rule.</p>
+      <div class="flex flex-wrap items-center gap-2 px-4 pt-3">
+        <h2 class="text-sm font-bold text-ink mr-auto">Alert rules</h2>
+        <button type="button" id="obsAlertsTestBtn" data-action="alerts-test-notify" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+          <i data-lucide="send" class="h-3.5 w-3.5" aria-hidden="true"></i> Send test alert
+        </button>
+        <label class="flex items-center gap-1.5 text-caption text-ink-muted">via
+          <select id="fAlertsTestChannel" aria-label="Channel for test alert" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+            <option value="webhook">webhook</option>
+            <option value="email">email</option>
+          </select>
+        </label>
+        <button type="button" id="obsAlertRuleNewBtn" data-action="alert-rule-new" class="min-h-touch rounded-control bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink flex items-center gap-1.5">
+          <i data-lucide="plus" class="h-3.5 w-3.5" aria-hidden="true"></i> New rule
+        </button>
+      </div>
+      <p class="px-4 text-caption text-ink-muted">Enable/disable, edit, test, or create rules. Built-in default rules can be edited but not deleted.</p>
+
+      <!-- Rule editor (create / edit, hidden until New rule or Edit) -->
+      <form id="obsAlertRuleForm" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3 text-sm" autocomplete="off">
+        <p id="obsAlertRuleFormTitle" class="md:col-span-2 text-sm font-bold text-ink">New rule</p>
+        <p id="obsAlertRuleMsg" class="md:col-span-2 hidden rounded-control border border-red-500/30 bg-red-500/10 px-3 py-2 text-caption text-red-400" role="alert"></p>
+        <input type="hidden" name="original_id" value="" />
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Name</span>
+          <input type="text" name="name" required maxlength="120" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Metric</span>
+          <select name="metric" required class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
+            <option value="">Select a metric…</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Comparator</span>
+          <select name="comparator" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
+            <option value="&gt;=">&gt;= (at or above threshold)</option>
+            <option value="&lt;=">&lt;= (at or below threshold)</option>
+            <option value="drop_pct">drop_pct (% drop vs baseline)</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Threshold</span>
+          <input type="number" name="threshold" step="any" required class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink font-mono" />
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Window (seconds)</span>
+          <input type="number" name="window_s" min="0" step="1" value="60" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink font-mono" />
+          <span class="block text-micro text-ink-muted mt-0.5">0 = instant event rule</span>
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Severity</span>
+          <select name="severity" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
+            <option value="info">info</option>
+            <option value="warning" selected>warning</option>
+            <option value="critical">critical</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Cooldown (seconds)</span>
+          <input type="number" name="cooldown_s" min="0" step="1" value="300" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink font-mono" />
+        </label>
+        <div class="block md:col-span-2">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Channels</span>
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2 text-ink-muted"><input type="checkbox" name="ch_webhook" checked class="h-4 w-4" /><span>webhook</span></label>
+            <label class="flex items-center gap-2 text-ink-muted"><input type="checkbox" name="ch_email" class="h-4 w-4" /><span>email</span></label>
+          </div>
+          <label class="block mt-2">
+            <span class="block text-micro text-ink-muted mb-1">Advanced (comma-separated; webhook, email, or a full https:// URL)</span>
+            <input type="text" name="ch_advanced" placeholder="webhook, https://hooks.example.com/…" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink font-mono text-caption" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Target filter (comma-separated globs, empty = any target)</span>
+          <input type="text" name="target_filter" placeholder="wardha*, gpu0" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink font-mono text-caption" />
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Description</span>
+          <input type="text" name="description" maxlength="200" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <div class="md:col-span-2 flex gap-2">
+          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save rule</button>
+          <button type="button" data-action="alert-rule-cancel" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
+        </div>
+      </form>
+
       <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Alert rules">
         <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
           <tr>
@@ -695,7 +779,10 @@
             <th scope="col" class="p-3 border-b border-hairline">Severity</th>
             <th scope="col" class="p-3 border-b border-hairline text-right">Cooldown</th>
             <th scope="col" class="p-3 border-b border-hairline">Channels</th>
+            <th scope="col" class="p-3 border-b border-hairline">Target filter</th>
+            <th scope="col" class="p-3 border-b border-hairline">Description</th>
             <th scope="col" class="p-3 border-b border-hairline text-center">Enabled</th>
+            <th scope="col" class="p-3 border-b border-hairline text-center">Actions</th>
           </tr>
         </thead>
         <tbody id="obsAlertsRulesBody" class="divide-y divide-hairline text-ink"></tbody>

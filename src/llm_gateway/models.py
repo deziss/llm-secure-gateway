@@ -407,6 +407,9 @@ class AlertRule(SQLModel, table=True):
     severity: str = Field(default="warning", max_length=16)
     cooldown_s: int = Field(default=300, description="Min seconds between notifications per episode")
     target_kind: str = Field(default="gateway", max_length=16, description="server|model|gpu|gateway")
+    target_filter: List[str] = Field(default_factory=list, sa_column=Column(JSON),
+                                     description="Glob patterns limiting which targets this rule evaluates; empty = any")
+    description: Optional[str] = Field(default=None, max_length=500)
     enabled: bool = Field(default=True)
     channels: List[str] = Field(default_factory=lambda: ["webhook"], sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))

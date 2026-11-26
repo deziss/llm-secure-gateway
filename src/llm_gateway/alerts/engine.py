@@ -11,7 +11,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .rules import AlertRule
+from .rules import AlertRule, target_matches
 
 logger = logging.getLogger("deziss.alerts.engine")
 
@@ -93,6 +93,17 @@ def evaluate(rules: list[AlertRule], series: AlertSeries, now: float,
     open_firing = open_firing or {}
     for rule in rules:
         for target in series.targets(rule.metric):
+            if rule.target_filter and not target_matches(rule.target_filter, target):
+                # A filter change must not strand an open incident: resolve it.
+                if target in open_firing.get(rule.id, set()):
+                    findings.append(Finding(
+                        rule_id=rule.id, rule_name=rule.name, metric=rule.metric,
+                        target=target, severity=rule.severity, value=None,
+                        threshold=rule.threshold, comparator=rule.comparator,
+                        summary=f"{rule.name}: {target} no longer matches the rule's target filter",
+                        resolve=True, detail={"reason": "filtered"},
+                    ))
+                continue
             samples = series.series(rule.metric, target)
             if not samples:
                 continue

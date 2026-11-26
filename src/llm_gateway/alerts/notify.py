@@ -67,7 +67,7 @@ def _payload(inc: AlertIncident, kind: str) -> dict:
 
 
 async def _deliver(inc: AlertIncident, channels: list[str], kind: str) -> bool:
-    from ..webhooks import send_webhook
+    from ..webhooks import send_webhook, send_webhook_url
 
     payload = _payload(inc, kind)
     text = payload["summary"] or f"{inc.rule_name} on {inc.target}"
@@ -83,6 +83,9 @@ async def _deliver(inc: AlertIncident, channels: list[str], kind: str) -> bool:
                 await get_email_service().send_admin_alert(
                     f"[{inc.severity.upper()}] {inc.rule_name}", text
                 )
+                sent_any = True
+            elif ch.startswith(("http://", "https://")):
+                await send_webhook_url(ch, payload["event"], payload)
                 sent_any = True
             else:
                 logger.debug("alerts: channel %r not implemented yet; skipped", ch)
@@ -101,3 +104,18 @@ async def notify_firing(inc: AlertIncident) -> bool:
 async def notify_recovery(inc: AlertIncident, finding) -> bool:
     channels, _cooldown = await _rule_channels(inc.rule_id)
     return await _deliver(inc, channels, "resolved")
+
+
+async def notify_test_rule(rule, targets: list[str]) -> bool:
+    """Send a test/fired-style notification for a rule without creating an incident."""
+    from ..models import AlertIncident as _Inc
+
+    fake = _Inc(
+        rule_id=rule.id, rule_name=f"[TEST] {rule.name}", metric=rule.metric,
+        target=", ".join(str(t) for t in targets[:3]) or "test", severity=rule.severity,
+        state="firing", summary=f"[TEST] {rule.name}: would fire on {', '.join(str(t) for t in targets[:3]) or 'no live target'}",
+        detail={"test": True}, value=None,
+    )
+    fake.started_at = _utcnow()
+    fake.id = 0
+    return await _deliver(fake, list(rule.channels or ["webhook"]), "fired")

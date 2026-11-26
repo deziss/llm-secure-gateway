@@ -44,6 +44,8 @@ class AlertRule:
     target_kind: str = "gateway"
     enabled: bool = True
     channels: list[str] = field(default_factory=lambda: ["webhook"])
+    target_filter: list[str] = field(default_factory=list)
+    description: str = ""
 
     @property
     def horizon_s(self) -> int:
@@ -56,7 +58,8 @@ def default_rules() -> list[AlertRule]:
     R = AlertRule
     return [
         R("gpu_memory_critical", "GPU memory critical", "gpu_memory_pct", ">=", 95, 30,
-          "critical", 600, "gpu", True, ["webhook"]),
+          "critical", 600, "gpu", True, ["webhook"],
+          description="Sustained >=95% GPU memory for 30 s; new allocations will fail."),
         R("gpu_memory_warning", "GPU memory warning", "gpu_memory_pct", ">=", 85, 120,
           "warning", 900, "gpu", True, ["webhook"]),
         R("kv_cache_saturated", "KV cache saturation", "kv_cache_pct", ">=", 95, 60,
@@ -97,7 +100,8 @@ async def ensure_default_rules(session) -> int:
             id=r.id, name=r.name, metric=r.metric, comparator=r.comparator,
             threshold=r.threshold, window_s=r.window_s, severity=r.severity,
             cooldown_s=r.cooldown_s, target_kind=r.target_kind, enabled=r.enabled,
-            channels=list(r.channels),
+            channels=list(r.channels), target_filter=list(r.target_filter),
+            description=r.description or None,
         ))
         added += 1
     if added:
@@ -111,6 +115,8 @@ def _from_row(row) -> AlertRule:
         threshold=float(row.threshold), window_s=int(row.window_s), severity=row.severity,
         cooldown_s=int(row.cooldown_s), target_kind=row.target_kind,
         enabled=bool(row.enabled), channels=list(row.channels or []),
+        target_filter=[str(x) for x in (getattr(row, "target_filter", None) or [])],
+        description=str(getattr(row, "description", None) or ""),
     )
 
 
@@ -131,5 +137,55 @@ def to_dict(r: AlertRule) -> dict:
         "id": r.id, "name": r.name, "metric": r.metric, "comparator": r.comparator,
         "threshold": r.threshold, "window_s": r.window_s, "severity": r.severity,
         "cooldown_s": r.cooldown_s, "target_kind": r.target_kind, "enabled": r.enabled,
-        "channels": list(r.channels),
+        "channels": list(r.channels), "target_filter": list(r.target_filter),
+        "description": r.description,
     }
+
+
+DEFAULT_RULE_IDS = frozenset(r.id for r in default_rules())
+
+
+def is_default_rule(rule_id: str) -> bool:
+    """Built-in seeded rules cannot be deleted, only edited/toggled."""
+    return rule_id in DEFAULT_RULE_IDS
+
+
+def make_custom_rule_id(name: str) -> str:
+    import hashlib
+    import re
+    import time
+
+    base = re.sub(r"[^a-z0-9]+", "-", (name or "rule").lower()).strip("-")[:40] or "rule"
+    digest = hashlib.sha1(f"{name}|{time.time()}".encode()).hexdigest()[:8]
+    return f"c-{base}-{digest}"
+
+
+def normalize_filters(patterns: list[str] | None) -> list[str]:
+    """Trim, dedupe, clamp per-pattern length; drop empties."""
+    out: list[str] = []
+    for p in patterns or []:
+        p = str(p).strip()[:128]
+        if p and p not in out:
+            out.append(p)
+    return out[:20]
+
+
+def target_matches(patterns: list[str] | None, target: str) -> bool:
+    """Glob match (fnmatch) against a target id; empty patterns match everything.
+
+    A pattern with no wildcard that equals a target's prefix (e.g. "wardha"
+    matching "wardha/gpu0" or "wardha:llama3") also matches, so operators can
+    filter by host/server name without remembering the * syntax.
+    """
+    from fnmatch import fnmatch
+
+    pats = normalize_filters(patterns)
+    if not pats:
+        return True
+    for p in pats:
+        if fnmatch(target, p):
+            return True
+        if "*" not in p and "?" not in p:
+            if target.startswith(p + "/") or target.startswith(p + ":"):
+                return True
+    return False

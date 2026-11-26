@@ -166,6 +166,11 @@ async def collect_samples(now: float) -> None:
     _series.prune(now)
 
 
+def live_series() -> AlertSeries:
+    """The live in-memory series for rule dry-runs (/rules/{id}/test)."""
+    return _series
+
+
 def _agg_tps_from(rows: list[dict]) -> float:
     total = 0.0
     for r in rows:

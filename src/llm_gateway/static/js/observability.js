@@ -50,6 +50,10 @@
     alertsRules: [],
     alertsRulesLoaded: false,
     alertsFetching: false,
+    alertsMetrics: null,        // [{metric,unit,description,target_kind}] from /admin/alerts/metrics
+    alertsComparators: [],      // e.g. ['>=', '<=', 'drop_pct']
+    alertsSeverities: [],       // e.g. ['info','warning','critical']
+    alertsRuleFormMode: null,   // null | "create" | "edit"
     agentsRunning: false,
     agentRuns: [],
     agentRunsLoaded: false,
@@ -2330,6 +2334,12 @@
       case "alert-ack": ackAlertIncident(btn.dataset.id); break;
       case "alert-detail": toggleAlertDetail(btn.dataset.id); break;
       case "alert-rule-toggle": setAlertRuleEnabled(btn.dataset.id, btn.dataset.enabled !== "true"); break;
+      case "alert-rule-new": openAlertRuleForm("create"); break;
+      case "alert-rule-edit": openAlertRuleForm("edit", btn.dataset.id); break;
+      case "alert-rule-cancel": closeAlertRuleForm(); break;
+      case "alert-rule-delete": deleteAlertRule(btn.dataset.id); break;
+      case "alert-rule-test": testAlertRule(btn.dataset.id, btn); break;
+      case "alerts-test-notify": sendTestAlertNotification(); break;
       case "traces-clear-filters":
         ["fTracesQ", "fTracesStatus", "fTracesCache"].forEach((id) => { const n = $(id); if (n) n.value = ""; });
         renderTraces();
@@ -2362,6 +2372,8 @@
   if (nodeForm) nodeForm.addEventListener("submit", onNodeSubmit);
   const linkForm = $("obsLinkForm");
   if (linkForm) linkForm.addEventListener("submit", onLinkSubmit);
+  const alertRuleForm = $("obsAlertRuleForm");
+  if (alertRuleForm) alertRuleForm.addEventListener("submit", onAlertRuleSubmit);
 
   const telemetryModal = $("modelTelemetryModal");
   if (telemetryModal) {
@@ -2438,17 +2450,29 @@
   }
 
   async function loadAlertRules() {
-    if (state.alertsRulesLoaded) return;
-    try {
-      const data = await alertsGet("/admin/alerts/rules");
-      state.alertsRules = Array.isArray(data.rules) ? data.rules : [];
-      state.alertsRulesLoaded = true;
-      setAlertsAvailable(true);
-      renderAlertRules();
-    } catch (err) {
-      console.debug("Alert rules load failed", err);
-      setAlertsAvailable(false);
+    if (!state.alertsRulesLoaded) {
+      try {
+        const data = await alertsGet("/admin/alerts/rules");
+        state.alertsRules = Array.isArray(data.rules) ? data.rules : [];
+        state.alertsRulesLoaded = true;
+        setAlertsAvailable(true);
+      } catch (err) {
+        console.debug("Alert rules load failed", err);
+        setAlertsAvailable(false);
+      }
     }
+    // Metric catalog powers the New-rule form; failure is non-fatal here (retry on open).
+    if (!state.alertsMetrics) {
+      try {
+        const meta = await alertsGet("/admin/alerts/metrics");
+        state.alertsMetrics = Array.isArray(meta.metrics) ? meta.metrics : [];
+        if (Array.isArray(meta.comparators) && meta.comparators.length) state.alertsComparators = meta.comparators;
+        if (Array.isArray(meta.severities) && meta.severities.length) state.alertsSeverities = meta.severities;
+      } catch (err) {
+        console.debug("Alert metrics catalog load failed", err);
+      }
+    }
+    renderAlertRules();
   }
 
   function renderAlerts() {
@@ -2581,7 +2605,35 @@
         },
         data: { action: "alert-rule-toggle", id: String(r.id), enabled: enabled ? "true" : "false" },
       });
-      return el("tr", null, [
+      const targetFilter = Array.isArray(r.target_filter) ? (r.target_filter.join(", ") || "any") : "any";
+      const descText = String(r.description || "");
+      const idStr = String(r.id);
+      const actions = el("div", { cls: "flex items-center justify-center gap-1.5" });
+      actions.appendChild(el("button", {
+        cls: "min-h-touch rounded-control border border-hairline p-1.5 text-ink-muted hover:text-ink hover:bg-surface-inset",
+        attrs: { type: "button", "aria-label": "Edit rule " + String(r.name || r.id), title: "Edit" },
+        data: { action: "alert-rule-edit", id: idStr },
+      }, [el("i", { cls: "h-3.5 w-3.5 block", attrs: { "data-lucide": "pencil", "aria-hidden": "true" } })]));
+      actions.appendChild(el("button", {
+        cls: "min-h-touch rounded-control border border-hairline p-1.5 text-ink-muted hover:text-accent hover:bg-surface-inset",
+        attrs: { type: "button", "aria-label": "Test rule " + String(r.name || r.id), title: "Dry-run test (no notification sent)" },
+        data: { action: "alert-rule-test", id: idStr },
+      }, [el("i", { cls: "h-3.5 w-3.5 block", attrs: { "data-lucide": "zap", "aria-hidden": "true" } })]));
+      if (r.custom) {
+        actions.appendChild(el("button", {
+          cls: "min-h-touch rounded-control border border-hairline p-1.5 text-ink-muted hover:text-down hover:bg-surface-inset",
+          attrs: { type: "button", "aria-label": "Delete rule " + String(r.name || r.id), title: "Delete" },
+          data: { action: "alert-rule-delete", id: idStr },
+        }, [el("i", { cls: "h-3.5 w-3.5 block", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]));
+      }
+      const descNode = el("td", { cls: "px-3 py-2 max-w-48" });
+      if (descText) {
+        descNode.setAttribute("title", descText);
+        descNode.appendChild(el("span", { cls: "block truncate text-caption text-ink-muted", text: descText }));
+      } else {
+        descNode.appendChild(el("span", { cls: "text-caption text-ink-muted", text: DASH }));
+      }
+      return el("tr", { data: { alertRuleRow: idStr } }, [
         td(r.name || r.id),
         el("td", { cls: "px-3 py-2" }, [
           el("code", { cls: "text-caption text-ink", text: r.metric || DASH }),
@@ -2591,10 +2643,14 @@
         el("td", { cls: "px-3 py-2" }, [severityBadge(r.severity)]),
         td(isNum(r.cooldown_s) ? r.cooldown_s + "s" : DASH, "text-right font-mono text-caption"),
         td(channels || DASH, "text-caption"),
+        el("td", { cls: "px-3 py-2" }, [el("code", { cls: "text-caption text-ink-muted", text: targetFilter })]),
+        descNode,
         el("td", { cls: "px-3 py-2 text-center" }, [toggle]),
+        el("td", { cls: "px-3 py-2 align-middle" }, [actions]),
       ]);
     });
     replaceRows(tbody, rows);
+    if (window.lucide && typeof window.lucide.createIcons === "function") window.lucide.createIcons();
   }
 
   async function ackAlertIncident(id) {
@@ -2637,6 +2693,289 @@
   function toggleAlertDetail(id) {
     const row = document.querySelector(`#obsAlertsFiringBody [data-alert-detail="${CSS.escape(String(id))}"]`);
     if (row) row.hidden = !row.hidden;
+  }
+
+  // ── Alert rule customization (create / edit / test / delete) ────────
+  const ALERT_DEFAULT_COMPARATORS = [">=", "<=", "drop_pct"];
+  const ALERT_DEFAULT_SEVERITIES = ["info", "warning", "critical"];
+
+  function alertErrorText(errBody, fallback) {
+    const d = errBody && errBody.detail !== undefined ? errBody.detail : null;
+    if (typeof d === "string" && d) return d;
+    if (Array.isArray(d)) {
+      try {
+        return d.map((x) => (x && x.msg ? String(x.msg) : JSON.stringify(x))).join("; ");
+      } catch (e) {
+        return fallback;
+      }
+    }
+    return fallback || "HTTP request failed";
+  }
+
+  function setAlertRuleMsg(text) {
+    const n = $("obsAlertRuleMsg");
+    if (!n) return;
+    n.textContent = text || "";
+    n.classList.toggle("hidden", !text);
+  }
+
+  function addSelectOption(select, value, label) {
+    if (!select) return null;
+    const o = el("option", { text: label, attrs: { value: String(value) } });
+    select.appendChild(o);
+    return o;
+  }
+
+  function alertMetricLabel(m) {
+    const bits = [];
+    if (m.unit) bits.push(m.unit);
+    if (m.description) bits.push(m.description);
+    return m.metric + (bits.length ? " — " + bits.join(" · ") : "");
+  }
+
+  function populateAlertRuleSelects(selectedMetric) {
+    const f = $("obsAlertRuleForm");
+    if (!f) return;
+    const metricSel = f.elements.metric;
+    const compSel = f.elements.comparator;
+    const sevSel = f.elements.severity;
+    if (metricSel) {
+      const current = selectedMetric !== undefined ? selectedMetric : metricSel.value;
+      metricSel.replaceChildren(el("option", { text: "Select a metric…", attrs: { value: "" } }));
+      (state.alertsMetrics || []).forEach((m) => addSelectOption(metricSel, m.metric, alertMetricLabel(m)));
+      if (current) {
+        if (!Array.prototype.some.call(metricSel.options, (o) => o.value === current)) {
+          addSelectOption(metricSel, current, current);
+        }
+        metricSel.value = current;
+      }
+    }
+    if (compSel) {
+      const current = compSel.value || ">=";
+      compSel.replaceChildren();
+      (state.alertsComparators.length ? state.alertsComparators : ALERT_DEFAULT_COMPARATORS).forEach((c) => addSelectOption(compSel, c, c));
+      if (Array.prototype.some.call(compSel.options, (o) => o.value === current)) compSel.value = current;
+    }
+    if (sevSel) {
+      const current = sevSel.value || "warning";
+      sevSel.replaceChildren();
+      (state.alertsSeverities.length ? state.alertsSeverities : ALERT_DEFAULT_SEVERITIES).forEach((s) => addSelectOption(sevSel, s, s));
+      if (Array.prototype.some.call(sevSel.options, (o) => o.value === current)) sevSel.value = current;
+    }
+  }
+
+  async function ensureAlertMetricsCatalog() {
+    if (state.alertsMetrics) return true;
+    try {
+      const meta = await alertsGet("/admin/alerts/metrics");
+      state.alertsMetrics = Array.isArray(meta.metrics) ? meta.metrics : [];
+      if (Array.isArray(meta.comparators) && meta.comparators.length) state.alertsComparators = meta.comparators;
+      if (Array.isArray(meta.severities) && meta.severities.length) state.alertsSeverities = meta.severities;
+      return true;
+    } catch (err) {
+      console.debug("Alert metrics catalog load failed", err);
+      return false;
+    }
+  }
+
+  async function openAlertRuleForm(mode, ruleId) {
+    const f = $("obsAlertRuleForm");
+    if (!f) return;
+    state.alertsRuleFormMode = mode;
+    setAlertRuleMsg("");
+    const title = $("obsAlertRuleFormTitle");
+    if (title) title.textContent = mode === "edit" ? "Edit rule" : "New rule";
+    f.classList.remove("hidden");
+    let prefillMetric = "";
+    if (mode === "edit") {
+      const r = state.alertsRules.find((x) => String(x.id) === String(ruleId));
+      if (!r) {
+        showToast("Alert rule", "Rule not found — refresh and try again", "error");
+        return;
+      }
+      prefillMetric = String(r.metric || "");
+      f.elements.original_id.value = String(r.id);
+      f.elements.name.value = String(r.name || "");
+      f.elements.comparator.value = r.comparator || ">=";
+      f.elements.threshold.value = isNum(r.threshold) ? String(r.threshold) : String(r.threshold ?? "");
+      f.elements.window_s.value = isNum(r.window_s) ? String(r.window_s) : "60";
+      f.elements.severity.value = r.severity || "warning";
+      f.elements.cooldown_s.value = isNum(r.cooldown_s) ? String(r.cooldown_s) : "300";
+      const chans = Array.isArray(r.channels) ? r.channels.map(String) : String(r.channels || "").split(",");
+      const known = new Set(["webhook", "email"]);
+      f.elements.ch_webhook.checked = chans.some((c) => c.trim() === "webhook");
+      f.elements.ch_email.checked = chans.some((c) => c.trim() === "email");
+      f.elements.ch_advanced.value = chans.map((c) => c.trim()).filter((c) => c && !known.has(c)).join(", ");
+      f.elements.target_filter.value = Array.isArray(r.target_filter) ? r.target_filter.join(", ") : "";
+      f.elements.description.value = String(r.description || "");
+    } else {
+      f.reset();
+      f.elements.original_id.value = "";
+      f.elements.window_s.value = "60";
+      f.elements.cooldown_s.value = "300";
+      f.elements.ch_webhook.checked = true;
+    }
+    const metricSel = f.elements.metric;
+    if (metricSel) metricSel.disabled = mode === "edit"; // metric is fixed after creation
+    await ensureAlertMetricsCatalog();
+    populateAlertRuleSelects(prefillMetric);
+    if (window.lucide && typeof window.lucide.createIcons === "function") window.lucide.createIcons();
+    const nameInput = f.elements.name;
+    if (nameInput && typeof nameInput.focus === "function") nameInput.focus();
+  }
+
+  function closeAlertRuleForm() {
+    const f = $("obsAlertRuleForm");
+    if (!f) return;
+    state.alertsRuleFormMode = null;
+    f.classList.add("hidden");
+    f.reset();
+    f.elements.original_id.value = "";
+    const metricSel = f.elements.metric;
+    if (metricSel) metricSel.disabled = false;
+    setAlertRuleMsg("");
+  }
+
+  function alertRuleFormChannels(f) {
+    const set = new Set();
+    if (f.elements.ch_webhook.checked) set.add("webhook");
+    if (f.elements.ch_email.checked) set.add("email");
+    String(f.elements.ch_advanced.value || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((c) => set.add(c));
+    return Array.from(set);
+  }
+
+  function alertRuleFormBody(f) {
+    const num = (v, dflt) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : dflt;
+    };
+    return {
+      name: String(f.elements.name.value || "").trim(),
+      comparator: f.elements.comparator.value || ">=",
+      threshold: num(f.elements.threshold.value, NaN),
+      window_s: num(f.elements.window_s.value, 60),
+      severity: f.elements.severity.value || "warning",
+      cooldown_s: num(f.elements.cooldown_s.value, 300),
+      channels: alertRuleFormChannels(f),
+      target_filter: String(f.elements.target_filter.value || "").split(",").map((s) => s.trim()).filter(Boolean),
+      description: String(f.elements.description.value || "").trim(),
+    };
+  }
+
+  async function onAlertRuleSubmit(e) {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const original = f.elements.original_id.value;
+    const body = alertRuleFormBody(f);
+    if (!body.name) { setAlertRuleMsg("Name is required."); return; }
+    if (Number.isNaN(body.threshold)) { setAlertRuleMsg("Threshold must be a number."); return; }
+    if (!original && !f.elements.metric.value) { setAlertRuleMsg("Select a metric."); return; }
+    if (!original) body.metric = f.elements.metric.value;
+    setAlertRuleMsg("");
+    try {
+      const res = await fetchWithCsrf(original ? "/admin/alerts/rules/" + encodeURIComponent(original) : "/admin/alerts/rules", {
+        method: original ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(alertErrorText(err, res.status === 409 ? "A rule with that id already exists." : "Save failed"));
+      }
+      showToast("Alert rule", original ? "Rule updated" : "Rule created");
+      closeAlertRuleForm();
+      state.alertsRulesLoaded = false;
+      await loadAlertRules();
+      refreshAlertCenter();
+    } catch (err) {
+      setAlertRuleMsg(String(err.message || err));
+    }
+  }
+
+  async function deleteAlertRule(id) {
+    const r = state.alertsRules.find((x) => String(x.id) === String(id));
+    const name = r ? String(r.name || r.id) : String(id);
+    const ok = await showConfirm("Delete alert rule", "Delete alert rule '" + name + "'? This cannot be undone.");
+    if (!ok) return;
+    try {
+      const res = await fetchWithCsrf("/admin/alerts/rules/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(alertErrorText(err, "Delete failed"));
+      }
+      showToast("Alert rule", "Rule deleted");
+      state.alertsRulesLoaded = false;
+      await loadAlertRules();
+      refreshAlertCenter();
+    } catch (err) {
+      showToast("Alert rule", String(err.message || err), "error");
+    }
+  }
+
+  function removeAlertRuleTestRow(id) {
+    const row = document.querySelector(`#obsAlertsRulesBody [data-alert-rule-test="${CSS.escape(String(id))}"]`);
+    if (row) row.remove();
+  }
+
+  async function testAlertRule(id, btn) {
+    const initialBtnCls = btn ? btn.className : "";
+    if (btn) { btn.disabled = true; btn.classList.add("opacity-50"); }
+    try {
+      const res = await fetchWithCsrf("/admin/alerts/rules/" + encodeURIComponent(id) + "/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ send: false }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(alertErrorText(data, "Test failed"));
+      const targets = Array.isArray(data.would_fire) ? data.would_fire.map(String) : [];
+      const parts = [];
+      parts.push(targets.length ? "Would fire on " + targets.length + " target" + (targets.length === 1 ? "" : "s") + ": " + targets.join(", ") : "Would not fire on any target right now.");
+      if (data.fired_now) parts.push("Fired now (bypassed cooldown).");
+      if (data.message) parts.push(String(data.message));
+      const text = parts.join(" ");
+      showToast("Rule test", text);
+      // Show inline under the rule row.
+      removeAlertRuleTestRow(id);
+      const tbody = $("obsAlertsRulesBody");
+      const row = tbody && tbody.querySelector(`[data-alert-rule-row="${CSS.escape(String(id))}"]`);
+      if (row) {
+        const detail = el("tr", { data: { alertRuleTest: String(id) } }, [
+          el("td", { attrs: { colspan: "10" }, cls: "px-3 pb-3 bg-surface-inset" }, [
+            el("p", { cls: "rounded-control border border-hairline px-2.5 py-1.5 text-caption text-ink whitespace-pre-wrap break-words", text: "Dry-run: " + text }),
+          ]),
+        ]);
+        row.insertAdjacentElement("afterend", detail);
+      }
+    } catch (err) {
+      showToast("Rule test", String(err.message || err), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.className = initialBtnCls; }
+    }
+  }
+
+  async function sendTestAlertNotification() {
+    const btn = $("obsAlertsTestBtn");
+    const channel = (val("fAlertsTestChannel") || "webhook").toLowerCase();
+    if (btn) { btn.disabled = true; btn.classList.add("opacity-50"); }
+    try {
+      const res = await fetchWithCsrf("/admin/alerts/test-alert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(alertErrorText(data, "Test alert failed"));
+      showToast("Test alert", data.message ? String(data.message) : "Test alert sent via " + channel, data.ok === false ? "error" : "success");
+    } catch (err) {
+      showToast("Test alert", String(err.message || err), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove("opacity-50"); }
+    }
   }
 
   // ── Live Traces & Waterfall Explorer ─────────────────────────────────
