@@ -107,11 +107,19 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logging.getLogger(__name__).warning("Licencia manager startup error: %s", exc)
 
+    # Governance retention cleanup (audit / traces / spend metrics)
+    ret_task = None
+    try:
+        from .services.retention_service import retention_loop
+        ret_task = asyncio.create_task(retention_loop())
+    except Exception as exc:
+        logging.getLogger(__name__).warning("retention service unavailable: %s", exc)
+
     try:
         yield
     finally:
         fed_task.cancel()
-        for t in (poll_task, integ_task):
+        for t in (poll_task, integ_task, ret_task):
             if t is not None:
                 t.cancel()
         if lic_task is not None:

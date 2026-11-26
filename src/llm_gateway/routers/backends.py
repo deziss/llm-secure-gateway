@@ -15,8 +15,20 @@ from ..database import get_session
 from ..pagination import pagination_params
 from .admin import require_admin, require_manager, current_active_user
 from ..services.federation_service import openai_models_url
+from ..services.secret_crypto import mask_secret, is_masked, upgrade_plaintext_keys
 
 logger = logging.getLogger(__name__)
+
+
+def _masked(backend: LLMBackend) -> LLMBackend:
+    """Return a copy of *backend* whose api_key is masked for API responses.
+
+    Never mutate the ORM/cached object -- list_backends returns TTL-cached
+    copies shared between requests.
+    """
+    if backend is None:
+        return backend
+    return backend.model_copy(update={"api_key": mask_secret(backend.api_key)})
 
 router = APIRouter(prefix="/admin/backends", tags=["admin-backends"])
 
@@ -49,6 +61,9 @@ async def register_backend(
         if not backend.base_url.startswith("http://") and not backend.base_url.startswith("https://"):
             backend.base_url = f"http://{backend.base_url}"
         if backend.api_key is not None and not str(backend.api_key).strip():
+            backend.api_key = None
+        # A masked key echoed back from the UI means "unchanged" -> store nothing.
+        if backend.api_key is not None and is_masked(str(backend.api_key)):
             backend.api_key = None
         if not backend.allowed_endpoints:
             backend.allowed_endpoints = ["*"]
@@ -89,7 +104,7 @@ async def register_backend(
             )
         except Exception as e:
             logger.warning("Failed to send backend alert: %s", e)
-        return new_backend
+        return _masked(new_backend)
     except IntegrityError:
         await session.rollback()
         raise HTTPException(status_code=409, detail=f"Backend with name '{backend.name}' already exists")
@@ -109,7 +124,8 @@ async def list_backends(
     pagination: tuple = Depends(pagination_params),
 ) -> list:
     skip, limit = pagination
-    return await service.list_backends(session, skip=skip, limit=limit)
+    backends = await service.list_backends(session, skip=skip, limit=limit)
+    return [_masked(b) for b in backends]
 
 @router.patch("/{name}", response_model=LLMBackend)
 async def update_backend(
@@ -120,12 +136,15 @@ async def update_backend(
     user = Depends(require_manager)
 ) -> LLMBackend:
     updates = update.dict(exclude_unset=True)
+    # A masked api_key (e.g. "sk-...cdef" from the UI) means "no change".
+    if is_masked(str(updates.get("api_key") or "")):
+        updates.pop("api_key", None)
     backend = await service.update_backend(session, name, updates)
     if not backend:
         raise HTTPException(status_code=404, detail="Backend not found")
     await session.commit()
     await session.refresh(backend)
-    return backend
+    return _masked(backend)
 
 @router.delete("/{name}")
 async def delete_backend(
@@ -344,6 +363,20 @@ async def delete_backend_model(
         await session.commit()
 
     return {"status": "deleted", "model": model_name}
+
+
+@router.post("/encrypt-keys")
+async def encrypt_backend_keys(
+    session: AsyncSession = Depends(get_session),
+    user=Depends(require_admin),
+) -> dict:
+    """Lazily upgrade legacy plaintext backend api_keys to encrypted storage."""
+    try:
+        upgraded = await upgrade_plaintext_keys(session)
+    except Exception as e:
+        logger.error("Backend api_key upgrade failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Key upgrade failed: {e}")
+    return {"status": "ok", "upgraded": upgraded, "count": len(upgraded)}
 
 
 # "Backends" are presented as "model servers". The same handlers (and guards)

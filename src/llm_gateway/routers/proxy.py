@@ -304,7 +304,8 @@ async def anthropic_messages_endpoint(
         run_ctx = extract_run_context(request.headers, body if isinstance(body, dict) else None,
                                       agent_name, owner_id)
         tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown",
-                                 is_stream=is_stream, run_ctx=run_ctx)
+                                 is_stream=is_stream, run_ctx=run_ctx,
+                                 capture_body=body if isinstance(body, dict) else None)
 
         api_key_hash = getattr(request.state.user, "key_hash", None) if hasattr(request.state, "user") else None
         enable_spend = await config_service.get_setting(session, "ENABLE_SPEND_TRACKING", "true")
@@ -430,6 +431,7 @@ async def anthropic_messages_endpoint(
                         estimated=usage.estimated,
                         decode_seconds=usage.eval_duration_s,
                         duration_s=duration,
+                        response_data=resp_json if isinstance(resp_json, dict) else None,
                     )
 
                     set_llm_attributes(
@@ -843,7 +845,7 @@ async def _proxy_request_core(
         run_ctx = extract_run_context(request.headers, body if isinstance(body, dict) else None,
                                       agent_name, owner_id)
         tracker = track_dispatch(backend.name, backend_type_name(backend), model or "unknown",
-                                 run_ctx=run_ctx)
+                                 run_ctx=run_ctx, capture_body=body if isinstance(body, dict) else None)
 
         try:
             r, used_url, backend, client = await try_with_cross_provider_fallback(

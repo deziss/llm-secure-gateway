@@ -26,36 +26,79 @@ logger = logging.getLogger(__name__)
 class CircuitBreaker:
     """Simple per-URL circuit breaker."""
 
-    FAILURE_THRESHOLD = 5     # consecutive failures to trip
-    RECOVERY_TIMEOUT = 30.0   # seconds before trying again (half-open)
-
     def __init__(self) -> None:
+        # Configurable via env so operators can tune tripping without a code change.
+        self.FAILURE_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "5"))
+        self.RECOVERY_TIMEOUT = float(os.getenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "30"))
         # url -> {"failures": int, "state": str, "last_failure": float}
         self._circuits: dict[str, dict] = {}
+        # Guards the half-open state: only ONE concurrent probe may pass per URL.
+        # Single event loop, so plain dict flags are sufficient.
+        self._probe_in_flight: dict[str, bool] = {}
+        self._probe_started: dict[str, float] = {}
 
     def _get(self, url: str) -> dict:
         if url not in self._circuits:
             self._circuits[url] = {"failures": 0, "state": "closed", "last_failure": 0.0}
         return self._circuits[url]
 
+    def _clear_probe(self, url: str) -> None:
+        self._probe_in_flight.pop(url, None)
+        self._probe_started.pop(url, None)
+
+    def release_probe(self, url: str) -> None:
+        """Release a half-open probe slot without changing circuit state.
+
+        For callers that open a probe via is_open() but report outcomes through
+        other channels (e.g. the observability poller); the staleness timeout
+        also covers callers that never call this.
+        """
+        self._clear_probe(url)
+
     def is_open(self, url: str) -> bool:
         c = self._get(url)
         if c["state"] == "open":
             if time.time() - c["last_failure"] > self.RECOVERY_TIMEOUT:
                 c["state"] = "half_open"
-                return False  # allow one probe
-            return True
+            else:
+                return True
+        if c["state"] == "half_open":
+            # Allow only a single concurrent probe through; everyone else still
+            # sees the circuit as open (prevents half-open stampede).
+            # A probe older than RECOVERY_TIMEOUT is considered abandoned so the
+            # flag can never deadlock (record_failure/success also clear it).
+            started = self._probe_started.get(url)
+            probe_held = bool(self._probe_in_flight.get(url))
+            if (
+                probe_held
+                and started is not None
+                and time.time() - started > self.RECOVERY_TIMEOUT
+            ):
+                self._clear_probe(url)  # stale probe — release and re-admit
+                probe_held = False
+            if probe_held:
+                return True
+            self._probe_in_flight[url] = True
+            self._probe_started[url] = time.time()
+            return False
         return False
 
     def record_success(self, url: str) -> None:
         c = self._get(url)
         c["failures"] = 0
         c["state"] = "closed"
+        self._clear_probe(url)
 
     def record_failure(self, url: str, backend_name: str = "") -> None:
         c = self._get(url)
+        was_half_open = c["state"] == "half_open"
         c["failures"] += 1
         c["last_failure"] = time.time()
+        if was_half_open:
+            # Failed probe: re-open immediately (even below threshold) so the
+            # backend gets another quiet recovery window, and free the probe slot.
+            c["state"] = "open"
+            self._clear_probe(url)
         if c["failures"] >= self.FAILURE_THRESHOLD and c["state"] != "open":
             c["state"] = "open"
             logger.warning("Circuit OPEN for %s after %d failures", url, c["failures"])
@@ -70,6 +113,10 @@ class CircuitBreaker:
     def get_status(self) -> dict[str, str]:
         """Return {url: state} for monitoring."""
         return {url: info["state"] for url, info in self._circuits.items()}
+
+    def get_failure_counts(self) -> dict[str, int]:
+        """Return {url: consecutive failure count} for monitoring dashboards."""
+        return {url: info["failures"] for url, info in self._circuits.items()}
 
 
 _circuit_breaker = CircuitBreaker()
@@ -368,20 +415,46 @@ async def check_owner_permissions(
         )
 
     # Check model access only (endpoint auth is in PolicyMiddleware)
-    for p in perms:
-        if (not model) or ("*" in p.allowed_models) or (model in p.allowed_models):
-            return
-
-    raise HTTPException(
-        status_code=403,
-        detail={
-            "error": {
-                "code": "model_not_allowed",
-                "message": f"Owner '{owner_id}' is not permitted to access model '{model}' on backend '{backend.name}'",
-                "param": "model",
-            }
-        },
+    global_allowed = any(
+        (not model) or ("*" in p.allowed_models) or (model in p.allowed_models)
+        for p in perms
     )
+    if not global_allowed:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "model_not_allowed",
+                    "message": f"Owner '{owner_id}' is not permitted to access model '{model}' on backend '{backend.name}'",
+                    "param": "model",
+                }
+            },
+        )
+
+    # Per-owner policy profile (denied_models / allowed_models overrides).
+    # get_profile is TTL-cached (60s, negatives included), so this is a DB hit
+    # at most once per owner per minute on the hot path. No profile -> allow.
+    if model:
+        from .services import policy_profiles
+
+        profile = await policy_profiles.get_profile(session, owner_id)
+        profile_ok, profile_reason = policy_profiles.evaluate_model_access(
+            profile, model
+        )
+        if not profile_ok:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": {
+                        "code": "model_not_allowed_by_policy_profile",
+                        "message": (
+                            f"Model '{model}' is not allowed by the policy "
+                            f"profile for owner '{owner_id}' ({profile_reason})"
+                        ),
+                        "param": model,
+                    }
+                },
+            )
 
 
 async def build_backend_auth_headers(
@@ -793,14 +866,27 @@ async def try_backend_with_fallback(
 
     # Filter out URLs whose circuit is open. If ALL URLs are open, allow the primary
     # URL to act as a probe (half-open fallback) rather than failing immediately without trying.
+    # Exception: if the primary is half-open with its single probe slot already in
+    # flight, don't stampede — reject this request instead.
     candidate_urls = [u for u in urls if not cb.is_open(u)]
     if not candidate_urls and urls:
+        primary = cb._get(urls[0])
+        if primary["state"] == "half_open" and cb._probe_in_flight.get(urls[0]):
+            raise httpx.ConnectError(
+                f"Circuit breaker open for all URLs of backend '{backend.name}' "
+                f"(configured URLs: {urls}); half-open probe already in flight"
+            )
         logger.warning(
             "Circuit breaker OPEN for all URLs of backend '%s'; forcing half-open probe on %s",
             backend.name,
             urls[0],
         )
         candidate_urls = [urls[0]]
+
+    # Last terminal 5xx response kept open (streamed, unread) so it can be
+    # returned to the client once all URLs/attempts are exhausted.
+    pending_5xx: Optional[httpx.Response] = None
+    pending_5xx_url: Optional[str] = None
 
     for idx, base_url in enumerate(candidate_urls):
 
@@ -845,14 +931,43 @@ async def try_backend_with_fallback(
                     )
                     raise
 
-                if enable_retry and r.status_code >= 500:
+                if r.status_code >= 500:
+                    # Any 5xx counts against the circuit, even with retries
+                    # disabled — otherwise a backend that always returns 500
+                    # never trips its breaker.
                     cb.record_failure(base_url, backend.name)
-                    if attempt < max_attempts:
-                        logger.warning(f"Backend {base_url} returned {r.status_code}, retrying (attempt {attempt}/{max_attempts})...")
+                    can_retry = enable_retry and attempt < max_attempts
+                    has_more_urls = idx < len(candidate_urls) - 1
+                    if can_retry or has_more_urls:
+                        # We won't return this response, so release its stream
+                        # before opening another one.
                         await r.aclose()
+                        if pending_5xx is not None:
+                            await pending_5xx.aclose()
+                            pending_5xx = None
+                            pending_5xx_url = None
+                    else:
+                        # Last candidate and attempt exhausted: keep this
+                        # response open and return it to the client below.
+                        if pending_5xx is not None:
+                            await pending_5xx.aclose()
+                        pending_5xx = r
+                        pending_5xx_url = base_url
+                    if can_retry:
+                        logger.warning(f"Backend {base_url} returned {r.status_code}, retrying (attempt {attempt}/{max_attempts})...")
                         await asyncio.sleep(_retry_sleep(backoff))
                         backoff = min(backoff * 2.0, MAX_RETRY_BACKOFF)
                         continue
+                    # Try the next candidate URL (or fall through to return the
+                    # terminal 5xx response once all candidates are exhausted).
+                    break
+
+                if pending_5xx is not None:
+                    # A stale 5xx from an earlier candidate was superseded by a
+                    # successful attempt; release it.
+                    await pending_5xx.aclose()
+                    pending_5xx = None
+                    pending_5xx_url = None
 
                 cb.record_success(base_url)
                 record_backend_latency(base_url, time.time() - t0)
@@ -898,6 +1013,17 @@ async def try_backend_with_fallback(
                         attempt,
                     )
                     break
+
+    if pending_5xx is not None:
+        # All URLs/attempts exhausted with upstream 5xx responses and no
+        # transport exception after the last one: hand the last 5xx (streamed,
+        # unread) to the client rather than raising.
+        if idx > 0 or attempt > 1:
+            logger.info(
+                "Returning last 5xx response from %s (URL %d/%d, attempt %d/%d)",
+                pending_5xx_url, idx + 1, len(candidate_urls), attempt, max_attempts,
+            )
+        return pending_5xx, pending_5xx_url or "", None
 
     if last_exc is None:
         last_exc = httpx.ConnectError(

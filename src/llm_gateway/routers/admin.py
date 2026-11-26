@@ -189,6 +189,132 @@ async def get_client_snippets(
     )
 
 
+@router.post("/retention/run")
+async def run_retention_now(
+    user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Manually trigger governance retention cleanup (admin only)."""
+    from ..services.retention_service import run_retention_cleanup
+
+    counts = await run_retention_cleanup(session=session)
+    try:
+        from ..audit import get_audit_logger
+
+        get_audit_logger().log(
+            "retention_cleanup",
+            getattr(user, "email", str(user)),
+            "retention_cleanup",
+            "allow",
+            metadata={"trigger": "manual", "deleted": counts},
+        )
+    except Exception:  # pragma: no cover - audit must never break the endpoint
+        pass
+    return {"deleted": counts, "total": sum(counts.values())}
+
+
+# ── Policy profiles (per-owner governance overrides) ─────────────────────
+
+class PolicyProfileUpsert(BaseModel):
+    allowed_models: Optional[List[str]] = None
+    denied_models: Optional[List[str]] = None
+    daily_budget_usd: Optional[float] = None
+    enforce_guardrails: Optional[bool] = None
+    pii_masking: Optional[bool] = None
+    max_concurrent_requests: Optional[int] = None
+    description: Optional[str] = None
+
+
+def _profile_dict(p) -> dict:
+    return {
+        "owner_id": p.owner_id,
+        "allowed_models": p.allowed_models,
+        "denied_models": p.denied_models,
+        "daily_budget_usd": p.daily_budget_usd,
+        "enforce_guardrails": p.enforce_guardrails,
+        "pii_masking": p.pii_masking,
+        "max_concurrent_requests": p.max_concurrent_requests,
+        "description": p.description,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+        "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+    }
+
+
+@router.get("/policy-profiles")
+async def list_policy_profiles(
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """List all per-owner policy profiles."""
+    from sqlalchemy import select
+
+    from ..models import PolicyProfile
+
+    result = await session.execute(select(PolicyProfile).order_by(PolicyProfile.owner_id))
+    return {"profiles": [_profile_dict(p) for p in result.scalars().all()]}
+
+
+@router.put("/policy-profiles/{owner_id}")
+async def upsert_policy_profile(
+    owner_id: str,
+    body: PolicyProfileUpsert,
+    user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Create or update the policy profile for an owner (admin only)."""
+    from sqlalchemy import select
+
+    from ..models import Owner, PolicyProfile, _utcnow
+    from ..services.policy_profiles import invalidate_profile_cache
+
+    owner_exists = await session.get(Owner, owner_id)
+    if owner_exists is None:
+        raise HTTPException(status_code=404, detail=f"Owner '{owner_id}' not found")
+
+    result = await session.execute(
+        select(PolicyProfile).where(PolicyProfile.owner_id == owner_id)
+    )
+    profile = result.scalars().first()
+    data = body.model_dump()
+
+    if profile is None:
+        profile = PolicyProfile(owner_id=owner_id, **data)
+        session.add(profile)
+    else:
+        for key, value in data.items():
+            setattr(profile, key, value)
+        profile.updated_at = _utcnow()
+
+    await session.commit()
+    await session.refresh(profile)
+    invalidate_profile_cache(owner_id)
+    return _profile_dict(profile)
+
+
+@router.delete("/policy-profiles/{owner_id}")
+async def delete_policy_profile(
+    owner_id: str,
+    user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Delete the policy profile for an owner (admin only)."""
+    from sqlalchemy import select
+
+    from ..models import PolicyProfile
+    from ..services.policy_profiles import invalidate_profile_cache
+
+    result = await session.execute(
+        select(PolicyProfile).where(PolicyProfile.owner_id == owner_id)
+    )
+    profile = result.scalars().first()
+    if profile is None:
+        raise HTTPException(status_code=404, detail=f"Policy profile for '{owner_id}' not found")
+
+    await session.delete(profile)
+    await session.commit()
+    invalidate_profile_cache(owner_id)
+    return {"deleted": True, "owner_id": owner_id}
+
+
 # Standalone router so /api/client-snippets works directly at root level
 client_snippets_router = APIRouter(dependencies=[Depends(current_active_user)])
 client_snippets_router.add_api_route(

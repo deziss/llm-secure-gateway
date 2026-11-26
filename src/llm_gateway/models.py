@@ -1,9 +1,9 @@
 from enum import Enum
 from typing import Optional, List, Dict
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, String, TypeDecorator
 from sqlmodel import SQLModel, Field, Column, Relationship
 from pydantic import computed_field, model_validator
-from sqlalchemy import JSON, UniqueConstraint, Index
+from sqlalchemy import JSON, UniqueConstraint, Index, Text
 from datetime import datetime, timezone
 
 # All timestamp columns in this database are `TIMESTAMP WITHOUT TIME ZONE` and
@@ -16,6 +16,36 @@ from datetime import datetime, timezone
 # still send timezone-aware values.
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+class EncryptedString(TypeDecorator):
+    """Column type that encrypts on write and decrypts on read.
+
+    Delegates to ``services.secret_crypto`` (Fernet, ``enc:v1:`` token
+    prefix).  Legacy plaintext values carry no prefix and pass through in
+    both directions, so pre-encryption rows keep working and are upgraded
+    lazily.  The crypto helpers are imported inside the processors rather
+    than at module scope because ``services/__init__.py`` imports this
+    module — a top-level import here would be circular at startup. The
+    processors only ever run at flush/read time, when imports are safe.
+    """
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, str) and value:
+            from .services.secret_crypto import encrypt_secret
+
+            return encrypt_secret(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if isinstance(value, str) and value:
+            from .services.secret_crypto import decrypt_secret
+
+            return decrypt_secret(value)
+        return value
+
 
 class BackendType(str, Enum):
     OLLAMA = "ollama"
@@ -60,7 +90,7 @@ class ModelServer(SQLModel, table=True):
     name: str = Field(primary_key=True, index=True, description="Unique name for the backend")
     base_url: str = Field(description="Base URL of the LLM server")
     backend_type: BackendType = Field(default=BackendType.OLLAMA)
-    api_key: Optional[str] = Field(default=None, description="API Key for the backend (encrypted at rest)")
+    api_key: Optional[str] = Field(default=None, sa_column=Column(EncryptedString(), nullable=True), description="API Key for the backend (encrypted at rest)")
     models: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="List of available models")
     fallback_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="Fallback backend URLs tried when base_url fails")
     allowed_endpoints: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="List of allowed API endpoints")
@@ -504,6 +534,40 @@ class AgentStep(SQLModel, table=True):
     tokens_out: int = Field(default=0)
     tool: Optional[str] = Field(default=None, max_length=128)
     error: Optional[str] = Field(default=None, max_length=256)
+    # Content capture (governance): populated only when OBSERVABILITY_CAPTURE_LEVEL
+    # is 'redacted' or 'full'; always None at the default 'metadata' level.
+    input_text: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    output_text: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    capture_level: Optional[str] = Field(default=None, max_length=16)
+
+
+class PolicyProfile(SQLModel, table=True):
+    """Per-tenant (per-owner) governance overrides.
+
+    One row per owner. Every field is tri-state: None means "inherit the
+    global default" (config / SystemSettings / global allowed_models), while
+    a concrete value overrides it for this owner.
+
+    daily_budget_usd is INFORMATIONAL ONLY for now -- it is NOT wired into
+    spend enforcement. It is surfaced to the alerting layer (per-owner budget
+    warnings) in a later phase.
+    """
+    __tablename__ = "policy_profiles"
+
+    owner_id: str = Field(primary_key=True, foreign_key="owner.id")
+    # Model lists: None = inherit global allowed_models. When set, matching
+    # semantics mirror OwnerPermission: '*' allows everything, otherwise the
+    # model must appear exactly. denied_models additionally supports prefix
+    # wildcards ('gpt-4*') and a '*' deny-all entry; deny wins over allow.
+    allowed_models: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    denied_models: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    daily_budget_usd: Optional[float] = None  # informational; surfaced to alerts later
+    enforce_guardrails: Optional[bool] = None  # None=global, else overrides ENABLE_GUARDRAILS
+    pii_masking: Optional[bool] = None  # None=global, else overrides ENABLE_PII_MASKING
+    max_concurrent_requests: Optional[int] = None
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
+    updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
 
 
 # Pre-v0.13 names, kept so existing imports and plugins keep working.

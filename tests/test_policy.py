@@ -193,6 +193,45 @@ class TestPolicyEngine:
         assert await engine.evaluate(req) is True
 
     @pytest.mark.asyncio
+    async def test_workload_denied_on_non_allowlisted_path(self):
+        """Workloads are only allowed on the documented inference allowlist (or paths whose
+        SCOPE_RULE maps to the 'workload' scope) — anything else is denied."""
+        from llm_gateway.policy import PolicyEngine, PolicyRequest
+        engine = PolicyEngine()
+        user = {"type": "workload", "spiffe_id": "spiffe://trust/svc/x"}
+        for resource in ["/api/admin/keys", "/admin/users", "/api/keys"]:
+            req = PolicyRequest(user=user, action="call_llm", resource=resource, context={})
+            assert await engine.evaluate(req) is False, resource
+
+    @pytest.mark.asyncio
+    async def test_workload_allowlist_paths(self):
+        from llm_gateway.policy import PolicyEngine, PolicyRequest, WORKLOAD_ALLOWED_PREFIXES
+        engine = PolicyEngine()
+        user = {"type": "workload", "spiffe_id": "spiffe://trust/svc/x"}
+        for prefix in WORKLOAD_ALLOWED_PREFIXES:
+            req = PolicyRequest(user=user, action="call_llm", resource=prefix, context={})
+            assert await engine.evaluate(req) is True, prefix
+
+    @pytest.mark.asyncio
+    async def test_workload_allowed_via_workload_scope_rule(self):
+        """A SCOPE_RULE mapping a path to scope 'workload' allows SPIFFE workloads there."""
+        from unittest.mock import AsyncMock, patch as _patch
+        from llm_gateway.policy import PolicyEngine, PolicyRequest
+        engine = PolicyEngine()
+        user = {"type": "workload", "spiffe_id": "spiffe://trust/svc/x"}
+        req = PolicyRequest(user=user, action="call_llm",
+                            resource="/workload-only/predict", context={})
+        with _patch("llm_gateway.policy._load_rules",
+                    AsyncMock(return_value=[("/workload-only/predict", "workload")])):
+            assert await engine.evaluate(req) is True
+
+        # A rule mapping the path to a non-workload scope still denies workloads
+        with _patch("llm_gateway.policy._load_rules",
+                    AsyncMock(return_value=[("/workload-only/predict", "llm:chat")])):
+            assert await engine.evaluate(req) is False
+
+
+    @pytest.mark.asyncio
     async def test_user_without_scopes_allowed(self):
         from llm_gateway.policy import PolicyEngine, PolicyRequest
         engine = PolicyEngine()

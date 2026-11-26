@@ -450,3 +450,221 @@ class TestTryBackendReadErrorHandling:
                 backend, "v1/chat/completions", "POST", {}, {"model": "test"}, None
             )
         assert "No healthy upstream URLs" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# Circuit breaker: env config, half-open single probe (gap fixes)
+# ---------------------------------------------------------------------------
+
+class TestCircuitBreakerConfig:
+    def test_env_config_respected(self, monkeypatch):
+        """FAILURE_THRESHOLD / RECOVERY_TIMEOUT are read from env at construction."""
+        from llm_gateway.proxy_helpers import CircuitBreaker
+
+        monkeypatch.setenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
+        monkeypatch.setenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "1.5")
+        cb = CircuitBreaker()
+        assert cb.FAILURE_THRESHOLD == 2
+        assert cb.RECOVERY_TIMEOUT == 1.5
+
+    def test_defaults_when_env_unset(self, monkeypatch):
+        from llm_gateway.proxy_helpers import CircuitBreaker
+
+        monkeypatch.delenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", raising=False)
+        monkeypatch.delenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", raising=False)
+        cb = CircuitBreaker()
+        assert cb.FAILURE_THRESHOLD == 5
+        assert cb.RECOVERY_TIMEOUT == 30
+
+    def test_get_failure_counts(self):
+        from llm_gateway.proxy_helpers import CircuitBreaker
+
+        cb = CircuitBreaker()
+        cb.record_failure("http://a:11434")
+        cb.record_failure("http://a:11434")
+        counts = cb.get_failure_counts()
+        assert counts["http://a:11434"] == 2
+        # get_status() shape unchanged: {url: state-string}
+        assert cb.get_status()["http://a:11434"] == "closed"
+
+
+class TestCircuitBreakerHalfOpenProbe:
+    def _make_cb(self):
+        from llm_gateway.proxy_helpers import CircuitBreaker
+
+        cb = CircuitBreaker()
+        cb.FAILURE_THRESHOLD = 1
+        cb.RECOVERY_TIMEOUT = 0.05
+        return cb
+
+    def test_half_open_admits_single_probe(self):
+        """After recovery window, only ONE caller may probe; others see open."""
+        import time
+
+        cb = self._make_cb()
+        url = "http://half:11434"
+        cb.record_failure(url)
+        assert cb.is_open(url) is True
+        time.sleep(0.06)
+        # First caller transitions to half-open and is admitted (probe slot taken)
+        assert cb.is_open(url) is False
+        # Second concurrent caller must be blocked (no stampede)
+        assert cb.is_open(url) is True
+
+    def test_probe_success_closes_and_clears(self):
+        cb = self._make_cb()
+        url = "http://half:11434"
+        cb.record_failure(url)
+        cb._circuits[url]["last_failure"] = 0.0  # pretend recovery elapsed
+        assert cb.is_open(url) is False  # probe admitted
+        cb.record_success(url)
+        assert cb._circuits[url]["state"] == "closed"
+        assert url not in cb._probe_in_flight
+        assert cb.is_open(url) is False
+
+    def test_probe_failure_reopens_and_clears(self):
+        import time
+
+        cb = self._make_cb()
+        url = "http://half:11434"
+        cb.record_failure(url)
+        cb._circuits[url]["last_failure"] = 0.0
+        assert cb.is_open(url) is False  # probe admitted
+        assert cb._probe_in_flight.get(url) is True
+        cb.record_failure(url)  # failed probe re-opens even below threshold
+        assert cb._circuits[url]["state"] == "open"
+        assert url not in cb._probe_in_flight  # slot freed — no deadlock
+        # After the next recovery window a fresh probe is admissible again
+        time.sleep(0.06)
+        assert cb.is_open(url) is False
+
+    def test_stale_probe_times_out_no_deadlock(self):
+        """A probe abandoned without record_* must not block forever."""
+        cb = self._make_cb()
+        url = "http://half:11434"
+        cb.record_failure(url)
+        cb._circuits[url]["last_failure"] = 0.0
+        assert cb.is_open(url) is False  # probe admitted, then "abandoned"
+        assert cb.is_open(url) is True  # held for now
+        # Age the probe past RECOVERY_TIMEOUT via timestamp backdating
+        cb._probe_started[url] -= 1.0
+        assert cb.is_open(url) is False  # stale probe released, re-admitted
+
+    def test_release_probe_frees_slot(self):
+        cb = self._make_cb()
+        url = "http://half:11434"
+        cb.record_failure(url)
+        cb._circuits[url]["last_failure"] = 0.0
+        assert cb.is_open(url) is False
+        cb.release_probe(url)
+        assert url not in cb._probe_in_flight
+        assert cb.is_open(url) is False  # slot free again for a new probe
+
+
+# ---------------------------------------------------------------------------
+# try_backend_with_fallback: 5xx records circuit failures with retry OFF
+# ---------------------------------------------------------------------------
+
+class TestCircuitBreaker5xxRecording:
+    @pytest.mark.asyncio
+    async def test_5xx_with_retry_off_trips_breaker_and_returns_response(self):
+        """Retry disabled: repeated 500s must record failures and trip breaker,
+        while the last 5xx response is still returned to the client (not raised)."""
+        import httpx
+        from llm_gateway.proxy_helpers import try_backend_with_fallback, _circuit_breaker
+
+        url = "http://5xx-noretry:8000"
+        # Isolate: clean slate on the singleton for this URL
+        _circuit_breaker._circuits.pop(url, None)
+        _circuit_breaker._clear_probe(url)
+        orig_threshold = _circuit_breaker.FAILURE_THRESHOLD
+        _circuit_breaker.FAILURE_THRESHOLD = 2
+        try:
+            backend = MagicMock()
+            backend.base_url = url
+            backend.fallback_urls = []
+            backend.name = "vllm-5xx"
+
+            def make_500():
+                r = MagicMock()
+                r.status_code = 500
+                r.aclose = AsyncMock()
+                return r
+
+            mock_client = AsyncMock()
+            mock_client.build_request = MagicMock(return_value=MagicMock())
+            mock_client.send = AsyncMock(side_effect=[make_500(), make_500()])
+            mock_client.is_closed = False
+
+            with patch("llm_gateway.proxy_helpers._get_client", return_value=mock_client):
+                # First request: 5xx returned, one circuit failure recorded
+                resp, used_url, _ = await try_backend_with_fallback(
+                    backend, "v1/chat/completions", "POST", {}, {"model": "test"}, None,
+                    enable_retry=False,
+                )
+                # Response returned to the client, not raised
+                assert resp.status_code == 500
+                assert used_url == url
+                assert _circuit_breaker._get(url)["failures"] == 1
+                assert _circuit_breaker._get(url)["state"] == "closed"
+                # Second request trips the breaker at threshold 2
+                resp2, used_url2, _ = await try_backend_with_fallback(
+                    backend, "v1/chat/completions", "POST", {}, {"model": "test"}, None,
+                    enable_retry=False,
+                )
+            assert resp2.status_code == 500
+            c = _circuit_breaker._get(url)
+            assert c["failures"] >= 2
+            assert c["state"] == "open"
+            # The returned response must NOT have been closed
+            assert not resp2.aclose.called
+            assert mock_client.send.call_count == 2
+        finally:
+            _circuit_breaker.FAILURE_THRESHOLD = orig_threshold
+            _circuit_breaker._circuits.pop(url, None)
+            _circuit_breaker._clear_probe(url)
+
+    @pytest.mark.asyncio
+    async def test_5xx_with_retry_off_falls_through_to_fallback_url(self):
+        """5xx on primary (retry off) tries the fallback URL instead of returning
+        the 5xx immediately, and closes the superseded 5xx response."""
+        import httpx
+        from llm_gateway.proxy_helpers import try_backend_with_fallback, _circuit_breaker
+
+        primary = "http://5xx-primary:8000"
+        fallback = "http://5xx-fallback:8000"
+        for u in (primary, fallback):
+            _circuit_breaker._circuits.pop(u, None)
+            _circuit_breaker._clear_probe(u)
+        try:
+            backend = MagicMock()
+            backend.base_url = primary
+            backend.fallback_urls = [fallback]
+            backend.name = "vllm-fb"
+
+            resp500 = MagicMock()
+            resp500.status_code = 503
+            resp500.aclose = AsyncMock()
+            resp200 = MagicMock()
+            resp200.status_code = 200
+
+            mock_client = AsyncMock()
+            mock_client.build_request = MagicMock(return_value=MagicMock())
+            mock_client.send = AsyncMock(side_effect=[resp500, resp200])
+            mock_client.is_closed = False
+
+            with patch("llm_gateway.proxy_helpers._get_client", return_value=mock_client):
+                resp, used_url, _ = await try_backend_with_fallback(
+                    backend, "v1/chat/completions", "POST", {}, {"model": "test"}, None,
+                    enable_retry=False,
+                )
+            assert resp.status_code == 200
+            assert used_url == fallback
+            resp500.aclose.assert_awaited_once()  # superseded 5xx released
+            # Fallback success closed its circuit; primary recorded a failure
+            assert _circuit_breaker._get(fallback)["state"] == "closed"
+            assert _circuit_breaker._get(primary)["failures"] == 1
+        finally:
+            for u in (primary, fallback):
+                _circuit_breaker._circuits.pop(u, None)
+                _circuit_breaker._clear_probe(u)

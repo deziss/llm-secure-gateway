@@ -31,6 +31,24 @@ DEFAULT_RULES: list[tuple[str, str]] = [
     ("/api/ps",              "llm:read"),
 ]
 
+# Path prefixes a SPIFFE workload (see AuthMiddleware) may call *without* an
+# explicit "workload" scope grant.  Deliberately minimal: inference endpoints
+# plus model listing, which is all a machine client legitimately needs.
+# Deterministic longest-wins is NOT used here; first-prefix-startswith only,
+# matching required_scope_for()'s matching style.  To expose any other endpoint
+# to workloads, map it to the "workload" (or "workload:*"-matching) scope via
+# the admin-configurable SCOPE_RULES instead of extending this list.
+WORKLOAD_ALLOWED_PREFIXES: tuple[str, ...] = (
+    "/v1/chat/completions",
+    "/v1/completions",
+    "/v1/embeddings",
+    "/api/chat",
+    "/api/generate",
+    "/api/embeddings",
+    "/v1/models",
+    "/api/tags",
+)
+
 # Backward-compatible aliases so old keys with flat scopes still work.
 _LEGACY_ALIASES: dict[str, str] = {
     "chat":       "llm:chat",
@@ -147,9 +165,60 @@ class PolicyEngine:
             if not scope_matches(held, required):
                 return False
 
-        # SPIFFE Logic
+        # Per-owner policy profile (per-tenant governance overrides). Only
+        # applies when we have a DB session, the caller is an owner-scoped
+        # subject with a real string owner_id, and the request context names
+        # a model. Callers (PolicyMiddleware) audit the decision and record
+        # context, so the deny reason is propagated via context["policy_reason"]
+        # rather than audited here. Never raises: on any failure the request
+        # proceeds with the scope-check verdict (fail-open to global defaults).
+        if session is not None and not isinstance(user, dict):
+            owner_id = getattr(user, "owner_id", None)
+            model = request.context.get("model") or request.context.get(
+                "request_model"
+            )
+            if isinstance(owner_id, str) and owner_id and isinstance(model, str) and model:
+                try:
+                    from .services import policy_profiles
+
+                    profile = await policy_profiles.get_profile(session, owner_id)
+                    allowed, reason = policy_profiles.evaluate_model_access(
+                        profile, model
+                    )
+                    if not allowed:
+                        request.context.setdefault("policy_reason", reason)
+                        return False
+                except Exception:  # pragma: no cover - defensive
+                    logger.warning(
+                        "policy: profile check failed for owner %s; skipping",
+                        owner_id,
+                        exc_info=True,
+                    )
+
+        # SPIFFE Logic: workloads are authenticated machine identities (see
+        # AuthMiddleware, which only admits them behind a trusted sidecar).
+        # They are allowed only when the endpoint's required scope explicitly
+        # admits the "workload" scope (e.g. a SCOPE_RULE entry "workload" or
+        # "workload:inference") or the path is on the built-in inference
+        # allowlist.  Everything else -- admin-ish or unmapped paths -- is
+        # denied, and the decision is logged.
         if isinstance(user, dict) and user.get("type") == "workload":
-            return True
+            rules = await _load_rules(session)
+            required = required_scope_for(request.resource, rules)
+            allowed = (
+                scope_matches({"workload"}, required)
+                or ("/" + request.resource.lstrip("/")).startswith(
+                    WORKLOAD_ALLOWED_PREFIXES
+                )
+            )
+            logger.info(
+                "policy: workload %s %s required_scope=%s decision=%s",
+                user.get("spiffe_id", "?"),
+                request.resource,
+                required,
+                "allow" if allowed else "deny",
+            )
+            return allowed
 
         return True
 

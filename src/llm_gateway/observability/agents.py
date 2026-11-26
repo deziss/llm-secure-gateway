@@ -108,7 +108,10 @@ class AgentRecorder:
     def record_llm_step(self, *, run_ctx: dict, model: str, server: Optional[str],
                         owner_id: Optional[str], ok: bool, cancelled: bool,
                         dur_ms: float, ttft_ms: Optional[float], tokens_in: int,
-                        tokens_out: int, cost_usd: float, error: Optional[str] = None) -> None:
+                        tokens_out: int, cost_usd: float, error: Optional[str] = None,
+                        input_text: Optional[str] = None,
+                        output_text: Optional[str] = None,
+                        capture_level: Optional[str] = None) -> None:
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         with self._lock:
             agg = self._runs.get(run_ctx["run_id"])
@@ -145,6 +148,9 @@ class AgentRecorder:
                 "tokens_in": int(tokens_in or 0), "tokens_out": int(tokens_out or 0),
                 "tool": run_ctx.get("tool"),
                 "error": (error or None) and str(error)[:256],
+                "input_text": input_text,
+                "output_text": output_text,
+                "capture_level": (capture_level or None) if (input_text or output_text) else None,
             })
 
     def record_tool_step(self, *, run_ctx: dict, tool: str, ok: bool, dur_ms: float,

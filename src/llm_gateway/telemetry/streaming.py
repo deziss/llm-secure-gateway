@@ -304,6 +304,17 @@ async def stream_with_telemetry(
             else:
                 err_type = "upstream_failure"
 
+        out_text = None
+        try:
+            from ..observability.capture import captures_content
+
+            if captures_content():
+                if scan.content_parts:
+                    out_text = "".join(scan.content_parts)[:65536]
+                elif not is_sse and accumulated_chunks:
+                    out_text = _text_of_body(b"".join(accumulated_chunks))[:65536] or None
+        except Exception:  # pragma: no cover - capture must never break streaming
+            out_text = None
         track_done(
             tracker, success=success, cancelled=cancelled,
             output_tokens=usage.completion_tokens,
@@ -313,6 +324,7 @@ async def stream_with_telemetry(
             status_code=resp_status,
             error_type=err_type,
             delta_events=scan.delta_count,
+            output_text=out_text,
         )
         set_llm_attributes(
             span,

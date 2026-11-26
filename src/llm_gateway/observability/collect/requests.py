@@ -64,6 +64,7 @@ class RequestTracker:
         "_live_tokens",
         "_live_deltas",
         "run_ctx",
+        "capture_body",
     )
 
     def __init__(
@@ -76,6 +77,7 @@ class RequestTracker:
         owner_id: Optional[str] = "anonymous",
         provider: Optional[str] = None,
         run_ctx: Optional[dict] = None,
+        capture_body: Optional[dict] = None,
     ) -> None:
         self._store = store
         self.key = key
@@ -91,6 +93,9 @@ class RequestTracker:
         self._live_deltas = 0
         # Agent-intelligence context: {run_id, agent, parent_agent, session_key}.
         self.run_ctx = run_ctx
+        # Raw request body for content capture; only consulted when
+        # OBSERVABILITY_CAPTURE_LEVEL != "metadata" (see observability/capture.py).
+        self.capture_body = capture_body
 
     def retarget(self, server: str, server_type, model: str) -> None:
         """Re-key a still-waiting request after fallback chose a different server/model."""
@@ -163,6 +168,8 @@ class RequestTracker:
         error_type: Optional[str] = None,
         phases: Optional[dict[str, float]] = None,
         delta_events: int = 0,
+        output_text: Optional[str] = None,
+        response_data: Optional[dict] = None,
         **kwargs,
     ) -> Optional[dict]:
         """Close the request. Returns timing figures on the first call, None afterwards.
@@ -260,6 +267,26 @@ class RequestTracker:
             if self.run_ctx and self.run_ctx.get("run_id"):
                 from ..agents import record_llm_step
 
+                # Content capture (governance): no-op at the default "metadata" level.
+                cap_in = cap_out = cap_level = None
+                try:
+                    from ..capture import captures_content, prepare_captured_content, extract_last_user_text
+
+                    if captures_content():
+                        from .... import config
+
+                        cap_level = getattr(config, "OBSERVABILITY_CAPTURE_LEVEL", "metadata")
+                        raw_in = extract_last_user_text(self.capture_body)
+                        raw_out = output_text
+                        if raw_out is None and isinstance(response_data, dict):
+                            from ..capture import extract_text_from_data
+
+                            raw_out = extract_text_from_data(response_data)
+                        cap_in = prepare_captured_content(raw_in)
+                        cap_out = prepare_captured_content(raw_out)
+                except Exception:
+                    logger.debug("content capture failed", exc_info=True)
+
                 record_llm_step(
                     run_ctx=self.run_ctx,
                     model=trace_model,
@@ -273,6 +300,9 @@ class RequestTracker:
                     tokens_out=output_tokens,
                     cost_usd=float(cost_usd or 0.0),
                     error=trace_error,
+                    input_text=cap_in,
+                    output_text=cap_out,
+                    capture_level=cap_level,
                 )
         except Exception:
             logger.debug("agent step recording failed", exc_info=True)
@@ -290,6 +320,7 @@ def track_dispatch(
     owner_id: Optional[str] = "anonymous",
     provider: Optional[str] = None,
     run_ctx: Optional[dict] = None,
+    capture_body: Optional[dict] = None,
     **kwargs,
 ) -> RequestTracker:
     store = store or get_live_stats()
@@ -305,6 +336,7 @@ def track_dispatch(
         owner_id=owner_id,
         provider=provider or _type_str(server_type),
         run_ctx=run_ctx,
+        capture_body=capture_body,
     )
 
 
