@@ -51,6 +51,8 @@ class AuthService:
             rate_limit_rpm=data.rate_limit_rpm,
             rate_limit_tpm=getattr(data, "rate_limit_tpm", None),
             max_concurrency=getattr(data, "max_concurrency", None),
+            rotate_interval_days=getattr(data, "rotate_interval_days", None),
+            rotation_grace_days=max(0, int(getattr(data, "rotation_grace_days", 7) or 7)),
         )
         session.add(api_key)
         return raw_key, api_key
@@ -99,6 +101,73 @@ class AuthService:
 
         _key_cache.set(key_hash, key)
         return key
+
+    async def rotate_key(self, session: AsyncSession, prefix: str,
+                         grace_days: Optional[int] = None) -> tuple[str, APIKey, APIKey] | None:
+        """Rotate an API key: issue a replacement and put the old key in a grace window.
+
+        The new key inherits owner, scopes, quotas, budgets and rotation policy.
+        The old key stays valid for ``grace_days`` more days (zero-downtime
+        overlap), is marked rotated, and both cache entries are handled so the
+        switch takes effect promptly. Returns (raw_new_key, new_key, old_key)
+        or None when the prefix is unknown. The raw key is shown exactly once.
+        """
+        result = await session.execute(select(APIKey).where(APIKey.prefix == prefix))
+        old = result.scalars().first()
+        if not old:
+            return None
+        if not old.is_active:
+            raise ValueError("Key is already revoked")
+        if old.rotated_at is not None:
+            raise ValueError("Key was already rotated; rotate the current key instead")
+
+        grace = grace_days if grace_days is not None and grace_days >= 0 else max(1, int(old.rotation_grace_days or 7))
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        data = APIKeyCreate(
+            owner=old.owner_id,
+            scopes=list(old.scopes or []),
+            rate_limit_rpm=old.rate_limit_rpm,
+            rate_limit_tpm=old.rate_limit_tpm,
+            max_concurrency=old.max_concurrency,
+            rotate_interval_days=old.rotate_interval_days,
+            rotation_grace_days=grace,
+        )
+        raw_new, new = await self.create_api_key(session, data)
+        new.rotated_from = old.prefix
+        # A rotated key keeps the rotation policy, not the KEY_EXPIRY_DAYS default,
+        # unless no policy exists (then create_api_key's default stands).
+        if old.rotate_interval_days:
+            new.expires_at = now + timedelta(days=int(old.rotate_interval_days))
+        elif old.expires_at is None:
+            new.expires_at = None
+
+        # Old key: grace-window expiry (max of remaining life and grace), mark rotated, disable auto-rotation.
+        old_grace_until = now + timedelta(days=grace)
+        if old.expires_at is None or old.expires_at > old_grace_until:
+            old.expires_at = old_grace_until
+        old.rotated_at = now
+        old.rotate_interval_days = None
+
+        session.add(old)
+        session.add(new)
+        await session.commit()
+        session.refresh(old)
+        session.refresh(new)
+
+        # Invalidate the old key's cached validation so the new expiry applies at once.
+        _key_cache.invalidate(old.key_hash)
+
+        try:
+            import asyncio
+            from ..webhooks import notify_key_rotated
+            asyncio.get_running_loop().create_task(
+                notify_key_rotated(old.prefix, new.prefix, old.owner_id, grace, auto=False)
+            )
+        except (RuntimeError, Exception):
+            pass
+
+        return raw_new, new, old
 
     async def revoke_key(self, session: AsyncSession, prefix: str) -> bool:
         result = await session.execute(select(APIKey).where(APIKey.prefix == prefix))

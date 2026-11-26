@@ -115,11 +115,27 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logging.getLogger(__name__).warning("retention service unavailable: %s", exc)
 
+    # API key rotation-due sweep (keys with rotate_interval_days set)
+    rot_task = None
+    try:
+        from .services.rotation_service import rotation_loop
+        rot_task = asyncio.create_task(rotation_loop())
+    except Exception as exc:
+        logging.getLogger(__name__).warning("rotation service unavailable: %s", exc)
+
+    # Semantic prompt-validation exemplar cache refresh
+    pv_task = None
+    try:
+        from .services.prompt_validation_service import exemplar_refresh_loop
+        pv_task = asyncio.create_task(exemplar_refresh_loop())
+    except Exception as exc:
+        logging.getLogger(__name__).warning("prompt validation service unavailable: %s", exc)
+
     try:
         yield
     finally:
         fed_task.cancel()
-        for t in (poll_task, integ_task, ret_task):
+        for t in (poll_task, integ_task, ret_task, rot_task, pv_task):
             if t is not None:
                 t.cancel()
         if lic_task is not None:

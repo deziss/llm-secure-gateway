@@ -120,6 +120,67 @@ async def revoke_api_key(
         raise HTTPException(status_code=404, detail="Key not found")
     return {"status": "revoked"}
 
+
+class RotateKeyRequest(BaseModel):
+    grace_days: Optional[int] = None
+
+
+@router.post("/keys/{prefix}/rotate", response_model=APIKeyResponse)
+async def rotate_api_key(
+    prefix: str,
+    body: RotateKeyRequest = RotateKeyRequest(),
+    service: AuthService = Depends(get_auth_service),
+    session: AsyncSession = Depends(get_session),
+    user = Depends(require_writer)
+) -> APIKeyResponse:
+    """Rotate an API key with zero downtime.
+
+    Mints a replacement key (same owner, scopes and quotas), keeps the old key
+    valid for ``grace_days`` (default: the key's rotation_grace_days, else 7)
+    so clients can switch without an outage, and marks the old key rotated.
+    The new raw key is returned exactly once -- copy it now.
+    """
+    from sqlalchemy import select
+    if not is_admin_or_manager(user):
+        res = await session.execute(select(APIKey).where(APIKey.prefix == prefix))
+        key = res.scalars().first()
+        if not key:
+            raise HTTPException(status_code=404, detail="Key not found")
+        res_owner = await session.execute(select(Owner).where(Owner.id == key.owner_id))
+        owner_obj = res_owner.scalars().first()
+        if not owner_obj or owner_obj.user_id != str(user.id):
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    if body.grace_days is not None and not (0 <= body.grace_days <= 90):
+        raise HTTPException(status_code=422, detail="grace_days must be between 0 and 90")
+
+    # New key counts against the same quota checks as POST /keys.
+    from ..licensing.entitlements import check_key_quota
+    from sqlalchemy import select as sa_select, func
+    total_keys_res = await session.execute(sa_select(func.count()).select_from(APIKey).where(APIKey.is_active == True))
+    check_key_quota(total_keys_res.scalar() or 0)
+
+    try:
+        result = await service.rotate_key(session, prefix, grace_days=body.grace_days)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Key not found")
+
+    raw_key, new_key, old_key = result
+    from ..audit import get_audit_logger
+    get_audit_logger().log("api_key_rotated", getattr(user, "email", None), old_key.prefix, "info",
+                           {"new_prefix": new_key.prefix, "owner": new_key.owner_id,
+                            "grace_until": old_key.expires_at.isoformat() if old_key.expires_at else ""})
+    return APIKeyResponse(
+        api_key=raw_key,
+        prefix=new_key.prefix,
+        owner_id=new_key.owner_id,
+        scopes=new_key.scopes,
+        created_at=new_key.created_at,
+        expires_at=new_key.expires_at,
+    )
+
 @router.get("/owners/{owner_id}/keys", response_model=List[APIKey])
 async def list_owner_keys(
     owner_id: str,

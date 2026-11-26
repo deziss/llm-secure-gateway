@@ -1,6 +1,6 @@
 # LLM Secure Gateway
 
-[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.14+-3776AB.svg?logo=python&logoColor=white)](Dockerfile)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.141+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -74,7 +74,8 @@ It speaks the **OpenAI** and **Ollama** wire protocols, so most clients need onl
 - **Hardened Administrative UI**: Dark-mode management portal built with Tailwind CSS, Lucide icons, double-submit cookie CSRF tokens, and semantic accessibility (WCAG).
 - **Responsive Admin Panel**: Sidebar navigation on desktop, an icon rail on tablets and a slide-over drawer on phones. Data tables collapse into labelled cards below 768px, light and dark themes are first-class, and every dialog traps focus and closes on Escape.
 - **Zero External Requests**: Every JS and CSS dependency is vendored into the image and the CSP is `'self'`-only, so the UI is fully functional air-gapped and leaks no browsing signal to third-party CDNs.
-- **Content Moderation & PII Shield**: Real-time regex and rule-based scrubbing for credit cards, SSNs, phone numbers, and harmful prompts before reaching upstream models.
+- **Content Moderation & PII Shield**: Real-time regex and rule-based scrubbing for credit cards, SSNs, phone numbers, and harmful prompts before reaching upstream models. Output guardrails scan assistant replies (including live SSE streams) and PII masking works in both directions — streamed deltas are masked with a carry window so secrets split across chunks are still caught.
+- **Semantic Prompt Validation**: Requests are scored against stored good/bad exemplar prompts with sparse-embedding cosine similarity (no external vector store) — flag for audit or reject before any upstream call. Managed via `/admin/prompt-exemplars` with a built-in dry-run scorer.
 
 ### ⚡ Resilience & Fault Tolerance
 - **Granular Model Quarantining**: Temporarily isolates failing `(backend, model)` routes upon HTTP errors (401/403: 1h, 429: 5m, 503: 1m, 500: 30s) while keeping healthy models on the same host operational.
@@ -226,7 +227,7 @@ export OLLAMA_HOST=http://localhost:6130
 
 # Verify gateway connectivity and version
 curl http://localhost:6130/api/version
-# Output: {"version": "0.19.0"}
+# Output: {"version": "0.20.0"}
 
 # Query aggregated models
 curl -H "Authorization: Bearer gw-live-your-key" http://localhost:6130/api/tags
@@ -285,6 +286,30 @@ curl -X POST http://localhost:6130/v1/chat/completions \
 | `RETENTION_DAYS_AUDIT` | `0` | Audit-log retention (0 = keep forever — audit logs are compliance evidence) |
 | `RETENTION_DAYS_TRACES` | `90` | Agent trace/run retention |
 | `RETENTION_DAYS_SPEND_METRICS` | `0` | Spend/telemetry rollup retention |
+
+### Guardrails, Prompt Guarding & PII
+
+These are **runtime settings** (editable live in the Admin UI / `PATCH /admin/settings/{key}`; the env vars seed the defaults on first boot). All are off by default.
+
+| Setting | Default | Purpose |
+| :--- | :--- | :--- |
+| `ENABLE_GUARDRAILS` | `false` | Input guardrails: prompt-injection detection (override / role-hijack / extraction / jailbreak), `GUARDRAIL_SENSITIVITY` low/medium/high |
+| `GUARDRAIL_OUTPUT_ENABLED` | *(follows `ENABLE_GUARDRAILS`)* | Output guardrails: scan assistant text and replace violative responses with a notice — works on non-stream bodies and **incrementally on streaming SSE** (byte-identical passthrough when off) |
+| `GUARDRAIL_OUTPUT_ACTION` | `block` | `block` replaces streamed/buffered content with `[GUARDRAIL_NOTICE]`; `warn` audits + tags the trace and forwards unchanged |
+| `ENABLE_PII_MASKING` | `false` | Request-side PII redaction (credit cards, SSN, email, phone, API keys) before the prompt reaches the model |
+| `GUARDRAIL_OUTPUT_PII_MASKING` | *(follows `ENABLE_PII_MASKING`)* | Response-side PII masking: streamed deltas are masked field-by-field with a carry window (PII split across chunks is still caught); masked text is also what caches/traces receive |
+| `PII_MASK_CATEGORIES` | *(all)* | Optional comma-separated category filter: `financial,identity,contact,credentials` |
+| `PII_PATTERNS` | *(built-ins)* | JSON object to extend/override the built-in PII regex pack (`pattern`, `label`, `category`, `enabled`) |
+| `PROMPT_VALIDATION_ENABLED` | `false` | **Semantic prompt validation**: compares each request's prompt against stored good/bad exemplars (sparse-embedding cosine similarity, no external vector store). Fails open |
+| `PROMPT_VALIDATION_MODE` | `denylist` | `denylist` (flag near bad exemplars), `allowlist` (require near good), `both` |
+| `PROMPT_VALIDATION_THRESHOLD` | `0.60` | Cosine similarity that trips the gate |
+| `PROMPT_VALIDATION_ACTION` | `flag` | `flag` audits and proceeds; `block` rejects with `400` before any upstream call |
+
+Exemplars are managed at `GET/POST/DELETE /admin/prompt-exemplars` with a dry-run scorer at `POST /admin/prompt-exemplars/validate`.
+
+### Key Rotation Automation
+
+Keys can carry a rotation policy (`rotate_interval_days`, `rotation_grace_days`). A background sweep notifies owners of rotation-due keys (at most once per day per key via webhooks). `POST /admin/keys/{prefix}/rotate` mints a replacement that inherits owner, scopes, quotas and rotation policy; the old key stays valid for a configurable grace window (zero-downtime overlap) and is then marked rotated. Rotated keys cannot be rotated twice.
 
 ### Latency Profile (v0.19.0)
 

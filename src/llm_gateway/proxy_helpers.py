@@ -1282,3 +1282,174 @@ _DROP_RESPONSE_HEADERS = {
 
 def passthrough_response_headers(upstream_headers) -> dict:
     return {k: v for k, v in upstream_headers.items() if k.lower() not in _DROP_RESPONSE_HEADERS}
+
+
+async def output_guardrail_kwargs(session, *, model: str = "") -> Dict[str, Any]:
+    """kwargs for stream_with_telemetry implementing output guardrails.
+
+    Returns {} when output guardrails are disabled so streaming behaves exactly
+    as before. When enabled, returns the guardrail callable, configured action
+    and an audit callback.
+    """
+    from .services.guardrails_service import (
+        output_guardrail_state, make_output_guardrail_fn, audit_guardrail_event,
+    )
+
+    enabled, action = await output_guardrail_state(session)
+    if not enabled:
+        return {}
+
+    owner_id = ""
+
+    def _on_violation(decision):
+        audit_guardrail_event(owner_id or None, model or None, decision, where="stream_output")
+
+    return {
+        "output_guardrail": make_output_guardrail_fn(),
+        "output_guardrail_action": action,
+        "on_output_violation": _on_violation,
+    }
+
+
+async def output_pii_kwargs(session, *, model: str = "",
+                            owner_id: Optional[str] = None) -> Dict[str, Any]:
+    """kwargs for stream_with_telemetry implementing response PII masking.
+
+    Returns {} unless response masking is enabled. Uses dynamic settings:
+    GUARDRAIL_OUTPUT_PII_MASKING (tri-state override; empty falls back to
+    ENABLE_PII_MASKING) and optional PII_MASK_CATEGORIES (comma-separated).
+    The scanner honours DB-custom patterns (SystemSetting PII_PATTERNS).
+    """
+    from .services import config_service
+    from .services.pii_service import PIIScrubber, get_pii_scanner_async
+
+    try:
+        raw = str(await config_service.get_setting(
+            session, "GUARDRAIL_OUTPUT_PII_MASKING", "")).strip()
+        if raw == "":
+            raw = str(await config_service.get_setting(
+                session, "ENABLE_PII_MASKING", "false"))
+        if raw.lower() != "true":
+            return {}
+        cats_raw = str(await config_service.get_setting(
+            session, "PII_MASK_CATEGORIES", "")).strip()
+        categories = ([c.strip() for c in cats_raw.split(",") if c.strip()]
+                      or None)
+        scanner = await get_pii_scanner_async(session)
+    except Exception as exc:  # pragma: no cover - config lookup must never break a request
+        logger.warning("Response PII masking setup failed: %s", exc)
+        return {}
+
+    def _on_pii_mask(total: int, categories: set) -> None:
+        try:
+            from .audit import get_audit_logger
+
+            get_audit_logger().log(
+                "pii_response_masked", owner_id, model or "unknown", "info",
+                {"masked_count": total, "categories": sorted(categories),
+                 "where": "response_output"},
+            )
+        except Exception:  # pragma: no cover
+            pass
+
+    return {
+        "pii_scrubber": PIIScrubber(scanner, categories=categories),
+        "on_pii_mask": _on_pii_mask,
+    }
+
+
+async def check_response_guardrail(session, response_obj: Any, *, model: str = "",
+                                   where: str = "output") -> Optional[dict]:
+    """POST_CALL guardrail for non-streaming JSON responses.
+
+    Returns None when the response is clean (or the check is disabled), or a
+    redacted replacement response body when sensitive content was detected.
+    """
+    from .services.guardrails_service import (
+        output_guardrail_state, evaluate_guardrail, GuardrailPhase,
+        GuardrailAction, extract_assistant_text, audit_guardrail_event, GUARDRAIL_NOTICE,
+    )
+
+    enabled, action = await output_guardrail_state(session)
+    if not enabled:
+        return None
+    try:
+        text = extract_assistant_text(response_obj)
+        if not text:
+            return None
+        decision = evaluate_guardrail(GuardrailPhase.POST_CALL, text)
+        if decision.is_allowed:
+            return None
+        audit_guardrail_event(None, model or None, decision, where=where)
+        if action != "block":
+            return None
+        return {"__guardrail_redacted__": True, "text": GUARDRAIL_NOTICE}
+    except Exception as exc:  # pragma: no cover - never break a good response
+        logger.warning("response guardrail check failed: %s", exc)
+        return None
+
+
+def redacted_openai_body(original: Any, notice: str) -> dict:
+    """Build a minimal OpenAI-style redacted completion preserving the original id/model."""
+    orig = original if isinstance(original, dict) else {}
+    return {
+        "id": orig.get("id", "gateway-guardrail"),
+        "object": orig.get("object", "chat.completion"),
+        "created": orig.get("created", 0),
+        "model": orig.get("model", "unknown"),
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": notice},
+            "finish_reason": "stop",
+        }],
+        "usage": orig.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}),
+    }
+
+
+async def mask_response_pii(session, body: Any, *, model: str = "",
+                           owner_id: Optional[str] = None,
+                           anthropic: bool = False) -> Any:
+    """Response-side PII masking for non-streaming JSON bodies handled outside
+    stream_with_telemetry (the /v1/messages client.post path).
+
+    Returns the (possibly modified) body; no-op when masking is disabled.
+    """
+    kwargs = await output_pii_kwargs(session, model=model, owner_id=owner_id)
+    scrubber = kwargs.get("pii_scrubber")
+    on_mask = kwargs.get("on_pii_mask")
+    if scrubber is None or not isinstance(body, dict):
+        return body
+    try:
+        if anthropic:
+            blocks = body.get("content")
+            if isinstance(blocks, list):
+                for block in blocks:
+                    if isinstance(block, dict) and isinstance(block.get("text"), str) and block["text"]:
+                        block["text"] = scrubber.scrub_full(block["text"])
+        else:
+            for choice in (body.get("choices") or []):
+                if not isinstance(choice, dict):
+                    continue
+                msg = choice.get("message") or choice.get("delta")
+                if isinstance(msg, dict) and isinstance(msg.get("content"), str) and msg["content"]:
+                    msg["content"] = scrubber.scrub_full(msg["content"])
+        total = getattr(scrubber, "total_masked", 0) or 0
+        if total and on_mask is not None:
+            on_mask(total, set(getattr(scrubber, "categories_seen", set()) or set()))
+    except Exception as exc:  # pragma: no cover - masking must never break a response
+        logger.warning("Response PII masking failed: %s", exc)
+    return body
+
+
+def redacted_anthropic_body(original: Any, notice: str, model: str = "") -> dict:
+    """Build a minimal Anthropic-style redacted message preserving id/model."""
+    orig = original if isinstance(original, dict) else {}
+    return {
+        "id": orig.get("id", "gateway-guardrail"),
+        "type": "message",
+        "role": "assistant",
+        "model": orig.get("model", model or "unknown"),
+        "content": [{"type": "text", "text": notice}],
+        "stop_reason": "stop",
+        "usage": orig.get("usage", {"input_tokens": 0, "output_tokens": 0}),
+    }

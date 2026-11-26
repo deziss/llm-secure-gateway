@@ -1,3 +1,33 @@
+## [0.20.0] - 2026-11-27
+
+### 🛡 Streaming output guardrails
+
+- **POST_CALL guardrails on responses**: assistant text is now scanned on both proxy planes — non-stream JSON bodies are checked (and replaced with a `[GUARDRAIL_NOTICE]` body) and **live SSE streams are checked incrementally** (per-line carry buffer, Anthropic and OpenAI event shapes). `GUARDRAIL_OUTPUT_ENABLED` defaults to `ENABLE_GUARDRAILS`; `GUARDRAIL_OUTPUT_ACTION` is `block` (replacement stream/body, audit `guardrail_violation` where=`stream_output`/`messages_output`) or `warn` (audit + forward). When disabled the stream is byte-identical to pre-v0.20 output.
+- `helpers`: `output_guardrail_kwargs()` / `check_response_guardrail()` / `redacted_openai_body()` / `redacted_anthropic_body()` in `proxy_helpers`; violations set span attribute `llm.guardrail_output_block`.
+
+### 🔑 Key rotation automation
+
+- **Rotation policy on keys**: `rotate_interval_days`, `rotation_grace_days`, `rotated_at`, `rotated_from`, `rotation_notified_at` (migration 018).
+- **Background sweep** (`services/rotation_service.py`, 6 h loop): rotation-due keys notify owners via webhooks (`key_rotation_due`), reminded at most once per day per key.
+- **`POST /admin/keys/{prefix}/rotate`**: mints a replacement that inherits owner, scopes, quotas and rotation policy; the old key survives a configurable grace window (zero-downtime overlap), is marked rotated (double-rotation rejected), and both validation caches are invalidated so the switch applies immediately. Raw replacement key shown once; `api_key_rotated` audit event + `key_rotated` webhook.
+
+### 🧠 Semantic prompt validation
+
+- **Exemplar-similarity gate** (new `promptexemplar` table, migration 019): each request's prompt is embedded with the same sparse n-gram embedding used by the semantic cache and scored against active good/bad exemplars (in-process 60 s cache, invalidated on CRUD). Modes `denylist` (flag near known-bad), `allowlist` (require near-approved), `both`; `PROMPT_VALIDATION_THRESHOLD` (default 0.60); action `flag` (audit `semantic_prompt_validation` + proceed) or `block` (400 before any upstream call). Fails open on any internal error — a broken exemplar store never takes the gateway down.
+- **Admin CRUD**: `GET/POST /admin/prompt-exemplars`, `DELETE /admin/prompt-exemplars/{id}`, and `POST /admin/prompt-exemplars/validate` (dry-run scorer returning nearest-exemplar similarities) — enable the gate without sending live traffic.
+- Wired into `POST /v1/chat/completions`, `POST /v1/messages` and both `/v2` planes.
+
+### 🕵 PII masking, both directions
+
+- **Response-side masking**: `GUARDRAIL_OUTPUT_PII_MASKING` masks assistant output (streamed deltas masked field-by-field with a carry window so PII split across chunks is caught; whole JSON bodies masked atomically). Masked text is what on-complete hooks, response caches and spans see — raw PII never enters the cache. Span attribute `llm.pii_response_masked`, audit `pii_response_masked`.
+- **PII scanner upgrades**: overlap-safe redaction (contiguous/enclosed spans merged), categories (`financial`, `identity`, `contact`, `credentials`) with per-request filtering via `PII_MASK_CATEGORIES`, JSON-configurable patterns via SystemSetting `PII_PATTERNS` (hot-swappable, validated, falls back to built-ins), and a new incremental `PIIScrubber` (feed/flush) purpose-built for token streams.
+- Request-side masking now honours DB-custom patterns (`get_pii_scanner_async`), previously built-ins only.
+
+### ✅ Testing & docs
+
+- 909 tests passing (was 879): scrubber carry-window/PII-split-across-chunks unit tests, SSE masking (terminal `[DONE]` ordering, whole-body JSON, disabled passthrough, callback audit), output-guardrail block/warn/untouched streams, rotate-key service semantics (unknown prefix, revoked, double-rotate), exemplar compare modes (denylist/allowlist/both), fail-open, settings-default paths.
+- README guardrails/PII/prompt-validation/key-rotation reference tables; `.env.example` guardrail & validation block; API_REFERENCE governance endpoints; comparison doc rows flipped to shipped.
+
 ## [0.19.0] - 2026-11-26
 
 ### 🛡 Governance: per-tenant policies, retention, compliance evidence

@@ -315,6 +315,119 @@ async def delete_policy_profile(
     return {"deleted": True, "owner_id": owner_id}
 
 
+# ── Semantic prompt-validation exemplars (Know Your Prompts/Vectors) ─────
+
+class PromptExemplarCreate(BaseModel):
+    text: str
+    kind: str = "bad"  # "bad" = block-alike, "good" = approved usage
+    label: Optional[str] = None
+    source: Optional[str] = None
+
+
+def _exemplar_dict(e) -> dict:
+    return {
+        "id": e.id,
+        "kind": e.kind,
+        "text": e.text,
+        "label": e.label,
+        "source": e.source,
+        "is_active": e.is_active,
+        "created_at": e.created_at.isoformat() if e.created_at else None,
+    }
+
+
+@router.get("/prompt-exemplars")
+async def list_prompt_exemplars(
+    kind: Optional[str] = None,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """List semantic prompt-validation exemplars (admin/manager UI)."""
+    from sqlalchemy import select
+
+    from ..models import PromptExemplar
+
+    query = select(PromptExemplar).order_by(PromptExemplar.created_at.desc())
+    if kind in ("bad", "good"):
+        query = query.where(PromptExemplar.kind == kind)
+    result = await session.execute(query.limit(500))
+    return {"exemplars": [_exemplar_dict(e) for e in result.scalars().all()]}
+
+
+@router.post("/prompt-exemplars")
+async def create_prompt_exemplar(
+    body: PromptExemplarCreate,
+    user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Store a new exemplar. 'bad' texts are flagged on similarity; 'good'
+    texts define approved usage for allowlist/both modes."""
+    from ..models import PromptExemplar
+    from ..services.prompt_validation_service import invalidate_exemplar_cache
+
+    kind = body.kind.strip().lower()
+    if kind not in ("bad", "good"):
+        raise HTTPException(status_code=422, detail="kind must be 'bad' or 'good'")
+    if len(body.text.strip()) < 8:
+        raise HTTPException(status_code=422, detail="exemplar text must be at least 8 chars")
+
+    exemplar = PromptExemplar(kind=kind, text=body.text.strip(), label=body.label, source=body.source)
+    session.add(exemplar)
+    await session.commit()
+    await session.refresh(exemplar)
+    invalidate_exemplar_cache()
+    return _exemplar_dict(exemplar)
+
+
+@router.delete("/prompt-exemplars/{exemplar_id}")
+async def delete_prompt_exemplar(
+    exemplar_id: str,
+    user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from sqlalchemy import select
+
+    from ..models import PromptExemplar
+    from ..services.prompt_validation_service import invalidate_exemplar_cache
+
+    result = await session.execute(select(PromptExemplar).where(PromptExemplar.id == exemplar_id))
+    exemplar = result.scalars().first()
+    if exemplar is None:
+        raise HTTPException(status_code=404, detail="Exemplar not found")
+    await session.delete(exemplar)
+    await session.commit()
+    invalidate_exemplar_cache()
+    return {"deleted": True, "id": exemplar_id}
+
+
+@router.post("/prompt-exemplars/validate")
+async def trial_prompt_validation(
+    body: dict,
+    user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Dry-run: score a prompt against current exemplars without gating."""
+    from ..services.prompt_validation_service import load_exemplars, compare_prompt
+
+    prompt = str(body.get("prompt") or "")
+    try:
+        threshold = float(body.get("threshold") or 0.60)
+    except (TypeError, ValueError):
+        threshold = 0.60
+    mode = str(body.get("mode") or "denylist").lower()
+    if mode not in ("denylist", "allowlist", "both"):
+        mode = "denylist"
+    exemplars = await load_exemplars(session)
+    verdict = compare_prompt(prompt, exemplars, threshold=threshold, mode=mode)
+    verdict["exemplar_count"] = len(exemplars)
+    verdict.pop("reasons", None)
+    verdict["reasons"] = verdict.get("reasons", [])
+    if verdict.get("max_bad"):
+        verdict["max_bad"] = {"similarity": round(verdict["max_bad"][0], 4), "label": verdict["max_bad"][1]}
+    if verdict.get("max_good"):
+        verdict["max_good"] = {"similarity": round(verdict["max_good"][0], 4), "label": verdict["max_good"][1]}
+    return verdict
+
+
 # Standalone router so /api/client-snippets works directly at root level
 client_snippets_router = APIRouter(dependencies=[Depends(current_active_user)])
 client_snippets_router.add_api_route(

@@ -1,4 +1,5 @@
 from enum import Enum
+import uuid
 from typing import Optional, List, Dict
 from sqlalchemy import DateTime, String, TypeDecorator
 from sqlmodel import SQLModel, Field, Column, Relationship
@@ -157,6 +158,8 @@ class APIKeyCreate(SQLModel):
     rate_limit_rpm: Optional[int] = Field(default=60, description="Requests per minute limit")
     rate_limit_tpm: Optional[int] = Field(default=None, description="Tokens per minute limit (None=unlimited)")
     max_concurrency: Optional[int] = Field(default=None, description="Max concurrent in-flight requests (None=unlimited)")
+    rotate_interval_days: Optional[int] = Field(default=None, description="Auto-rotate: schedule a replacement every N days (None=disabled)")
+    rotation_grace_days: int = Field(default=7, description="Overlap window in days when this key is rotated")
 
 class APIKey(SQLModel, table=True):
     key_hash: str = Field(primary_key=True, index=True)
@@ -168,6 +171,11 @@ class APIKey(SQLModel, table=True):
     rate_limit_tpm: Optional[int] = Field(default=None, description="Tokens per minute limit (None=unlimited)")
     max_concurrency: Optional[int] = Field(default=None, description="Max concurrent in-flight requests (None=unlimited)")
     monthly_budget_usd: Optional[float] = Field(default=None, description="Monthly spend limit in USD (None=unlimited)")
+    rotated_from: Optional[str] = Field(default=None, description="Prefix of the API key this key replaced (rotation lineage)")
+    rotate_interval_days: Optional[int] = Field(default=None, description="Auto-rotation interval in days (None=disabled)")
+    rotation_grace_days: int = Field(default=7, description="Overlap window in days when this key is rotated")
+    rotated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False), description="When this key was replaced by a rotation")
+    rotation_notified_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False), description="Last time the rotation-due sweep notified about this key")
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
     updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
     is_active: bool = True
@@ -568,6 +576,26 @@ class PolicyProfile(SQLModel, table=True):
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
     updated_at: Optional[datetime] = Field(default=None, sa_type=DateTime(timezone=False))
+
+
+class PromptExemplar(SQLModel, table=True):
+    """Semantic prompt-validation exemplar (Know Your Prompts / Know Your Vectors).
+
+    kind="bad": prompts (or poisoned-content exemplars) similar to incoming
+    requests should be flagged/blocked. kind="good": approved usage patterns;
+    in allowlist/both modes anything dissimilar to all good exemplars is
+    flagged. Text is embedded in-process at request time (sparse n-gram), so
+    no vectors are stored.
+    """
+    __tablename__ = "promptexemplar"
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
+    kind: str = Field(index=True, description="'bad' or 'good'")
+    text: str = Field(min_length=8)
+    label: Optional[str] = None
+    source: Optional[str] = Field(default=None, description="Where the exemplar came from (red-team, ticket, ...)")
+    is_active: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=_utcnow, sa_type=DateTime(timezone=False))
 
 
 # Pre-v0.13 names, kept so existing imports and plugins keep working.

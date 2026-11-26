@@ -47,6 +47,15 @@ async def get_settings(
         "ENABLE_PII_MASKING": os.getenv("ENABLE_PII_MASKING", "false"),
         "ENABLE_GUARDRAILS": os.getenv("ENABLE_GUARDRAILS", "false"),
         "GUARDRAIL_SENSITIVITY": os.getenv("GUARDRAIL_SENSITIVITY", "medium"),
+        "GUARDRAIL_OUTPUT_ENABLED": os.getenv("GUARDRAIL_OUTPUT_ENABLED", ""),
+        "GUARDRAIL_OUTPUT_ACTION": os.getenv("GUARDRAIL_OUTPUT_ACTION", "block"),
+        "GUARDRAIL_OUTPUT_PII_MASKING": os.getenv("GUARDRAIL_OUTPUT_PII_MASKING", ""),
+        "PII_MASK_CATEGORIES": os.getenv("PII_MASK_CATEGORIES", ""),
+        "PII_PATTERNS": os.getenv("PII_PATTERNS", ""),
+        "PROMPT_VALIDATION_ENABLED": os.getenv("PROMPT_VALIDATION_ENABLED", "false"),
+        "PROMPT_VALIDATION_THRESHOLD": os.getenv("PROMPT_VALIDATION_THRESHOLD", "0.60"),
+        "PROMPT_VALIDATION_ACTION": os.getenv("PROMPT_VALIDATION_ACTION", "flag"),
+        "PROMPT_VALIDATION_MODE": os.getenv("PROMPT_VALIDATION_MODE", "denylist"),
     }
     existing_keys = {s.key for s in settings}
     for key, default in _defaults.items():

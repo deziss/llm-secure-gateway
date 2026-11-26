@@ -606,6 +606,40 @@ When a key crosses 80% of `monthly_budget_usd`, subsequent responses carry an `X
 
 ---
 
+## Guardrails, prompt validation & key rotation (v0.20.0)
+
+### `POST /admin/keys/{prefix}/rotate`
+
+Rotates an API key with zero downtime (writer role; key owners may rotate their own keys). Mints a replacement that inherits owner, scopes, quotas and rotation policy and returns it **once** in the response. The old key remains valid for `grace_days` (body `{"grace_days": 7}`, optional, 0–90; defaults to the key's `rotation_grace_days`, else 7 days), then expires and is marked rotated. Rotating a revoked key returns `400`; rotating an already-rotated prefix returns `400`; unknown prefix returns `404`. Audited as `api_key_rotated`; a `key_rotated` webhook fires when `WEBHOOK_URL` is configured. Keys with `rotate_interval_days` set are swept by a background job and owners are notified (`key_rotation_due`) once per day per key while the key stays unrotated.
+
+### Semantic prompt validation
+
+Runtime settings (Admin UI or `PATCH /admin/settings/{key}`): `PROMPT_VALIDATION_ENABLED` (default `false`), `PROMPT_VALIDATION_MODE` (`denylist` | `allowlist` | `both`), `PROMPT_VALIDATION_THRESHOLD` (default `0.60`), `PROMPT_VALIDATION_ACTION` (`flag` = audit + proceed, `block` = `400` with detail `Semantic prompt validation: …` before any upstream call). The gate embeds each request prompt with the same sparse n-gram embedding as the semantic cache and compares against active exemplars; it fails open on internal errors.
+
+#### `GET /admin/prompt-exemplars`
+
+Lists exemplars (optionally `?kind=bad|good`): `{ "exemplars": [{ "id", "kind", "text", "label", "source", "is_active", "created_at" }] }`.
+
+#### `POST /admin/prompt-exemplars`
+
+Admin role. Body: `{"kind": "bad"|"good", "text": "…", "label": "jailbreak-1", "source": "manual"}`. `text` must be ≥ 8 characters. exemplar changes take effect within the 60-second exemplar cache (invalidated immediately by admin CRUD in the same process).
+
+#### `DELETE /admin/prompt-exemplars/{exemplar_id}`
+
+Admin role. Hard-deletes the exemplar; `404` when unknown.
+
+#### `POST /admin/prompt-exemplars/validate`
+
+Admin role. Dry-run scorer (no request is sent upstream). Body: `{"prompt": "…", "threshold": 0.6, "mode": "denylist"}`. Returns `{"ok", "max_bad": {"similarity", "label"}|null, "max_good": …|null, "threshold", "mode", "reason", "exemplar_count"}` — use it to tune the threshold before enabling the gate.
+
+### Output guardrails & response PII masking
+
+- `GUARDRAIL_OUTPUT_ENABLED` (default: follows `ENABLE_GUARDRAILS`) scans assistant output on both proxy planes. `GUARDRAIL_OUTPUT_ACTION=block` replaces violative content with the notice `[RESPONSE REDACTED BY GATEWAY GUARDRAIL: sensitive content detected]` — streamed as a replacement delta stream for SSE, or as a replacement JSON body; `warn` audits (`guardrail_violation`, where `stream_output` / `messages_output`) and forwards unchanged. Traces carry `llm.guardrail_output_block`.
+- `GUARDRAIL_OUTPUT_PII_MASKING` (default: follows `ENABLE_PII_MASKING`) masks PII in model responses. Streaming deltas are masked field-by-field through an incremental scrubber with a carry window, so a secret split across chunks is still redacted; non-stream bodies are masked atomically. `PII_MASK_CATEGORIES` optionally restricts categories (`financial,identity,contact,credentials`). Audited as `pii_response_masked`; spans carry `llm.pii_response_masked`. The cache and captures only ever see masked text.
+- `PII_PATTERNS` (SystemSetting, JSON) extends or overrides built-in regexes: `{"employee_id": {"pattern": "\\bEMP-\\d{6}\\b", "label": "EMPLOYEE_ID", "category": "identity"}, "phone_us": {"enabled": false}}`. Both request- and response-side masking load it live.
+
+---
+
 ## Error Response Format
 
 All errors return JSON:

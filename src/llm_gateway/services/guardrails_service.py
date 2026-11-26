@@ -143,6 +143,109 @@ class GuardrailDecision:
         return self.action in (GuardrailAction.ALLOW, GuardrailAction.WARN)
 
 
+# Characters of stream chunk-overlap kept between output scans so a secret
+# split across two network chunks is still caught.
+OUTPUT_SCAN_CARRY = 256
+
+# Replacement message shown to the client when output guardrails block a response.
+GUARDRAIL_NOTICE = "[RESPONSE REDACTED BY GATEWAY GUARDRAIL: sensitive content detected]"
+
+
+async def output_guardrail_state(session) -> tuple[bool, str]:
+    """Resolve (enabled, action) for output guardrails from dynamic settings.
+
+    ``GUARDRAIL_OUTPUT_ENABLED`` defaults to the value of ``ENABLE_GUARDRAILS``
+    so enabling guardrails protects both directions unless overridden.
+    ``GUARDRAIL_OUTPUT_ACTION`` is "block" (default, redacts the output) or
+    "warn" (detect, audit and tag the trace, forward unchanged).
+    """
+    try:
+        from ..services import config_service
+
+        enabled_raw = await config_service.get_setting(session, "GUARDRAIL_OUTPUT_ENABLED", "")
+        if str(enabled_raw).strip() == "":
+            enabled_raw = await config_service.get_setting(session, "ENABLE_GUARDRAILS", "false")
+        enabled = str(enabled_raw).lower() == "true"
+        action = str(await config_service.get_setting(session, "GUARDRAIL_OUTPUT_ACTION", "block")).lower()
+        if action not in ("block", "warn"):
+            action = "block"
+        return enabled, action
+    except Exception as exc:  # pragma: no cover - config lookup must never break a request
+        logger.warning("Output guardrail state lookup failed: %s", exc)
+        return False, "block"
+
+
+def make_output_guardrail_fn() -> "callable":
+    """Return a sync callable(text) -> GuardrailDecision for POST_CALL checks.
+
+    Passed into ``stream_with_telemetry`` and the non-streaming output checks;
+    keeps the streaming layer free of phase/enum imports.
+    """
+    def _check(text: str) -> GuardrailDecision:
+        return evaluate_guardrail(GuardrailPhase.POST_CALL, text)
+    return _check
+
+
+def output_guardrail_fn():
+    """Sync wrapper usable as a module-level test double."""
+    return make_output_guardrail_fn()
+
+
+def audit_guardrail_event(owner_id: Optional[str], model: Optional[str], decision: GuardrailDecision,
+                          where: str = "output") -> None:
+    """Fire-and-forget audit record for a guardrail violation (never raises)."""
+    try:
+        from ..audit import get_audit_logger
+
+        matches = decision.matches
+        # Store pattern ids and bounded text snippets, never full payloads.
+        snippets = [str(m)[:120] for m in matches[:5]]
+        get_audit_logger().log(
+            "guardrail_violation",
+            owner_id,
+            f"{where}:{model or 'unknown'}",
+            "warning",
+            {"where": where, "reason": decision.reason, "matches": snippets},
+        )
+    except Exception as exc:  # pragma: no cover - audit must never break the request
+        logger.debug("Guardrail audit log failed: %s", exc)
+
+
+def _extract_text_from_content(content: Any) -> str:
+    """Pull plain text out of an OpenAI or Anthropic message content value."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+        return "".join(parts)
+    return ""
+
+
+def extract_assistant_text(resp: Any) -> str:
+    """Best-effort assistant text from a chat-completion or Anthropic message JSON."""
+    if not isinstance(resp, dict):
+        return ""
+    parts: list[str] = []
+    choices = resp.get("choices")
+    if isinstance(choices, list):
+        for ch in choices:
+            if not isinstance(ch, dict):
+                continue
+            msg = ch.get("message")
+            if isinstance(msg, dict):
+                parts.append(_extract_text_from_content(msg.get("content")))
+                reasoning = msg.get("reasoning_content")
+                if isinstance(reasoning, str):
+                    parts.append(reasoning)
+    content = resp.get("content")
+    if content is not None:
+        parts.append(_extract_text_from_content(content))
+    return "".join(p for p in parts if p)
+
+
 def evaluate_guardrail(
     phase: GuardrailPhase,
     payload: Any,

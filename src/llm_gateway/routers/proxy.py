@@ -196,7 +196,22 @@ async def anthropic_messages_endpoint(
             if not decision.is_allowed:
                 logger.warning("Prompt injection blocked: %s", decision.matches)
                 raise HTTPException(status_code=400, detail=f"Guardrail violation: {decision.reason}")
-    
+
+        enable_pii = await config_service.get_setting(session, "ENABLE_PII_MASKING", "false")
+        if str(enable_pii).lower() == "true":
+            from ..services.pii_service import get_pii_scanner_async
+            scanner = await get_pii_scanner_async(session)
+            redacted, pii_matches = scanner.scan_messages(body.get("messages", []))
+            if pii_matches:
+                body["messages"] = redacted
+
+        from ..services.prompt_validation_service import validate_prompt
+        verdict = await validate_prompt(session, body.get("messages", []),
+                                        owner_id=owner_id, model=model or "")
+        if not verdict.get("ok", True) and verdict.get("action") == "block":
+            raise HTTPException(status_code=400,
+                                detail=f"Semantic prompt validation: {verdict.get('reason', 'blocked')}")
+
     is_stream = bool(body.get("stream", False))
     from ..proxy_helpers import _get_client, build_backend_auth_headers, _get_all_urls
 
@@ -364,6 +379,7 @@ async def anthropic_messages_endpoint(
                             finish_open_tracker(trk)
                         await release_rate_limit_concurrency(req)
 
+                    from ..proxy_helpers import output_guardrail_kwargs, output_pii_kwargs
                     return StreamingResponse(
                         stream_with_telemetry(
                             raw_resp,
@@ -379,6 +395,8 @@ async def anthropic_messages_endpoint(
                             server_name=backend.name,
                             server_type=backend_type_name(backend),
                             tracker=tracker,
+                            **{**(await output_guardrail_kwargs(session, model=model or "unknown")),
+                               **(await output_pii_kwargs(session, model=model or "unknown", owner_id=owner_id))},
                         ),
                         status_code=raw_resp.status_code,
                         headers=passthrough_response_headers(raw_resp.headers),
@@ -404,6 +422,25 @@ async def anthropic_messages_endpoint(
                     else:
                         response_content = resp_json if resp_json is not None else {}
                         status_code = resp.status_code
+
+                    # Output guardrails: replace the body before metrics/traces capture it.
+                    from ..proxy_helpers import check_response_guardrail, redacted_anthropic_body
+                    from ..services.guardrails_service import GUARDRAIL_NOTICE
+                    if await check_response_guardrail(session, response_content,
+                                                      model=model or "unknown",
+                                                      where="messages_output"):
+                        response_content = redacted_anthropic_body(response_content, GUARDRAIL_NOTICE,
+                                                                   model or "unknown")
+                        if span.is_recording():
+                            span.set_attribute("llm.guardrail_output_block", True)
+                    else:
+                        # Response PII masking (non-stream Anthropic path).
+                        from ..proxy_helpers import mask_response_pii
+                        _masked = await mask_response_pii(session, response_content,
+                                                          model=model or "unknown",
+                                                          owner_id=owner_id, anthropic=True)
+                        if _masked is not response_content:
+                            response_content = _masked
 
                     usage = (usage_from_event(resp_json) if resp_json else None) or usage_from_body(resp.content) or Usage()
                     usage.finalize_total()
@@ -689,11 +726,20 @@ async def _proxy_request_core(
 
         enable_pii = await config_service.get_setting(session, "ENABLE_PII_MASKING", "false")
         if str(enable_pii).lower() == "true":
-            from ..services.pii_service import get_pii_scanner
-            scanner = get_pii_scanner()
+            from ..services.pii_service import get_pii_scanner_async
+            scanner = await get_pii_scanner_async(session)
             redacted, pii_matches = scanner.scan_messages(body["messages"])
             if pii_matches:
                 body["messages"] = redacted
+
+    # 0b2. Semantic prompt validation (exemplar similarity gate)
+    if isinstance(body, dict) and "messages" in body:
+        from ..services.prompt_validation_service import validate_prompt
+        verdict = await validate_prompt(session, body.get("messages", []),
+                                        owner_id=owner_id, model=model or "")
+        if not verdict.get("ok", True) and verdict.get("action") == "block":
+            raise HTTPException(status_code=400,
+                                detail=f"Semantic prompt validation: {verdict.get('reason', 'blocked')}")
 
     # 0c. Cache lookup (Exact + Semantic)
     enable_cache = await config_service.get_setting(session, "ENABLE_EXACT_CACHE", "false")
@@ -923,11 +969,14 @@ async def _proxy_request_core(
                 await release_rate_limit_concurrency(req)
 
             # 3. Pass span to streaming generator which handles ending it
+            from ..proxy_helpers import output_guardrail_kwargs, output_pii_kwargs
             return StreamingResponse(
                 stream_with_telemetry(
                     r, start_time, used_url, served_model, path, owner_id, span, client,
                     on_complete=on_stream_complete,
                     server_name=backend.name, server_type=backend_type_name(backend), tracker=tracker,
+                    **{**(await output_guardrail_kwargs(session, model=served_model)),
+                       **(await output_pii_kwargs(session, model=served_model, owner_id=owner_id))},
                 ),
                 status_code=r.status_code,
                 headers=passthrough_response_headers(r.headers),

@@ -142,3 +142,35 @@ async def send_webhook_url(url: str, event: str, data: dict) -> None:
             logger.warning("Webhook %s returned %d for event %s", url, r.status_code, event)
     except Exception as exc:
         logger.warning("Webhook delivery failed for %s: %s", url, exc)
+
+
+async def notify_key_rotated(old_prefix: str, new_prefix: str, owner_id: str,
+                             grace_days: int, auto: bool = False) -> None:
+    """Notify that an API key was rotated (old key enters its grace window)."""
+    await send_webhook("key_rotated", {
+        "key_prefix": old_prefix,
+        "new_key_prefix": new_prefix,
+        "owner": owner_id,
+        "grace_days": grace_days,
+        "auto": auto,
+        "message": (f"API key {old_prefix} for owner '{owner_id}' was "
+                    f"{'automatically ' if auto else ''}rotated to {new_prefix}; "
+                    f"old key valid for {grace_days} more day(s)"),
+    })
+
+
+async def notify_key_rotation_due(prefix: str, owner_id: str, interval_days: int) -> None:
+    """Notify that an auto-rotation-enabled key has reached its rotation interval.
+
+    The gateway only stores hashed keys, so it cannot hand out a replacement
+    secret to a caller that isn't present. The sweep tells owners (webhook) to
+    call POST /keys/{prefix}/rotate before the key expires.
+    """
+    await send_webhook("key_rotation_due", {
+        "key_prefix": prefix,
+        "owner": owner_id,
+        "rotate_interval_days": interval_days,
+        "message": (f"API key {prefix} for owner '{owner_id}' reached its "
+                    f"{interval_days}-day rotation interval; rotate it via "
+                    f"POST /keys/{prefix}/rotate before it expires"),
+    })

@@ -80,8 +80,8 @@ Notes for an honest reading:
 | Hosted SaaS option | DEZISS is self-host only — no zero-ops tier | By design |
 | Managed compliance certifications | SOC 2 / HIPAA attestations are organizational; DEZISS is compliance-*ready* (audit, RBAC, encryption, capture tiers) but holds no certificates | Roadmap |
 | Raw routing fan-out | Go routers publish higher rps on router-only benchmarks; DEZISS optimizes added-TTFT p95 instead | By design |
-| Guardrails depth | **Input guardrails ship today**: regex injection detection (override/role-hijack/extraction/jailbreak categories), sensitivity low/medium/high, warn/block, enforced on both proxy planes (`ENABLE_GUARDRAILS`, off by default). Output phases (`post_call`, `tool_args`, `tool_output`) are defined but not yet wired into the response path; no inline streaming output inspection; no guardrail packs (NeMo/presidio) bundled | Partially shipped |
-| Key rotation automation | Keys support revoke/disable; automatic scheduled rotation is manual (rotate + reissue) | Not started |
+| Guardrails depth | **Input + output guardrails ship today**: regex injection detection (override/role-hijack/extraction/jailbreak categories), sensitivity low/medium/high, warn/block, enforced on both proxy planes (`ENABLE_GUARDRAILS`). Since v0.20.0 output phases are wired end-to-end: non-stream bodies and **live SSE streams are scanned incrementally** (`GUARDRAIL_OUTPUT_ENABLED` / `GUARDRAIL_OUTPUT_ACTION`), with response-side PII masking on the same path (`GUARDRAIL_OUTPUT_PII_MASKING`). No third-party guardrail packs (NeMo/presidio) bundled | Shipped |
+| Key rotation automation | Since v0.20.0: per-key rotation policies (`rotate_interval_days` / `rotation_grace_days`), background rotation-due sweep with once-per-day webhook reminders, and `POST /admin/keys/{prefix}/rotate` — replacement key inherits scopes/quotas, old key survives a grace window (zero-downtime overlap) | Shipped |
 
 ## Feature scorecard vs. the usual shortlist
 
@@ -100,6 +100,8 @@ Notes for an honest reading:
 | Backend key encryption at rest | ✅ | ⚠️ vault deps | ⚠️ | ✅ | ✅ secrets mgmt | ❌ |
 | Model-level fallback chains | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Semantic caching | ✅ exact + cosine-similarity intent match (`ENABLE_SEMANTIC_CACHE`, `SEMANTIC_CACHE_THRESHOLD`, default 0.85) | ⚠️ | ✅ Pro | ⚠️ | ⚠️ plugins | ✅ |
+| Semantic prompt validation | ✅ v0.20.0: denylist/allowlist/both exemplar gate on the same embedding (`/admin/prompt-exemplars`, dry-run scorer, flag/block) | ❌ | ⚠️ config-only | ⚠️ | ⚠️ | ❌ |
+| Bidirectional PII masking | ✅ v0.20.0: request redaction + response masking incl. incremental stream scrubbing (carry window catches chunk-split PII), categories + hot-swappable pattern packs | ⚠️ request-side | ⚠️ Pro | ⚠️ | ⚠️ plugins | ❌ |
 | MCP support | ❌ | ✅ | ⚠️ | ✅ | ⚠️ | ❌ |
 | Air-gap capable | ✅ | ✅ | ⚠️ VPC ent. | ✅ Enterprise | ⚠️ | ✅ |
 | Zero markup on tokens | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -133,7 +135,7 @@ the AGPL core.
 | Native alerting/incidents | ✅ rule engine + ack + notification | ⚠️ OTel/Prometheus export (alert in your stack) |
 | Added latency | ~**10 ms p95** governance plane on (low concurrency) | 169–258 ms median/p95 **at 50 concurrency** (awaits DB log writes) |
 | RBAC/SSO | Local RBAC + API keys + JWT sessions (SSO not built in) | SSO/SAML/OIDC, team sync, resource ACLs — **Enterprise tier** |
-| Guardrails | Input guardrails ship today (injection regex, warn/block); output-phase enforcement not wired yet; packs not bundled | Deterministic policy-as-code engine — **Enterprise tier** |
+| Guardrails | Input + output guardrails ship (injection regex warn/block; incremental streaming output scan + response PII masking since v0.20.0); packs not bundled | Deterministic policy-as-code engine — **Enterprise tier** |
 | Encryption at rest, retention, audit | ✅ in the free AGPL binary | Enterprise tier |
 | Deployment | One container + Postgres + Redis; air-gap friendly | Docker/Helm/K8s multi-service; mounts docker.sock for sandboxes |
 | License economics | AGPL-3.0, every feature in the binary | Open core; 30-user free enterprise; quote beyond |

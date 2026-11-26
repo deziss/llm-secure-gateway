@@ -245,12 +245,15 @@ async def direct_proxy(
                     except Exception as e:
                         logger.debug("Failed to store cache: %s", e)
 
+            from ..proxy_helpers import output_guardrail_kwargs, output_pii_kwargs
             return StreamingResponse(
                 stream_with_telemetry(
                     r, start_time, used_url, served_model, path, owner_id, span, client,
                     translation_mode=translation_mode, normalize_thinking=normalize_thinking,
                     on_complete=on_stream_complete,
                     server_name=backend.name, server_type=backend_type_name(backend), tracker=tracker,
+                    **{**(await output_guardrail_kwargs(session, model=served_model)),
+                       **(await output_pii_kwargs(session, model=served_model, owner_id=owner_id))},
                 ),
                 status_code=r.status_code,
                 headers=passthrough_response_headers(r.headers),
@@ -441,11 +444,18 @@ async def dynamic_proxy(
 
         enable_pii = await config_service.get_setting(session, "ENABLE_PII_MASKING", "false")
         if str(enable_pii).lower() == "true":
-            from ..services.pii_service import get_pii_scanner
-            scanner = get_pii_scanner()
+            from ..services.pii_service import get_pii_scanner_async
+            scanner = await get_pii_scanner_async(session)
             redacted, pii_matches = scanner.scan_messages(body["messages"])
             if pii_matches:
                 body["messages"] = redacted
+
+        from ..services.prompt_validation_service import validate_prompt
+        verdict = await validate_prompt(session, body.get("messages", []),
+                                        owner_id=owner_id, model=model or "")
+        if not verdict.get("ok", True) and verdict.get("action") == "block":
+            raise HTTPException(status_code=400,
+                                detail=f"Semantic prompt validation: {verdict.get('reason', 'blocked')}")
 
     # 0c. Cache lookup (Exact + Semantic)
     enable_cache = await config_service.get_setting(session, "ENABLE_EXACT_CACHE", "false")
@@ -637,12 +647,15 @@ async def dynamic_proxy(
                     except Exception as e:
                         logger.debug("Failed to store cache: %s", e)
 
+            from ..proxy_helpers import output_guardrail_kwargs, output_pii_kwargs
             return StreamingResponse(
                 stream_with_telemetry(
                     r, start_time, used_url, served_model, path, owner_id, span, client,
                     translation_mode=translation_mode, normalize_thinking=normalize_thinking,
                     on_complete=on_stream_complete,
                     server_name=backend.name, server_type=backend_type_name(backend), tracker=tracker,
+                    **{**(await output_guardrail_kwargs(session, model=served_model)),
+                       **(await output_pii_kwargs(session, model=served_model, owner_id=owner_id))},
                 ),
                 status_code=r.status_code,
                 headers=passthrough_response_headers(r.headers),
