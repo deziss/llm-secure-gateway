@@ -103,3 +103,32 @@ gateway_db.sql
 
 # Local-only access review (not for the public repo)
 ACCESS_MATRIX.md
+
+# =========================
+# Plans & private working docs (local only, never public)
+# =========================
+docs/plans/
+docs/VLLM_INTEGRATION_ANALYSIS.md
+
+# =========================
+# Personal/local helper scripts (contain local paths or credentials)
+# =========================
+scripts/create_anshu_user.py
+import_gateway_data.sh
+
+# =========================
+# AI coding-agent tooling (personal config, not project code)
+# =========================
+.agent/
+.agents/
+.claude/
+.continue/
+skills/
+skills-lock.json
+
+# =========================
+# Browser / session artifacts (live tokens — never commit)
+# =========================
+.chrome-profile/
+.jujar
+*.har
