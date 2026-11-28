@@ -414,7 +414,7 @@
       <div class="flex items-center gap-2">
         <span id="obsTracesLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
         <span id="obsTracesLiveStatus" class="text-caption text-ink-muted">Polling live (3s)</span>
-        <button type="button" id="obsTracesRefreshBtn" data-action="traces-refresh" class="min-h-9 rounded-control border border-hairline px-3 py-1 text-xs font-semibold text-ink hover:bg-surface-inset flex items-center gap-1">
+        <button type="button" id="obsTracesRefreshBtn" data-action="traces-refresh" class="rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
           <i data-lucide="refresh-cw" class="h-3 w-3" aria-hidden="true"></i> Refresh
         </button>
       </div>
@@ -560,11 +560,22 @@
   <section id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts" data-panel="alerts" class="hidden space-y-4">
     <p id="obsAlertsNote" class="rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-400 hidden" role="status">Alert Center unavailable — the alerts backend may not be deployed yet.</p>
 
-    <!-- Toolbar -->
-    <div class="flex flex-wrap items-center gap-2">
-      <button type="button" id="obsAlertsRefreshBtn" data-action="alerts-refresh" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
-        <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
-      </button>
+    <!-- Toolbar: summary stats on the left, controls on the right -->
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-1 flex-wrap items-center gap-3">
+        <div class="flex min-w-40 items-center gap-2 rounded-control border border-hairline bg-surface-inset px-3 py-1.5">
+          <span class="text-caption text-ink-muted">Firing</span>
+          <span id="obsAlertsFiring" class="text-sm font-bold text-down tabular-nums">0</span>
+        </div>
+        <div class="flex min-w-40 items-center gap-2 rounded-control border border-hairline bg-surface-inset px-3 py-1.5">
+          <span class="text-caption text-ink-muted">Resolved 24h</span>
+          <span id="obsAlertsResolved" class="text-sm font-bold text-ink tabular-nums">0</span>
+        </div>
+        <div class="flex min-w-40 items-center gap-2 rounded-control border border-hairline bg-surface-inset px-3 py-1.5">
+          <span class="text-caption text-ink-muted">Enabled rules</span>
+          <span id="obsAlertsRules" class="text-sm font-bold text-ink tabular-nums">0</span>
+        </div>
+      </div>
       <label class="flex items-center gap-2 text-caption text-ink-muted">
         Severity
         <select id="fAlertsSeverity" aria-label="Filter incidents by severity" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
@@ -574,26 +585,10 @@
           <option value="info">Info</option>
         </select>
       </label>
-      <span id="obsAlertsUpdated" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
-    </div>
-
-    <!-- Summary stat cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div class="rounded-control border border-hairline bg-surface-inset p-3">
-        <span class="block text-caption text-ink-muted">Firing</span>
-        <span id="obsAlertsFiring" class="text-lg font-bold text-down">0</span>
-        <span class="block text-micro text-ink-muted mt-0.5">Incidents currently firing</span>
-      </div>
-      <div class="rounded-control border border-hairline bg-surface-inset p-3">
-        <span class="block text-caption text-ink-muted">Resolved 24h</span>
-        <span id="obsAlertsResolved" class="text-lg font-bold text-ink">0</span>
-        <span class="block text-micro text-ink-muted mt-0.5">Incidents resolved in the last 24 hours</span>
-      </div>
-      <div class="rounded-control border border-hairline bg-surface-inset p-3">
-        <span class="block text-caption text-ink-muted">Enabled rules</span>
-        <span id="obsAlertsRules" class="text-lg font-bold text-ink">0</span>
-        <span class="block text-micro text-ink-muted mt-0.5">Alert rules actively evaluating</span>
-      </div>
+      <button type="button" id="obsAlertsRefreshBtn" data-action="alerts-refresh" class="rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+        <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
+      </button>
+      <span id="obsAlertsUpdated" class="text-caption text-ink-muted" aria-live="polite"></span>
     </div>
 
     <!-- Active incidents -->
@@ -757,7 +752,7 @@
 
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" id="obsAgentsRefreshBtn" data-action="agents-refresh" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+      <button type="button" id="obsAgentsRefreshBtn" data-action="agents-refresh" class="rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
         <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
       </button>
       <input id="fAgentsQ" type="search" placeholder="Filter agent…" aria-label="Filter agent runs by agent name" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:12rem" />

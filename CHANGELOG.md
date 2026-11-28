@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### 🧹 Dashboard badges and Alert Center toolbar
+
+- Removed the always-on "Cluster Online" and uptime pills from the Operations Dashboard header; the timeframe control and "Updated …" timestamp remain. The "LIVE" indicator on the Connected Clients card is unchanged.
+- Alert Center: Firing / Resolved 24h / Enabled rules are now compact chips on the toolbar row (left of Severity and Refresh) instead of three large cards; Refresh and Severity sit on the right and share one row with the stats.
+- Live Traces and Agent Intelligence Refresh buttons dropped their remaining 44px minimum so they match the inputs beside them.
+
 ### 🎨 Action columns and table tooltips
 
 - Pricing table actions now use the same edit / trash icon buttons as servers, users, projects, aliases and bots; tooltips (`title`) and screen-reader labels name the action and the model.

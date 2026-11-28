@@ -341,14 +341,6 @@
     }));
   }
 
-  // ── Uptime chip ───────────────────────────────────────────────────────
-  function renderUptime(seconds) {
-    const node = $("dashUptime");
-    if (!node || seconds == null) return;
-    const d = Math.floor(seconds / 86400), h = Math.floor((seconds % 86400) / 3600), m = Math.floor((seconds % 3600) / 60);
-    node.textContent = d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
-  }
-
   // ── Render-all ────────────────────────────────────────────────────────
   let lastData = null;
   function renderAll(d, opts) {
@@ -362,7 +354,6 @@
     renderCache(d.cache);
     renderSecurity(d.security);
     renderBackends(d.backends);
-    if (d.uptime_seconds != null) renderUptime(d.uptime_seconds);
     markUpdated(!!opts.stale);
     if (first) {
       painted = true;
