@@ -6,6 +6,10 @@
 - Removed legacy pytest event-loop fixtures, fixed mock AsyncSession result types, and resolved duplicate proxy operation IDs and test-only deprecation/security warnings.
 - The development Compose service now starts Uvicorn explicitly while retaining the CI image's test tooling.
 
+### 🧰 Redis
+
+- Updated development, production, and deployment Compose files to the pinned `redis:8.12.0-alpine` image.
+
 ## [0.21.0] - 2026-11-28
 
 ### 📊 Operations dashboard

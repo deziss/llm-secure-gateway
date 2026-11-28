@@ -131,7 +131,7 @@ services:
 
   # ── Redis Cache (Optional) ─────────────────────────────────────────
   redis:
-    image: redis:7.4-alpine
+    image: redis:8.12.0-alpine
     container_name: llm-gateway-redis
     ports:
     - "6382:6379"

@@ -152,7 +152,7 @@ services:
   # Set REDIS_URL=redis://redis:6379/0 in .env to activate
   # ==========================================================================
   redis:
-    image: redis:7.4-alpine
+    image: redis:8.12.0-alpine
     container_name: llm-gateway-redis
     profiles: ["redis"]
     command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
