@@ -538,7 +538,7 @@ async function savePricingRule(event) {
   try {
     let res;
     if (id) {
-      res = await fetch(`/admin/pricing/${id}`, {
+      res = await fetchWithCsrf(`/admin/pricing/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -549,7 +549,7 @@ async function savePricingRule(event) {
         }),
       });
     } else {
-      res = await fetch('/admin/pricing', {
+      res = await fetchWithCsrf('/admin/pricing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -582,7 +582,7 @@ async function deletePricingRule(id) {
     return;
   }
   try {
-    const res = await fetch(`/admin/pricing/${id}`, { method: 'DELETE' });
+    const res = await fetchWithCsrf(`/admin/pricing/${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json();
       alert(`Error deleting rule: ${err.detail || 'Request failed'}`);
@@ -602,15 +602,16 @@ async function syncPricingCatalog() {
   btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Syncing...';
 
   try {
-    const res = await fetch('/admin/pricing/sync-catalog', {
+    const res = await fetchWithCsrf('/admin/pricing/sync-catalog', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
     if (!res.ok) {
-      alert("Failed to sync catalog.");
+      let reason = 'HTTP ' + res.status;
+      try { const err = await res.json(); if (err && err.detail) reason = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail); } catch (e) { /* non-JSON body */ }
+      alert("Failed to sync catalog: " + reason);
     } else {
-      const data = await res.json();
       await loadSpendData();
     }
   } catch (err) {

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### 🐛 Pricing page CSRF fix
+
+- Catalog sync, price upsert and price delete now send the `X-CSRF-Token` header (via `fetchWithCsrf`); previously every click returned 403 "Failed to sync catalog." for cookie-authenticated admins.
+- Sync failures now surface the server's error detail instead of a generic message.
+
 ### 🎛 Observability & settings polish
 
 - Toolbar controls (timeframe switch, Clear, Refresh) dropped from a 44px minimum to 36px, matching the height of the inputs beside them.
