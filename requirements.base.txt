@@ -253,7 +253,7 @@ rich==15.0.0
     # via typer
 shellingham==1.5.4
     # via typer
-sqlalchemy==2.0.58
+sqlalchemy==2.1.9
     # via
     #   alembic
     #   fastapi-users-db-sqlalchemy
