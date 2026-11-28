@@ -80,6 +80,24 @@ async def test_summary_aggregates(session):
     assert out["backends"] == [{"name": "b1", "backend_type": "ollama", "models": 2, "state": "idle", "avg_latency_ms": None}]
 
 
+async def test_summary_headline_and_traffic_shape(session):
+    await _seed(session)
+    service = AsyncMock()
+    service.get_setting = AsyncMock(return_value="true")
+    out = await dashboard_summary(session=session, service=service, user=None)
+
+    assert out["uptime_seconds"] >= 0
+    assert out["range"] == "24h"
+    hl = out["headline"]
+    assert set(hl) >= {"requests", "errors", "error_rate", "avg_rps", "requests_delta_pct",
+                       "ttft_p50_ms", "ttft_p90_ms", "avg_ttft_ms"}
+
+    traffic = out["traffic_24h"]
+    assert traffic["granularity"] == "hour"
+    assert len(traffic["hourly"]) == 24
+    assert {"error_rate", "peak_rps", "avg_rps", "ttft_p50_ms"} <= set(traffic)
+
+
 async def test_summary_empty_database(session):
     service = AsyncMock()
     service.get_setting = AsyncMock(return_value="false")
@@ -88,3 +106,5 @@ async def test_summary_empty_database(session):
     assert out["top_models"] == [] and out["backends"] == []
     assert out["alerts"] == {"budgets": [], "expiring_keys": []}
     assert out["security"]["audit_enabled"] is False
+    assert out["headline"]["requests"] == 0 and out["headline"]["error_rate"] == 0.0
+    assert out["traffic_24h"]["hourly"] and all(b["requests"] == 0 for b in out["traffic_24h"]["hourly"])

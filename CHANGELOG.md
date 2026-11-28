@@ -1,3 +1,59 @@
+## [0.21.0] - 2026-11-28
+
+### 📊 Operations dashboard: instant paint, customisation, deeper KPIs
+
+Refreshing the dashboard no longer blanks and re-loads everything. The page now paints immediately from a **versioned stale-while-revalidate cache in localStorage** and refreshes quietly in the background.
+
+- **New `static/js/dash-cache.js`** (no dependencies): localStorage SWR cache keyed by URL with an index + byte-budget LRU eviction, per-user tagging (cache cleared on logout/401), ETag `If-None-Match` revalidation (server `304`s bump freshness without re-downloading), single-flight request de-duplication, cross-tab invalidation over `BroadcastChannel`, one visibility/offline-aware scheduler with full-jitter backoff for every poller, prefs store (`llmgw:prefs:v1`, kept separate from the data namespace), count-up number animation (first paint stays instant; respects `prefers-reduced-motion` and the per-user animations toggle), and delayed skeletons (~250 ms — fast loads never flash them).
+- **Customise menu in the header**: show/hide and reorder every dashboard widget, Comfortable/Compact density, and chart/animation toggle — all persisted per browser and resettable. A segmented **time-range control (1h / 24h / 7d / 30d)** now scopes the summary and telemetry timeline, and a **Live cadence select (Off / 30s / 1m / 5m)** is the pause control required by WCAG 2.2.2 for auto-updating content.
+- **Three new above-the-fold KPIs from a new backend `headline` block**: requests in the selected range (with % delta vs the previous equal window), error rate (with error/request counts, red at ≥5%), and p90 time-to-first-token (with ~p50/avg footnote). A gateway uptime chip and an "Updated HH:MM:SS / Showing saved data · updates failing" freshness label sit in the header.
+- **Backend (`routers/dashboard.py`)**: `?range=` on `/admin/dashboard/summary` and `/traffic-24h`, bucketing that scales 1m/1h/1d instead of emitting hundreds of buckets for long ranges, TTFT p50/p90 roll-ups, and `ETag` + `Cache-Control: private, max-age=10, stale-while-revalidate=45` with real 304 responses. New `/admin/metrics/live` serves the SSE payload without backend probes for poll-mode clients.
+- **Robustness & a11y**: the edge-IP table updates rows keyed by IP instead of re-rendering via `innerHTML` (no XSS surface, no focus/scroll loss), charts update with `update('none')` on background ticks (never destroyed/recreated), theme switches rebuild chart colours from tokens, exactly one `aria-live` region announces load completion (per-tile regions were removed), live SSE/poll traffic pauses with tab visibility *and* the user's pause preference, and the SSE fallback to polling now recovers automatically.
+- Tests: `tests/test_dashboard_summary.py` covers the headline block, uptime, range bucketing and traffic shape (87 dashboard/offline-asset tests pass; full suite 925 passed).
+- **Observability space cleanup**: the two full-width "Live / Average Tokens per sec (all models)" stat cards were removed and merged into compact inline chips (**Live … tok/s**, **Avg … tok/s**) that now sit beside the Timeframe selector row on the Models tab — one row of vertical space reclaimed, tooltips retained for context.
+- **Observability GPU tab layout & popups**: each GPU host card is now two side-by-side boxes (GPU table | combined per-process table) with capped height, independent scrolling and sticky headers — the old stack of per-GPU `<details>` sections is gone. The "GPU hosts" form and the "Link a model server to GPUs" form moved out of the page into **Add server / Add link popup dialogs** built on the shared `AdminModal` (focus trap, Escape, click-outside close, scroll lock); Edit still opens the same popup prefilled.
+- **Integrations cards responsive**: the tool-card grid now shows 3 cards per row by default (2 on tablet, 1 on mobile), and the card you open (Configure / How to connect) spans the full row so its form and instructions are never squeezed into a single column.
+
+### 🪪 Licencia upgrade failures now say what actually went wrong
+
+"Upgrade Failed — Could not validate the new license key" previously blamed the licensing server even when the gateway never contacted it. Investigation of a failed upgrade showed the real cause was a missing `LICENCIA_API_KEY` on the gateway (the provider was up and answering — not a `licencia.deziss.com` outage).
+
+- `LicenseState.last_error` records **why** a validation/upgrade failed (missing API key → "the server was NOT contacted"; HTTP 4xx → key/credential rejected; HTTP 5xx / unreachable → server/network problem) and the `/admin/license/upgrade` 400 now leads with that specific reason. Gateway logs warn, not just info, when licensing is unconfigured.
+- The "Hardware fingerprint for activation" shown in the Upgrade dialog was the literal string `localhost` in Community mode — operators could activate the wrong seat with it. It is now the real SHA-256 fingerprint (`hostname:MAC`) whenever no license is active.
+- Default `LICENCIA_URL` for an unset env var changed from the LAN dev box `http://172.20.0.11:3000` to the production `https://licencia.deziss.com`; `.env.example` documents all four `LICENCIA_*` variables. (Changes take effect on next container restart.)
+- Tests: 3 new regression tests in `tests/test_licencia_client.py` (fail-fast without API key proves no HTTP call is made; real fingerprint in Community mode; rejection reason recorded) — 37 licensing/settings tests pass.
+
+### 🐳 Deployment: smaller, faster, health-gated images (500MB -> 312MB)
+
+The published image is now built by a multi-stage, [uv](https://docs.astral.sh/uv/)-based `Dockerfile` (`uv` -> `base` -> `builder` -> `test-builder` -> `runtime` -> `ci`) and is **312 MB** instead of 500 MB, with a full `--no-cache` cold build at ~10 s versus 45.7 s previously.
+
+- **`arize-phoenix-evals` moved to a new optional `[evals]` extra.** It was the only reason `pandas` (83 MB) and `numpy` (43 MB + 23 MB of vendored libs) were in production: nothing in `src/`, `tests/` or `sdk/` imports `pandas`, `numpy` or `arize_phoenix_evals`. If you ran LLM-as-judge evals from the gateway container, install `llm-secure-gateway[evals]` (or `uv pip install arize-phoenix-evals`) — the base install no longer pulls them.
+- **`requirements.base.txt` / `requirements.test.txt` are committed uv locks** (`uv pip compile`, generated *inside* `python:3.14.7-slim` — see each file header). Production installs `--no-deps -r requirements.base.txt`, CI layers `requirements.test.txt` on top, so CI exercises the exact production dependency set plus pytest instead of a looser `[test]` resolution.
+- **`pip`, `setuptools` and `wheel` are gone** from the image (uv installs straight into `/opt/venv`), as are `tests/` and `sdk/` — both live only in the `ci` stage. Bytecode is precompiled (`UV_COMPILE_BYTECODE=1`) for faster startup.
+- **`grpcio` is deliberately retained** (19 MB): `phoenix/otel/otel.py` imports the OTLP *gRPC* exporter at module scope, so `--no-emit-package grpcio` breaks `import phoenix.otel` and therefore `llm_gateway.main`, even though the gateway exports over HTTP.
+- **`.dockerignore` written from scratch** (it was 14 bytes). The build context no longer carries `.git`, `node_modules`, `.env*`, browser/agent state, `docs/`, `grafana/`, `otel/` or compose files — dropping it from ~26 MB to ~12 MB and, more importantly, keeping `.env` and `.git` out of any image layer.
+- **The image `CMD` no longer bakes in `--loop uvloop`** — uvicorn is started plain so `UVICORN_LOOP`/`UVICORN_WORKERS` actually work (uvicorn's click CLI uses `auto_envvar_prefix=UVICORN`, so an explicit flag silently overrides them). uvloop is still the loop you get: `--loop auto` picks it whenever it is installed. See [UPGRADE.md](./UPGRADE.md).
+- **Image `HEALTHCHECK` is stdlib-only** (`python -c "import urllib.request; ..."` on `/health`). It previously relied on `curl`, which does not exist in `python:3.14.7-slim`.
+
+### 🛡️ Deploy configs: readiness that actually works
+
+- **`docker-compose.prod.yml`: the gateway healthcheck could never pass.** It tested `curl`, which isn't in the slim base image, so the containers stayed `starting` forever and nginx — which now waits on `condition: service_healthy` — never started. Both healthchecks are the stdlib probe now, with `start_period: 20s` and `stop_grace_period: 120s` so in-flight LLM streams drain on redeploy. Also added: `nginx:1.29-alpine` (was untagged `latest`), `depends_on` health gating, `image:` names for rolling deploys, pinned `redis:7.4-alpine` and `edoburu/pgbouncer:v1.26.1-p0`, a fixed multi-line `DATABASE_URL` scalar, and removal of `UVICORN_LOOP=asyncio` so uvloop is used.
+- **`nginx.conf` rewritten for real passive HA:** `least_conn` with `max_fails=3 fail_timeout=15s` on both upstreams, `keepalive 64` / `keepalive_requests 1000` to the backends, `proxy_next_upstream error timeout http_502 http_503 http_504` so a dying gateway is skipped instead of surfaced, `proxy_request_buffering off` for streaming, and `worker_connections 2048` / `backlog=4096`.
+- **`deploy/docker-compose.yml` (GHCR pull-and-run) and `docker-compose.yml` / `docker-compose.fresh-test.yml` / `docker-compose.test.yml`** got the same health gating, a `redis-cli ping` healthcheck plus `maxmemory 128mb allkeys-lru` on Redis, explicit `build.target:` per service (`fresh-test` now builds `runtime`, i.e. what users actually run), and `up -d --wait` documentation. The dev stack's `gateway` targets `ci` so pytest/`sdk/` remain available in-place.
+- **`k8s-manifest.yaml`** gained `readinessProbe`/`livenessProbe` on `/health` (a Deployment with no probes routes traffic to pods whose migrations haven't finished), a pinned `ghcr.io/deziss/llm-secure-gateway` image instead of `:latest`, `envFrom` a Secret, non-root/dropped-capabilities `securityContext`, a soft pod anti-affinity, and `terminationGracePeriodSeconds: 130`.
+- **CI** (`ci.yml`) builds the explicit `target: ci`, fails if the published `runtime` image exceeds ~346 MB, and validates every compose file (`config --quiet`, so secrets aren't logged), `nginx.conf -t`, and the k8s manifests.
+
+### 📝 Docs
+
+- `UPGRADE.md`: corrected the stale "Event loop is now uvloop (`--loop uvloop` in the image CMD)" note for the new `CMD`.
+
+
+### 📦 Alert rules export / import + Alert rules toolbar alignment
+
+- **`GET /admin/alerts/rules/export`** streams a portable JSON document (`format: "deziss-alert-rules"`, `format_version: 1`) of all alert rules with a `Content-Disposition` filename (`deziss-alert-rules-<timestamp>.json`); `?custom_only=true` limits it to user-created rules. Derived fields (`custom`, `target_kind`) are excluded so documents stay portable.
+- **`POST /admin/alerts/rules/import`** applies such a document: rules are matched by `id` then by name; built-in rules are updated in place (never re-keyed) when `update_existing` is true (default) and skipped when false; new rules always get freshly generated custom ids so a document can never overwrite a built-in id. Per-rule results (`created` / `updated` / `skipped` / `errors`) are reported and one bad entry never aborts the batch. Guards: foreign `format` values and too-new `format_version` are rejected with 422, per-entry validation via the same `_validate_rule_fields` used by the create endpoint, max 200 rules per import.
+- **UI**: Export / Import buttons on the Alert rules toolbar (file picker → confirm → import, toast summary, rules table reload). Toolbar row re-aligned: the *via* channel select now shares the 44px `min-h-touch` control height with its buttons, a divider groups test-alert vs rule-management controls, and the description line gets proper top/bottom padding (it previously sat cramped under the row).
+
 ## [0.20.1] - 2026-11-26
 
 ### 🔌 WAF-safe upstream serialization (opaque 502 on HTML-looking payloads)
@@ -7,7 +63,7 @@ Requests whose JSON body contains HTML/XSS-looking markup (`<script>alert(1)</sc
 - **`serialize_json_body()` now escapes `<`, `>` and `&` as `\u003c` / `\u003e` / `\u0026`** (on top of the existing `ensure_ascii=True`). This is fully lossless — every JSON parser decodes them back to the original characters, so the model receives byte-identical content — but the wire bytes no longer match XSS signatures. Verified live end-to-end against a production vLLM endpoint behind such a WAF: the exact adversarial payload now returns `200` in ~0.4 s instead of a retried 502, on both non-stream and streaming paths. Applied on all proxy planes (`/v1/chat/completions`, `/v1/messages`, both `/v2` planes, audio, bots relay).
 - **Actionable terminal error**: when every URL/attempt still dies before headers, the bare `ReadError('')` is replaced by `UpstreamConnectionReset` (subclass of `httpx.ReadError`, so all existing handlers/tests keep working) carrying the upstream URL and the likely causes (edge/WAF rejection, stale keep-alive, upstream restart) — visible in logs, traces and the client 502 message instead of an empty string.
 
-## [0.20.0] - 2026-11-27
+## [0.20.0] - 2026-11-26
 
 ### 🛡 Streaming output guardrails
 

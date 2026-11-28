@@ -52,6 +52,35 @@ class TestRuleBody(BaseModel):
     send: bool = False
 
 
+class RuleImportEntry(BaseModel):
+    """One rule inside an import document. ``metric`` is optional only when the
+    entry matches an existing rule (id or name), in which case it is left as-is."""
+    id: str | None = None
+    name: str
+    metric: str | None = None
+    comparator: str = ">="
+    threshold: float
+    window_s: int = 60
+    severity: str = "warning"
+    cooldown_s: int = 300
+    channels: list[str] | None = None
+    target_filter: list[str] | None = None
+    description: str | None = None
+    enabled: bool = True
+
+
+class RulesImportBody(BaseModel):
+    format: str | None = None
+    format_version: int = 1
+    rules: list[RuleImportEntry]
+    update_existing: bool = True
+
+
+RULES_EXPORT_FORMAT = "deziss-alert-rules"
+RULES_EXPORT_VERSION = 1
+RULES_IMPORT_MAX = 200
+
+
 class TestChannelBody(BaseModel):
     channel: str = "webhook"
 
@@ -115,6 +144,145 @@ def _incident_dict(i: AlertIncident) -> dict:
         "ack_by": i.ack_by, "ack_at": i.ack_at.isoformat() if i.ack_at else None,
         "summary": i.summary, "detail": i.detail or {}, "value": i.value,
     }
+
+
+@router.get("/rules/export")
+async def export_rules(custom_only: bool = Query(default=False),
+                       session: AsyncSession = Depends(get_session),
+                       user=Depends(require_admin)):
+    """Portable JSON document of alert rules (for backup or moving rules between gateways)."""
+    from fastapi.responses import JSONResponse
+
+    from ..alerts.rules import ensure_default_rules, is_default_rule
+
+    await ensure_default_rules(session)
+    stmt = select(AlertRule).order_by(AlertRule.id)
+    if custom_only:
+        rows = [r for r in (await session.execute(stmt)).scalars().all()
+                if not is_default_rule(r.id)]
+    else:
+        rows = (await session.execute(stmt)).scalars().all()
+    doc = {
+        "format": RULES_EXPORT_FORMAT,
+        "format_version": RULES_EXPORT_VERSION,
+        "exported_at": _utcnow().isoformat(),
+        "rules": [
+            {
+                "id": r.id, "name": r.name, "metric": r.metric, "comparator": r.comparator,
+                "threshold": r.threshold, "window_s": r.window_s, "severity": r.severity,
+                "cooldown_s": r.cooldown_s, "enabled": bool(r.enabled),
+                "channels": list(r.channels or []),
+                "target_filter": [str(x) for x in (getattr(r, "target_filter", None) or [])],
+                "description": getattr(r, "description", None) or "",
+            }
+            for r in rows
+        ],
+    }
+    fname = f"deziss-alert-rules-{_utcnow().strftime('%Y%m%d-%H%M%S')}.json"
+    return JSONResponse(doc, headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+@router.post("/rules/import")
+async def import_rules(body: RulesImportBody,
+                       session: AsyncSession = Depends(get_session),
+                       user=Depends(require_admin)) -> dict:
+    """Import rules from an export document.
+
+    Matches existing rules by id, then by name. Built-in rules are updated
+    in place (never re-keyed); new rules always get freshly generated custom
+    ids so a malicious/stale document can never overwrite a built-in id.
+    Per-rule results are reported; valid rules are applied and committed
+    even if other entries fail validation.
+    """
+    from ..alerts.rules import (METRIC_REGISTRY, ensure_default_rules, is_default_rule,
+                                make_custom_rule_id, normalize_filters)
+
+    if body.format not in (None, RULES_EXPORT_FORMAT):
+        raise HTTPException(status_code=422,
+                            detail=f"Unsupported format '{body.format}' (expected '{RULES_EXPORT_FORMAT}')")
+    if int(body.format_version or 1) > RULES_EXPORT_VERSION:
+        raise HTTPException(status_code=422,
+                            detail=f"Document version {body.format_version} is newer than supported ({RULES_EXPORT_VERSION})")
+    if not body.rules:
+        return {"created": [], "updated": [], "skipped": [], "errors": []}
+    if len(body.rules) > RULES_IMPORT_MAX:
+        raise HTTPException(status_code=422, detail=f"Too many rules in one import (max {RULES_IMPORT_MAX})")
+
+    await ensure_default_rules(session)
+    existing = {r.id: r for r in (await session.execute(select(AlertRule))).scalars().all()}
+    by_name = {}
+    for r in existing.values():
+        by_name.setdefault(str(r.name).strip().lower(), r)
+
+    created: list[str] = []
+    updated: list[str] = []
+    skipped: list[str] = []
+    errors: list[dict] = []
+
+    for entry in body.rules:
+        try:
+            # 'metric' may be omitted only for an update of an existing rule.
+            match = None
+            if entry.id and entry.id in existing:
+                match = existing[entry.id]
+            elif entry.name.strip():
+                match = by_name.get(entry.name.strip().lower())
+            metric = entry.metric or (match.metric if match else None)
+            if not metric:
+                errors.append({"name": entry.name, "error": "metric is required for new rules"})
+                continue
+            try:
+                _validate_rule_fields(metric=metric, comparator=entry.comparator,
+                                      severity=entry.severity, window_s=entry.window_s,
+                                      cooldown_s=entry.cooldown_s, name=entry.name,
+                                      channels=entry.channels)
+            except HTTPException as he:
+                errors.append({"name": entry.name, "error": str(he.detail)})
+                continue
+
+            edited = {
+                "name": entry.name.strip()[:128], "comparator": entry.comparator,
+                "threshold": float(entry.threshold), "window_s": int(entry.window_s),
+                "severity": entry.severity, "cooldown_s": int(entry.cooldown_s),
+                "enabled": bool(entry.enabled),
+                "channels": [str(c).strip() for c in (entry.channels or ["webhook"]) if str(c).strip()][:8] or ["webhook"],
+                "target_filter": normalize_filters(entry.target_filter),
+                "description": (entry.description or "")[:500] or None,
+            }
+            if match is not None:
+                if not body.update_existing:
+                    skipped.append(match.id)
+                    continue
+                if match.metric != metric:
+                    # Keep the destination's metric for a matched rule only when
+                    # the source metric doesn't exist here; otherwise re-target it.
+                    if metric in METRIC_REGISTRY:
+                        edited["metric"] = metric
+                        edited["target_kind"] = METRIC_REGISTRY[metric][0]
+                    else:
+                        errors.append({"name": entry.name, "error": f"Unknown metric '{metric}'"})
+                        continue
+                for k, v in edited.items():
+                    setattr(match, k, v)
+                match.updated_at = _utcnow()
+                session.add(match)
+                updated.append(match.id)
+                continue
+
+            if metric not in METRIC_REGISTRY:
+                errors.append({"name": entry.name, "error": f"Unknown metric '{metric}'"})
+                continue
+            new_id = make_custom_rule_id(entry.name)
+            rule = AlertRule(id=new_id, metric=metric, target_kind=METRIC_REGISTRY[metric][0], **edited)
+            session.add(rule)
+            existing[new_id] = rule
+            by_name.setdefault(rule.name.strip().lower(), rule)
+            created.append(new_id)
+        except Exception as exc:  # defensive: one bad entry never aborts the batch
+            errors.append({"name": entry.name, "error": f"Import failed: {exc}"})
+
+    await session.commit()
+    return {"created": created, "updated": updated, "skipped": skipped, "errors": errors}
 
 
 @router.get("/rules")

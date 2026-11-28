@@ -676,7 +676,7 @@
     const liveEl = $("obsLiveTokTotal");
     if (liveEl) liveEl.textContent = liveTotal > 0 ? liveTotal.toFixed(1) : "0";
     const bdEl = $("obsLiveTokBreakdown");
-    if (bdEl) bdEl.textContent = liveDecodeHas && liveDecode > 0 ? `· decode ≈ ${liveDecode.toFixed(1)} tok/s` : "";
+    if (bdEl) bdEl.textContent = liveDecodeHas && liveDecode > 0 ? `decode ≈ ${liveDecode.toFixed(1)}` : "";
     const subEl = $("obsLiveTokSub");
     if (subEl) subEl.textContent = isLive
       ? "Instantaneous — last snapshot (10s window / server metrics)"
@@ -685,7 +685,7 @@
     const avgEl = $("obsAvgTokTotal");
     if (avgEl) avgEl.textContent = avgHas && avgTotal > 0 ? avgTotal.toFixed(1) : "0";
     const winEl = $("obsAvgTokWindow");
-    if (winEl) winEl.textContent = isLive ? "· over last 60s" : `· over last ${state.timeframe}`;
+    if (winEl) winEl.textContent = isLive ? "over last 60s" : `over last ${state.timeframe}`;
   }
 
   // Per-model live/avg tokens/sec chips, busiest model first.
@@ -1398,13 +1398,10 @@
   }
 
   function renderGpus(p) {
-    // Re-rendering every 3 s would collapse open process lists; remember them.
-    const open = new Set(Array.from(document.querySelectorAll("#obsGpuHosts details[open]")).map((d) => d.dataset.key));
     const hosts = (p.gpus || []).map(gpuHostCard);
     if (!hosts.length) hosts.push(el("p", { cls: "text-sm text-ink-muted", text: "No GPU hosts configured yet." }));
     $("obsGpuHosts").replaceChildren(...hosts);
     applySortIndicators("gpu");
-    $("obsGpuHosts").querySelectorAll("details[data-key]").forEach((d) => { if (open.has(d.dataset.key)) d.open = true; });
     if (IS_ADMIN) fillLinkServers(p);
   }
 
@@ -1432,9 +1429,9 @@
     // GPU row, and every host's table, lined up.
     const GPU_COLS = [["GPU", "w-[8%]", "", "index"], ["Name", "w-[24%]", "", "name"], ["Util", "w-[22%]", "", "util_pct"],
                       ["VRAM used / total", "w-[26%]", "text-right", "mem_used_mib"], ["Temp", "w-[8%]", "text-right", "temp_c"], ["Power", "w-[12%]", "text-right", "power_w"]];
-    const table = el("table", { cls: "w-full table-fixed text-left text-sm border-separate border-spacing-0", attrs: { "aria-label": "GPUs on " + h.name } });
-    table.appendChild(el("thead", { cls: "bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest" }, [
-      el("tr", null, GPU_COLS.map(([c, w, al, key]) => el("th", { cls: `${w} px-3 py-2 border-b border-hairline ${al}`, attrs: { scope: "col" } }, [sortButton("gpu", key, c)]))),
+    const table = el("table", { cls: "w-full min-w-[34rem] table-fixed text-left text-sm border-separate border-spacing-0", attrs: { "aria-label": "GPUs on " + h.name } });
+    table.appendChild(el("thead", { cls: "text-ink-muted text-micro font-bold uppercase tracking-widest" }, [
+      el("tr", null, GPU_COLS.map(([c, w, al, key]) => el("th", { cls: `${w} px-3 py-2 border-b border-hairline bg-surface-inset sticky top-0 z-10 ${al}`, attrs: { scope: "col" } }, [sortButton("gpu", key, c)]))),
     ]));
     const tbody = el("tbody", { cls: "divide-y divide-hairline text-ink" });
     gpus.forEach((g) => {
@@ -1460,35 +1457,38 @@
     }
     table.appendChild(tbody);
 
-    const procs = gpus.map((g) => {
-      const label = `GPU${isNum(g.index) ? g.index : "?"} processes`;
-      if (g.processes === null || g.processes === undefined) {
-        return el("details", { cls: "text-sm", data: { key: `${h.name}#${g.index}` } }, [
-          el("summary", { cls: "cursor-pointer py-1 text-ink-muted", text: label }),
-          el("p", { cls: "ml-3 py-1 text-caption text-ink-muted", text: "n/a — exporter has no per-process data" }),
-        ]);
-      }
-      const pc = (text, cls) => el("td", { cls: "px-2 py-1 truncate " + (cls || ""), text: text === null || text === undefined ? DASH : String(text), attrs: { title: text || "" } });
-      const rows = g.processes.map((pr) => el("tr", null, [
-        pc(pr.pid, "tabular-nums"), pc(pr.name), pc(fmtMiB(pr.used_mib), "text-right tabular-nums"),
-        pc(pr.model_hint), pc(pr.server),
-      ]));
-      const PROC_COLS = [["PID", "w-[11%]", ""], ["Process", "w-[30%]", ""], ["MiB", "w-[14%]", "text-right"], ["Model", "w-[27%]", ""], ["Server", "w-[18%]", ""]];
-      const pt = el("table", { cls: "w-full table-fixed text-left text-caption border-separate border-spacing-0" }, [
-        el("thead", { cls: "text-ink-muted" }, [el("tr", null, PROC_COLS.map(([c, w, al]) =>
-          el("th", { cls: `${w} px-2 py-1 border-b border-hairline ${al}`, text: c, attrs: { scope: "col" } })))]),
-        el("tbody", { cls: "divide-y divide-hairline" }, rows.length ? rows : [emptyRow(5, "No processes on this GPU")]),
-      ]);
-      return el("details", { cls: "text-sm", data: { key: `${h.name}#${g.index}` } }, [
-        el("summary", { cls: "cursor-pointer py-1 text-ink", text: `${label} (${g.processes.length})` }),
-        el("div", { cls: "overflow-x-auto ml-3" }, [pt]),
-      ]);
+    // All GPU processes on this host, combined into one table beside the GPU table.
+    const pc = (text, cls) => el("td", { cls: "px-2 py-1 truncate " + (cls || ""), text: text === null || text === undefined ? DASH : String(text), attrs: { title: text === null || text === undefined ? "" : String(text) } });
+    const procRows = [];
+    const noProcData = [];
+    gpus.forEach((g) => {
+      if (g.processes === null || g.processes === undefined) { noProcData.push(isNum(g.index) ? "GPU" + g.index : "GPU?"); return; }
+      g.processes.forEach((pr) => procRows.push({ gpuLabel: isNum(g.index) ? "GPU" + g.index : "?", pr }));
     });
+    const PROC_COLS = [["GPU", "w-[9%]", ""], ["PID", "w-[12%]", ""], ["Process", "w-[24%]", ""], ["MiB", "w-[14%]", "text-right"], ["Model", "w-[24%]", ""], ["Server", "w-[17%]", ""]];
+    const pt = el("table", { cls: "w-full min-w-[30rem] table-fixed text-left text-caption border-separate border-spacing-0", attrs: { "aria-label": "GPU processes on " + h.name } }, [
+      el("thead", { cls: "text-ink-muted text-micro font-bold uppercase tracking-widest" }, [el("tr", null, PROC_COLS.map(([c, w, al]) =>
+        el("th", { cls: `${w} px-2 py-2 border-b border-hairline bg-surface-inset sticky top-0 z-10 ${al}`, text: c, attrs: { scope: "col" } })))]),
+      el("tbody", { cls: "divide-y divide-hairline" }, procRows.length
+        ? procRows.map(({ gpuLabel, pr }) => el("tr", null, [
+            pc(gpuLabel, "font-medium"), pc(pr.pid, "tabular-nums"), pc(pr.name),
+            pc(fmtMiB(pr.used_mib), "text-right tabular-nums"), pc(pr.model_hint), pc(pr.server),
+          ]))
+        : [emptyRow(6, noProcData.length && noProcData.length === gpus.length ? "n/a — exporter has no per-process data" : "No processes on any GPU")]),
+    ]);
 
     return el("section", { cls: "rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-3" }, [
       head,
-      el("div", { cls: "overflow-x-auto" }, [table]),
-      el("div", { cls: "space-y-1" }, procs),
+      el("div", { cls: "grid grid-cols-1 lg:grid-cols-2 gap-3 items-start" }, [
+        el("div", { cls: "min-w-0 overflow-auto max-h-[28rem] rounded-control border border-hairline" }, [table]),
+        el("div", { cls: "min-w-0" }, [
+          el("div", { cls: "mb-1.5 flex flex-wrap items-center justify-between gap-2" }, [
+            el("div", { cls: "text-micro font-bold uppercase tracking-wider text-ink-muted", text: `Processes (${procRows.length})` }),
+            noProcData.length && procRows.length ? el("div", { cls: "text-micro text-ink-muted", text: `No per-process data: ${noProcData.join(", ")}` }) : null,
+          ]),
+          el("div", { cls: "overflow-auto max-h-[26.125rem] rounded-control border border-hairline" }, [pt]),
+        ]),
+      ]),
     ]);
   }
 
@@ -1923,17 +1923,33 @@
     f.elements.name.disabled = false;
   }
 
-  function hostFormFill(name) {
-    const h = state.gpuHosts.find((x) => x.name === name);
+  function openHostModal(name) {
     const f = $("obsHostForm");
-    if (!h || !f) return;
-    f.elements.original_name.value = h.name;
-    f.elements.name.value = h.name;
-    f.elements.url.value = h.url;
-    f.elements.source.value = h.source;
-    f.elements.enabled.checked = !!h.enabled;
+    if (!f) return;
+    hostFormReset();
+    const h = name ? state.gpuHosts.find((x) => x.name === name) : null;
+    const heading = $("obsHostModalHeading");
+    if (h) {
+      f.elements.original_name.value = h.name;
+      f.elements.name.value = h.name;
+      f.elements.url.value = h.url;
+      f.elements.source.value = h.source;
+      f.elements.enabled.checked = !!h.enabled;
+      if (heading) heading.textContent = "Edit GPU server";
+    } else if (heading) {
+      heading.textContent = "Add GPU server";
+    }
+    if (window.AdminModal) window.AdminModal.open("obsHostModal");
+    else { const m = $("obsHostModal"); if (m) m.classList.remove("hidden"); }
     f.elements.name.focus();
   }
+
+  function closeHostModal() {
+    if (window.AdminModal) window.AdminModal.close("obsHostModal");
+    else { const m = $("obsHostModal"); if (m) m.classList.add("hidden"); }
+  }
+
+  function hostFormFill(name) { openHostModal(name); }
 
   async function onHostSubmit(e) {
     e.preventDefault();
@@ -1958,6 +1974,7 @@
       }
       showToast("GPU host", "Saved");
       hostFormReset();
+      closeHostModal();
       await loadGpuHosts();
       if (state.payload) fillLinkServers(state.payload);
     } catch (err) {
@@ -2003,9 +2020,24 @@
         throw new Error(window.formatErrorMessage ? window.formatErrorMessage(err, "Save failed") : "Save failed");
       }
       showToast("GPU link", `${server} linked to ${host || "no host"}`);
+      closeLinkModal();
     } catch (err) {
       showToast("GPU link", String(err.message || err), "error");
     }
+  }
+
+  function openLinkModal() {
+    // Make sure selects are populated even before the first payload render.
+    if (state.payload) fillLinkServers(state.payload);
+    if (window.AdminModal) window.AdminModal.open("obsLinkModal");
+    else { const m = $("obsLinkModal"); if (m) m.classList.remove("hidden"); }
+    const sel = $("obsLinkServer");
+    if (sel) sel.focus();
+  }
+
+  function closeLinkModal() {
+    if (window.AdminModal) window.AdminModal.close("obsLinkModal");
+    else { const m = $("obsLinkModal"); if (m) m.classList.add("hidden"); }
   }
 
   // ── Integrations tab ────────────────────────────────────────────────
@@ -2112,7 +2144,9 @@
       actions.appendChild(btn(it.enabled ? "Turn off" : "Turn on", "int-toggle", { enabled: String(!it.enabled) }));
       actions.appendChild(btn("Test", "int-test"));
     }
-    const card = el("article", { cls: "rounded-panel border border-hairline bg-surface-raised shadow-rest p-3 space-y-2", data: { card: it.name } }, [head, el("p", { cls: "text-caption text-ink-muted", text: it.description }), line, actions]);
+    // Collapsed cards sit in the 2–3 column grid; an opened card spans the full
+    // row so its form and instructions never get squeezed into one column.
+    const card = el("article", { cls: "rounded-panel border border-hairline bg-surface-raised shadow-rest p-3 space-y-2" + (open ? " sm:col-span-2 lg:col-span-3" : ""), data: { card: it.name } }, [head, el("p", { cls: "text-caption text-ink-muted", text: it.description }), line, actions]);
     if (it.env_configured && !it.builtin) {
       card.appendChild(el("p", { cls: "text-caption text-warn", text: it.active
         ? "Also set in the environment (OBS_EXPORTERS). The settings here win: the environment copy is paused, so nothing is sent twice."
@@ -2338,6 +2372,12 @@
       case "alert-rule-edit": openAlertRuleForm("edit", btn.dataset.id); break;
       case "alert-rule-cancel": closeAlertRuleForm(); break;
       case "alert-rule-delete": deleteAlertRule(btn.dataset.id); break;
+      case "alert-rule-export": exportAlertRules(); break;
+      case "alert-rule-import-pick": {
+        const inp = $("obsAlertRuleImportFile");
+        if (inp) inp.click();
+        break;
+      }
       case "alert-rule-test": testAlertRule(btn.dataset.id, btn); break;
       case "alerts-test-notify": sendTestAlertNotification(); break;
       case "traces-clear-filters":
@@ -2347,7 +2387,11 @@
       case "tracemalloc": toggleTracemalloc(); break;
       case "save-overrides": saveOverrides(); break;
       case "host-reset": hostFormReset(); break;
+      case "host-add": openHostModal(); break;
       case "host-edit": hostFormFill(btn.dataset.name); break;
+      case "host-modal-close": closeHostModal(); break;
+      case "link-add": openLinkModal(); break;
+      case "link-modal-close": closeLinkModal(); break;
       case "host-delete": deleteHost(btn.dataset.name); break;
       case "node-reset": nodeFormReset(); break;
       case "node-edit": nodeFormFill(btn.dataset.name); break;
@@ -2383,6 +2427,12 @@
       }
     });
   }
+
+  // New GPU tab modals: click-outside-to-close like the telemetry modal.
+  [["obsHostModal", () => closeHostModal()], ["obsLinkModal", () => closeLinkModal()]].forEach(([id, fn]) => {
+    const m = $(id);
+    if (m) m.addEventListener("click", (e) => { if (e.target === m) fn(); });
+  });
 
   // ── Alert Center ─────────────────────────────────────────────────────
   function setAlertsAvailable(ok) {
@@ -2896,8 +2946,75 @@
     }
   }
 
-  async function deleteAlertRule(id) {
-    const r = state.alertsRules.find((x) => String(x.id) === String(id));
+  async function exportAlertRules() {
+    try {
+      const res = await fetch("/admin/alerts/rules/export", { credentials: "include", cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const doc = await res.json();
+      if (doc.format !== "deziss-alert-rules") throw new Error("Unexpected export format");
+      const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "deziss-alert-rules-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      showToast("Alert rules", "Exported " + (doc.rules || []).length + " rule(s)");
+    } catch (err) {
+      showToast("Alert rules", "Export failed: " + (err.message || err), "error");
+    }
+  }
+
+  async function importAlertRulesFromFile(input) {
+    const file = input.files && input.files[0];
+    input.value = ""; // allow re-picking the same file
+    if (!file) return;
+    let doc;
+    try {
+      doc = JSON.parse(await file.text());
+    } catch (err) {
+      showToast("Alert rules", "Import failed: not a valid JSON file", "error");
+      return;
+    }
+    if (!doc || doc.format !== "deziss-alert-rules" || !Array.isArray(doc.rules)) {
+      showToast("Alert rules", "Import failed: not a DEZISS alert-rules file", "error");
+      return;
+    }
+    if (!doc.rules.length) {
+      showToast("Alert rules", "No rules found in file");
+      return;
+    }
+    const ok = await showConfirm("Import alert rules",
+      "Import " + doc.rules.length + " rule(s) from '" + file.name + "'? Matching rules (by id or name) will be overwritten.");
+    if (!ok) return;
+    try {
+      const res = await fetchWithCsrf("/admin/alerts/rules/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format: doc.format, format_version: doc.format_version || 1, rules: doc.rules, update_existing: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(alertErrorText(err, "Import failed"));
+      }
+      const out = await res.json();
+      const bits = [];
+      if (out.created && out.created.length) bits.push(out.created.length + " created");
+      if (out.updated && out.updated.length) bits.push(out.updated.length + " updated");
+      if (out.errors && out.errors.length) bits.push(out.errors.length + " failed");
+      showToast("Alert rules", "Import: " + (bits.join(", ") || "no changes"),
+        out.errors && out.errors.length ? "error" : "success");
+      state.alertsRulesLoaded = false;
+      await loadAlertRules();
+      refreshAlertCenter();
+    } catch (err) {
+      showToast("Alert rules", String(err.message || err), "error");
+    }
+  }
+
+  async function deleteAlertRule(id) {    const r = state.alertsRules.find((x) => String(x.id) === String(id));
     const name = r ? String(r.name || r.id) : String(id);
     const ok = await showConfirm("Delete alert rule", "Delete alert rule '" + name + "'? This cannot be undone.");
     if (!ok) return;
@@ -3294,6 +3411,8 @@
   });
   const alertsSeverity = $("fAlertsSeverity");
   if (alertsSeverity) alertsSeverity.addEventListener("change", refreshAlertCenter);
+  const alertRuleFile = $("obsAlertRuleImportFile");
+  if (alertRuleFile) alertRuleFile.addEventListener("change", () => importAlertRulesFromFile(alertRuleFile));
   const agentsQ = $("fAgentsQ");
   if (agentsQ) agentsQ.addEventListener("change", () => refreshAgentIntelligence());
   const agentsStatus = $("fAgentsStatus");

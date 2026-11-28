@@ -75,3 +75,90 @@ async def test_rule_model_has_new_fields():
     r = Row(id="x", name="n", metric="gpu_temp_c",
             target_filter=["wardha*"], description="hello")
     assert r.target_filter == ["wardha*"] and r.description == "hello"
+
+
+# ---------------------------------------------------------------------------
+# Export / import API
+# ---------------------------------------------------------------------------
+
+async def test_export_rules_document_shape(client):
+    r = await client.get("/admin/alerts/rules/export")
+    assert r.status_code == 200
+    assert "attachment" in r.headers.get("content-disposition", "")
+    doc = r.json()
+    assert doc["format"] == "deziss-alert-rules"
+    assert doc["format_version"] == 1
+    ids = [x["id"] for x in doc["rules"]]
+    assert "gateway_error_rate" in ids
+    entry = next(x for x in doc["rules"] if x["id"] == "gateway_error_rate")
+    # derived fields must not leak into the portable document
+    assert "custom" not in entry and "target_kind" not in entry
+    assert set(entry) >= {"id", "name", "metric", "comparator", "threshold",
+                          "window_s", "severity", "cooldown_s", "enabled",
+                          "channels", "target_filter", "description"}
+
+
+async def test_import_roundtrip_updates_existing(client):
+    exp = await client.get("/admin/alerts/rules/export")
+    doc = exp.json()
+    doc["rules"][0]["threshold"] = 42.0
+    r = await client.post("/admin/alerts/rules/import",
+                          json={"format": doc["format"], "format_version": doc["format_version"],
+                                "rules": doc["rules"]},
+                          headers={"x-csrf-token": "test-csrf-token"})
+    assert r.status_code == 200
+    out = r.json()
+    assert out["created"] == []
+    assert out["updated"]  # everything matched by id
+    assert not out["errors"]
+    exp2 = await client.get("/admin/alerts/rules/export")
+    first = next(x for x in exp2.json()["rules"] if x["id"] == doc["rules"][0]["id"])
+    assert first["threshold"] == 42.0
+
+
+async def test_import_creates_custom_and_reports_errors(client):
+    body = {"rules": [
+        {"name": "Imported Test Rule", "metric": "gpu_temp_c", "comparator": ">=",
+         "threshold": 91, "window_s": 120, "severity": "warning", "cooldown_s": 600,
+         "channels": ["webhook"], "target_filter": ["wardha*"]},
+        {"name": "Bad Metric", "metric": "nope", "comparator": ">=", "threshold": 1,
+         "window_s": 60, "severity": "warning"},
+        {"name": "No Metric", "comparator": ">=", "threshold": 1, "window_s": 60,
+         "severity": "warning"},
+    ]}
+    r = await client.post("/admin/alerts/rules/import", json=body,
+                          headers={"x-csrf-token": "test-csrf-token"})
+    assert r.status_code == 200
+    out = r.json()
+    assert len(out["created"]) == 1 and out["created"][0].startswith("c-")
+    names = {e["name"] for e in out["errors"]}
+    assert names == {"Bad Metric", "No Metric"}
+    # created rule is visible through the normal listing and is deletable
+    rules = (await client.get("/admin/alerts/rules")).json()
+    ids = [x["id"] for x in rules.get("rules", rules) if isinstance(x, dict)]
+    assert out["created"][0] in ids
+
+
+async def test_import_update_existing_false_skips(client):
+    body = {"rules": [{"id": "server_down", "name": "server_down",
+                       "metric": "server_error_rate", "comparator": ">=", "threshold": 99,
+                       "window_s": 60, "severity": "warning", "cooldown_s": 300}],
+            "update_existing": False}
+    r = await client.post("/admin/alerts/rules/import", json=body,
+                          headers={"x-csrf-token": "test-csrf-token"})
+    out = r.json()
+    assert out["skipped"] == ["server_down"]
+    assert out["created"] == [] and out["updated"] == []
+
+
+async def test_import_rejects_foreign_format_and_too_many(client):
+    r = await client.post("/admin/alerts/rules/import",
+                          json={"format": "someone-else", "rules": []},
+                          headers={"x-csrf-token": "test-csrf-token"})
+    assert r.status_code == 422
+    many = {"rules": [{"name": f"r{i}", "metric": "gpu_temp_c", "comparator": ">=",
+                       "threshold": 1, "window_s": 60, "severity": "warning"}
+                      for i in range(201)]}
+    r = await client.post("/admin/alerts/rules/import", json=many,
+                          headers={"x-csrf-token": "test-csrf-token"})
+    assert r.status_code == 422

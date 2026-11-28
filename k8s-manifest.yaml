@@ -14,21 +14,72 @@ spec:
       labels:
         app: llm-gateway
     spec:
+      # Soft anti-affinity: keep the two replicas on different nodes, otherwise a
+      # single node failure takes down the whole gateway.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: llm-gateway
+      # LLM streams can run for minutes; give them time to drain on rollout.
+      terminationGracePeriodSeconds: 130
       containers:
       - name: gateway
-        image: llm-secure-gateway:latest
+        # Pin a release: `latest` makes rollouts non-reproducible and rollbacks
+        # impossible. Tag with `kubectl set image deployment/llm-gateway
+        # gateway=ghcr.io/deziss/llm-secure-gateway:<version>`.
+        image: ghcr.io/deziss/llm-secure-gateway:0.21.0
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
+          name: http
         env:
         - name: LOG_LEVEL
           value: "info"
+        # Secrets belong in a Secret, not inline:
+        #   kubectl -n <ns> create secret generic llm-gateway \
+        #     --from-literal=ENCRYPTION_KEY=... --from-literal=AUTH_SECRET=...
+        envFrom:
+        - secretRef:
+            name: llm-gateway
+        # /health runs `SELECT 1`, so it verifies DB connectivity, not merely
+        # that the process started. Without a readinessProbe a rolling update
+        # sends traffic to pods whose migrations have not finished.
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
         resources:
           requests:
-            cpu: "100m"
-            memory: "256Mi"
-          limits:
             cpu: "500m"
             memory: "512Mi"
+          limits:
+            cpu: "2"
+            memory: "1Gi"
+        securityContext:
+          # The image already runs as uid 1000 (USER gateway); don't let an edit
+          # bump it back to root.
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 ---
 apiVersion: v1
 kind: Service
@@ -40,5 +91,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8000
+      targetPort: http
   type: ClusterIP

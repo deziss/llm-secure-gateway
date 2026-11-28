@@ -59,41 +59,26 @@
           <button type="button" data-action="timeframe" data-tf="24h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">24h</button>
         </div>
       </div>
+      <!-- Inline token throughput (was standalone stat cards; compacted to save space) -->
+      <div class="flex items-center gap-2 flex-wrap ml-auto">
+        <div class="flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1" title="Live tokens/sec — instantaneous, all models (last snapshot / 10s window)">
+          <i data-lucide="gauge" class="h-3.5 w-3.5 text-cyan-400 shrink-0" aria-hidden="true"></i>
+          <span class="text-micro font-bold uppercase tracking-wider text-ink-muted">Live</span>
+          <span id="obsLiveTokTotal" class="text-sm font-extrabold text-ink tabular-nums" role="status" aria-live="polite">&ndash;</span>
+          <span class="text-micro text-ink-muted">tok/s</span>
+          <span id="obsLiveTokBreakdown" class="text-micro text-ink-muted"></span>
+        </div>
+        <div class="flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1" title="Average output-token throughput across all models for the selected window">
+          <i data-lucide="bar-chart-3" class="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden="true"></i>
+          <span class="text-micro font-bold uppercase tracking-wider text-ink-muted">Avg</span>
+          <span id="obsAvgTokTotal" class="text-sm font-extrabold text-ink tabular-nums" role="status">&ndash;</span>
+          <span class="text-micro text-ink-muted">tok/s</span>
+          <span id="obsAvgTokWindow" class="text-micro text-ink-muted"></span>
+        </div>
+      </div>
       <div class="text-caption text-ink-muted flex items-center gap-1.5" id="obsTimeframeIndicator">
         <span id="obsLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 hidden" aria-hidden="true"></span>
         <span id="obsTimeframeLabel">Historical rollups (1h) · Auto-persisted</span>
-      </div>
-    </div>
-
-    <!-- Token Throughput Stat Cards (Avg + Live) -->
-    <div class="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div class="rounded-panel border border-hairline bg-surface-raised p-3 sm:p-4 flex items-center gap-3">
-        <div class="w-10 h-10 shrink-0 rounded-control bg-cyan-500/10 text-cyan-400 flex items-center justify-center" aria-hidden="true">
-          <i data-lucide="gauge" class="h-5 w-5"></i>
-        </div>
-        <div class="min-w-0">
-          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted">Live Tokens / sec (all models)</div>
-          <div class="flex items-baseline gap-2 flex-wrap">
-            <span id="obsLiveTokTotal" class="text-2xl font-extrabold text-ink tabular-nums" role="status" aria-live="polite">&ndash;</span>
-            <span class="text-caption text-ink-muted">tok/s</span>
-            <span id="obsLiveTokBreakdown" class="text-micro text-ink-muted"></span>
-          </div>
-          <div id="obsLiveTokSub" class="text-micro text-ink-muted mt-0.5">Instantaneous, measured over the last 10s</div>
-        </div>
-      </div>
-      <div class="rounded-panel border border-hairline bg-surface-raised p-3 sm:p-4 flex items-center gap-3">
-        <div class="w-10 h-10 shrink-0 rounded-control bg-emerald-500/10 text-emerald-400 flex items-center justify-center" aria-hidden="true">
-          <i data-lucide="bar-chart-3" class="h-5 w-5"></i>
-        </div>
-        <div class="min-w-0">
-          <div class="text-micro font-bold uppercase tracking-wider text-ink-muted">Average Tokens / sec (all models)</div>
-          <div class="flex items-baseline gap-2 flex-wrap">
-            <span id="obsAvgTokTotal" class="text-2xl font-extrabold text-ink tabular-nums" role="status">&ndash;</span>
-            <span class="text-caption text-ink-muted">tok/s</span>
-            <span id="obsAvgTokWindow" class="text-micro text-ink-muted"></span>
-          </div>
-          <div class="text-micro text-ink-muted mt-0.5">Mean output-token throughput across the selected window</div>
-        </div>
       </div>
     </div>
 
@@ -188,58 +173,25 @@
     {% if is_admin %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
-        <h2 class="text-sm font-bold text-ink">GPU hosts</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-sm font-bold text-ink">GPU hosts</h2>
+          <button type="button" data-action="host-add" class="min-h-touch inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
+            <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+            Add server
+          </button>
+        </div>
         <ul id="obsHostList" class="divide-y divide-hairline text-sm"></ul>
-        <form id="obsHostForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" autocomplete="off">
-          <input type="hidden" name="original_name" value="" />
-          <label class="block">
-            <span class="block text-caption font-medium text-ink-muted mb-1">Name</span>
-            <input type="text" name="name" required maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
-          </label>
-          <label class="block">
-            <span class="block text-caption font-medium text-ink-muted mb-1">Source</span>
-            <select name="source" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
-              <option value="agent">GPU agent (this project)</option>
-              <option value="dcgm">DCGM exporter</option>
-              <option value="nvidia_smi_exporter">nvidia_gpu_exporter</option>
-              <option value="amd_exporter">AMD exporter</option>
-            </select>
-          </label>
-          <label class="block md:col-span-2">
-            <span class="block text-caption font-medium text-ink-muted mb-1">Metrics URL</span>
-            <input type="url" name="url" required maxlength="512" placeholder="http://gpu-host:9835" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
-          </label>
-          <label class="flex items-center gap-2 md:col-span-2 text-ink-muted">
-            <input type="checkbox" name="enabled" checked class="h-4 w-4" />
-            <span>Enabled</span>
-          </label>
-          <div class="md:col-span-2 flex gap-2">
-            <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save host</button>
-            <button type="button" data-action="host-reset" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Clear</button>
-          </div>
-        </form>
       </div>
 
       <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
-        <h2 class="text-sm font-bold text-ink">Link a model server to GPUs</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-sm font-bold text-ink">Link a model server to GPUs</h2>
+          <button type="button" data-action="link-add" class="min-h-touch inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
+            <i data-lucide="link" class="h-4 w-4" aria-hidden="true"></i>
+            Add link
+          </button>
+        </div>
         <p class="text-caption text-ink-muted">Pins a server to a GPU host (and optional GPU indices) so its VRAM is attributed exactly. Leave the host empty to clear the link.</p>
-        <form id="obsLinkForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" autocomplete="off">
-          <label class="block">
-            <span class="block text-caption font-medium text-ink-muted mb-1">Model server</span>
-            <select id="obsLinkServer" name="server" required class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink"></select>
-          </label>
-          <label class="block">
-            <span class="block text-caption font-medium text-ink-muted mb-1">GPU host</span>
-            <select id="obsLinkHost" name="gpu_host" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink"></select>
-          </label>
-          <label class="block md:col-span-2">
-            <span class="block text-caption font-medium text-ink-muted mb-1">GPU indices (comma-separated, empty = all on host)</span>
-            <input type="text" name="gpu_indices" placeholder="0,1" maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
-          </label>
-          <div class="md:col-span-2">
-            <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save link</button>
-          </div>
-        </form>
       </div>
     </div>
     {% endif %}
@@ -424,7 +376,7 @@
       </select>
       <span id="fIntCount" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
     </div>
-    <div id="obsIntegrations" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+    <div id="obsIntegrations" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
     <p id="obsIntegrationsEmpty" class="p-4 text-center text-sm text-ink-muted hidden">No integrations match the filters.</p>
 
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
@@ -684,22 +636,30 @@
 
     <!-- Alert rules -->
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
-      <div class="flex flex-wrap items-center gap-2 px-4 pt-3">
-        <h2 class="text-sm font-bold text-ink mr-auto">Alert rules</h2>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3">
+        <h2 class="text-sm font-bold text-ink mr-auto self-center">Alert rules</h2>
         <button type="button" id="obsAlertsTestBtn" data-action="alerts-test-notify" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
           <i data-lucide="send" class="h-3.5 w-3.5" aria-hidden="true"></i> Send test alert
         </button>
-        <label class="flex items-center gap-1.5 text-caption text-ink-muted">via
-          <select id="fAlertsTestChannel" aria-label="Channel for test alert" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+        <label class="flex items-center gap-2 text-caption text-ink-muted">via
+          <select id="fAlertsTestChannel" aria-label="Channel for test alert" class="min-h-touch rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
             <option value="webhook">webhook</option>
             <option value="email">email</option>
           </select>
         </label>
+        <span class="hidden sm:block h-6 w-px bg-hairline" aria-hidden="true"></span>
+        <button type="button" id="obsAlertRuleExportBtn" data-action="alert-rule-export" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5" title="Download all alert rules as a JSON file">
+          <i data-lucide="download" class="h-3.5 w-3.5" aria-hidden="true"></i> Export
+        </button>
+        <button type="button" id="obsAlertRuleImportBtn" data-action="alert-rule-import-pick" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5" title="Import alert rules from a JSON file">
+          <i data-lucide="upload" class="h-3.5 w-3.5" aria-hidden="true"></i> Import
+        </button>
+        <input type="file" id="obsAlertRuleImportFile" accept="application/json,.json" class="hidden" aria-hidden="true" />
         <button type="button" id="obsAlertRuleNewBtn" data-action="alert-rule-new" class="min-h-touch rounded-control bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink flex items-center gap-1.5">
           <i data-lucide="plus" class="h-3.5 w-3.5" aria-hidden="true"></i> New rule
         </button>
       </div>
-      <p class="px-4 text-caption text-ink-muted">Enable/disable, edit, test, or create rules. Built-in default rules can be edited but not deleted.</p>
+      <p class="px-4 pt-1.5 pb-3 text-caption text-ink-muted">Enable/disable, edit, test, or create rules. Built-in default rules can be edited but not deleted. Export/Import moves custom rules between gateways.</p>
 
       <!-- Rule editor (create / edit, hidden until New rule or Edit) -->
       <form id="obsAlertRuleForm" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3 text-sm" autocomplete="off">
@@ -867,6 +827,82 @@
       <p id="obsAgentRunsEmpty" class="p-6 text-center text-sm text-ink-muted hidden">No agent runs found.</p>
     </div>
   </section>
+
+  <!-- ── GPU Host Add/Edit Modal ────────────────────────────── -->
+  <div id="obsHostModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="obsHostModalTitle">
+    <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-lg shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between p-4 border-b border-hairline bg-surface-inset">
+        <h2 id="obsHostModalTitle" class="text-base font-bold text-ink flex items-center gap-2">
+          <i data-lucide="cpu" class="h-4 w-4 text-accent" aria-hidden="true"></i>
+          <span id="obsHostModalHeading">Add GPU server</span>
+        </h2>
+        <button type="button" data-action="host-modal-close" aria-label="Close" class="min-h-touch rounded p-1 text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors">
+          <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
+        </button>
+      </div>
+      <form id="obsHostForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 text-sm" autocomplete="off">
+        <input type="hidden" name="original_name" value="" />
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Name</span>
+          <input type="text" name="name" required maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Source</span>
+          <select name="source" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink">
+            <option value="agent">GPU agent (this project)</option>
+            <option value="dcgm">DCGM exporter</option>
+            <option value="nvidia_smi_exporter">nvidia_gpu_exporter</option>
+            <option value="amd_exporter">AMD exporter</option>
+          </select>
+        </label>
+        <label class="block md:col-span-2">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Metrics URL</span>
+          <input type="url" name="url" required maxlength="512" placeholder="http://gpu-host:9835" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <label class="flex items-center gap-2 md:col-span-2 text-ink-muted">
+          <input type="checkbox" name="enabled" checked class="h-4 w-4" />
+          <span>Enabled</span>
+        </label>
+        <div class="md:col-span-2 flex gap-2 justify-end pt-1">
+          <button type="button" data-action="host-modal-close" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
+          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save host</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── GPU Server-Link Modal ──────────────────────────────── -->
+  <div id="obsLinkModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="obsLinkModalTitle">
+    <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-lg shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between p-4 border-b border-hairline bg-surface-inset">
+        <h2 id="obsLinkModalTitle" class="text-base font-bold text-ink flex items-center gap-2">
+          <i data-lucide="link" class="h-4 w-4 text-accent" aria-hidden="true"></i>
+          Link a model server to GPUs
+        </h2>
+        <button type="button" data-action="link-modal-close" aria-label="Close" class="min-h-touch rounded p-1 text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors">
+          <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
+        </button>
+      </div>
+      <form id="obsLinkForm" class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 text-sm" autocomplete="off">
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">Model server</span>
+          <select id="obsLinkServer" name="server" required class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink"></select>
+        </label>
+        <label class="block">
+          <span class="block text-caption font-medium text-ink-muted mb-1">GPU host</span>
+          <select id="obsLinkHost" name="gpu_host" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink"></select>
+        </label>
+        <label class="block md:col-span-2">
+          <span class="block text-caption font-medium text-ink-muted mb-1">GPU indices (comma-separated, empty = all on host)</span>
+          <input type="text" name="gpu_indices" placeholder="0,1" maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
+        </label>
+        <div class="md:col-span-2 flex gap-2 justify-end pt-1">
+          <button type="button" data-action="link-modal-close" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
+          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save link</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- ── Model Telemetry Deep-Dive Modal ────────────────────── -->
   <div id="modelTelemetryModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="modelTelemetryModalTitle">

@@ -109,9 +109,12 @@ async def upgrade_license(
     client = get_licencia_client()
     upgraded, state = await client.upgrade(update.license_key)
     if not upgraded:
+        reason = getattr(state, "last_error", None)
         raise HTTPException(
             status_code=400,
             detail=(
+                (reason + " ") if reason else ""
+            ) + (
                 "Could not validate the new license key. Verify the key, ensure the "
                 "licensing server is reachable, and confirm this gateway's hardware "
                 "fingerprint is activated against that plan."

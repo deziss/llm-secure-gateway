@@ -1,6 +1,6 @@
 [project]
 name = "llm-gateway"
-version = "0.20.1"
+version = "0.21.0"
 description = "A Secure LLM Gateway wrapper for Ollama/vLLM with API Keys and SPIFFE identity support."
 authors = [
     {name = "Anshu Kushawaha", email = "anshu.kushwaha@nuvo.ai"},
@@ -42,7 +42,6 @@ dependencies = [
 
     # Phoenix OTEL wrapper
     "arize-phoenix-otel",
-    "arize-phoenix-evals",
     "openinference-instrumentation",
 
     # Auth & System utilities
@@ -56,6 +55,13 @@ readme = "README.md"
 license = {text = "AGPL-3.0-or-later"}
 
 [project.optional-dependencies]
+# Optional extras keep the default install (and therefore the published image)
+# lean.  Install on demand, e.g. `pip install "llm-gateway[evals]"`.
+evals = [
+    # LLM-as-judge evaluators for Phoenix.  Not imported by the gateway itself;
+    # pulls in pandas + numpy (~150 MB unpacked), so it is opt-in.
+    "arize-phoenix-evals",
+]
 test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

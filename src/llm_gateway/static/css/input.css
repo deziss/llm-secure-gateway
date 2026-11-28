@@ -314,6 +314,42 @@
   .modal-lg { max-width: 56rem; }  /* 896px / 4xl */
   .modal-xl { max-width: 64rem; }  /* 1024px / 5xl */
   .modal-2xl { max-width: 72rem; } /* 1152px / 6xl */
+
+  /* ── Operations dashboard ────────────────────────────────────────────
+     Skeleton shimmer: delayed by JS (~250ms) so fast loads never flash it,
+     transform-only animation so it stays on the compositor thread. */
+  .dash-loading { position: relative; overflow: hidden; }
+  .dash-loading > *:not(.dash-skeleton-shim) { opacity: 0.35; }
+  .dash-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      100deg,
+      transparent 40%,
+      rgb(var(--ink-muted) / 0.10) 50%,
+      transparent 60%
+    );
+    background-size: 200% 100%;
+    animation: dash-shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes dash-shimmer {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(50%); }
+  }
+
+  /* Customise: widget show/hide + reorder (order set inline by JS). */
+  #dashSummary.dash-ordered { display: grid; }
+
+  /* Compact density trims card padding without touching type scale. */
+  html.dash-compact .dash-card,
+  html.dash-compact .dash-kpi-grid > div {
+    padding: 0.625rem !important; /* p-2.5 over p-4/p-5 */
+  }
+  html.dash-compact .dash-kpi-grid { gap: 0.625rem; }
+  html.dash-compact #dashSummary { gap: 0.625rem; }
+  html.dash-compact .dash-kpi-grid p[id^="stat-"] { font-size: 1.35rem; line-height: 1.75rem; }
 }
 
 @layer utilities {

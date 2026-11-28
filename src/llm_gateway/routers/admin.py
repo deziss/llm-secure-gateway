@@ -97,6 +97,21 @@ async def get_system_metrics(
     
     return result
 
+@router.get("/metrics/live")
+async def get_live_metrics(user=Depends(require_manager)) -> dict:
+    """Cheap subset of /metrics for polling clients (no backend probes, no
+    psutil): the live-traffic chart and edge IP table only need this. Mirrors
+    the SSE payload so one render path serves both transports."""
+    from ..tracking import get_active_ips, get_traffic_history
+
+    ips = get_active_ips()
+    return {
+        "active_ips": ips,
+        "total_active_ips": len(ips),
+        "traffic": get_traffic_history(15),
+    }
+
+
 @router.get("/metrics/stream")
 async def stream_metrics(
     request: Request,

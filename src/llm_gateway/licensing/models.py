@@ -42,6 +42,9 @@ class LicenseState(BaseModel):
     is_community: bool = True
     key_masked: str = "COMMUNITY-EDITION"
     hardware_id: str = "localhost"
+    # Why the last validation/upgrade failed, for operators: distinguishes our own
+    # misconfiguration (no creds, server never contacted) from a real server rejection.
+    last_error: Optional[str] = None
     lease_expires_at: Optional[str] = None
     grace_expires_at: Optional[str] = None
     features: Dict[str, bool] = Field(default_factory=dict)

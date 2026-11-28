@@ -28,10 +28,40 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          # `ci` = the runtime image plus the [test] extra, tests/ and sdk/.
+          # Stated explicitly so reordering stages can never silently change
+          # what CI tests (or what gets published).
+          target: ci
           load: true
           tags: llm-gateway:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Guards the 500MB -> ~312MB reduction: dependency or metadata changes that
+      # silently pull big wheels back into the published image fail here instead
+      # of shipping. Raise the ceiling deliberately, in review.
+      - name: Build published (runtime) image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime
+          load: true
+          tags: llm-gateway:runtime
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Enforce image size ceiling
+        run: |
+          set -euo pipefail
+          SIZE=$(docker image inspect llm-gateway:runtime --format '{{.Size}}')
+          # Integer MiB, i.e. ~5% below what `docker images` prints (decimal MB).
+          MIB=$(( SIZE / 1024 / 1024 ))
+          echo "runtime image: ${MIB}MiB (${SIZE} bytes)"
+          if [ "$MIB" -gt 330 ]; then
+            echo "::error::runtime image is ${MIB}MiB (ceiling 330MiB ~= 346MB). Inspect with: docker history llm-gateway:runtime"
+            exit 1
+          fi
 
       - name: Run Pytest Suite
         run: |
@@ -41,4 +71,54 @@ jobs:
             -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
             -e REDIS_URL="" \
             llm-gateway:test \
-            pytest tests/ -v --tb=short
+            python -m pytest tests/ -v --tb=short
+
+  # Cheap guard for the deploy path: a typo or bad interpolation in any of these
+  # files otherwise only surfaces for whoever is trying to deploy.
+  deploy-config:
+    name: Validate Deploy Config
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Compose files
+        run: |
+          set -euo pipefail
+          # `config --quiet` resolves and type-checks without dumping interpolated
+          # env_file values into the job log (plain `config` does).
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.prod.yml config --quiet
+          docker compose -f docker-compose.test.yml config --quiet
+          docker compose -f docker-compose.fresh-test.yml config --quiet
+          ( cd deploy && cp .env.example .env \
+            && printf '\nPOSTGRES_PASSWORD=ci-dummy\n' >> .env \
+            && docker compose config --quiet )
+          echo "All compose files valid."
+
+      - name: Validate nginx config
+        run: |
+          # The upstreams only resolve by DNS inside the compose network, so
+          # alias them for the syntax check.
+          docker run --rm \
+            --add-host gateway-1:127.0.0.1 \
+            --add-host gateway-2:127.0.0.1 \
+            -v "$PWD/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            --entrypoint nginx \
+            nginx:1.29-alpine -t
+
+      - name: Validate Kubernetes manifests
+        run: |
+          set -euo pipefail
+          # Structural sanity without a cluster: every document parses and
+          # carries apiVersion/kind/metadata.name.
+          python3 - <<'PY'
+          import yaml  # preinstalled on GitHub-hosted ubuntu runners
+          docs = [d for d in yaml.safe_load_all(open("k8s-manifest.yaml")) if d]
+          for d in docs:
+              for key in ("apiVersion", "kind"):
+                  assert key in d, f"missing {key} in {d.get('metadata', {}).get('name')}"
+          names = sorted(f"{d['kind']}/{d['metadata']['name']}" for d in docs)
+          print("k8s manifests OK:", ", ".join(names))
+          PY

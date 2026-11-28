@@ -1,1 +1,67 @@
+# Build-context hygiene (Docker's `docker build` ignore file — separate from
+# .gitignore, which is already broader).
+# Excluding these keeps the build context small (~26 MB -> <2 MB), which speeds
+# up every build, and — more importantly — keeps secrets and local state out of
+# the context entirely, where they could leak into layer metadata or be COPYed
+# by accident.
+
+# Version control
+.git
+.gitignore
+.github
+
+# Environment files & credentials — never belong in a build context
+.env
+.env.*
+!.env.example
+cookies.txt
+*.pem
+*.key
+
+# Local tooling / agent & browser state
+.agent
+.agents
+.claude
+.continue
+.chrome-profile
+.jujar
 graphify-out/
+node_modules
+
+# Python caches / build artefacts
+__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+build/
+dist/
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.venv
+venv
+
+# Not copied into the runtime image. `tests/` and `sdk/` stay in the *context*
+# because the Dockerfile's `ci` target COPYs them; the `runtime` target never
+# references them, so they cost nothing in the published image.
+docs/
+assets/
+grafana/
+otel/
+deploy/
+k8s-manifest.yaml
+docker-compose*.yml
+nginx.conf
+*.md
+!README.md
+
+# Frontend sources — compiled CSS ships under src/llm_gateway/static
+package.json
+package-lock.json
+build-css.sh
+
+# Operator-only scripts
+dump_db.sh
+import_db.sh

@@ -93,6 +93,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          # REQUIRED: the Dockerfile's last stage is `ci` (pytest + tests/), so
+          # without an explicit target this would publish the test image.
+          target: runtime
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}

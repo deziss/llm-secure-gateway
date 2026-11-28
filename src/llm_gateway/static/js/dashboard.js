@@ -1,373 +1,385 @@
-// dashboard.js — Dashboard page logic
-"use strict";
+// dashboard.js — below-the-fold live widgets: 15-minute live-traffic stream,
+// edge connectivity table, and the range-scoped telemetry timeline.
+//
+// Transport: one SSE connection while the tab is visible; if SSE fails (e.g.
+// an HTTP/1.1 connection-limit squeeze or a proxy that buffers) we fall back
+// to /admin/metrics/live through the shared DashCache scheduler and retry SSE
+// periodically. The scheduler also pauses for hidden/offline and the user's
+// Live pause preference — this file never owns a setInterval of its own.
 
-let trafficChart = null;
-let traffic24hChart = null;
-let _eventSource = null;
-let _metricsTimer = null;
+(function () {
+  "use strict";
 
-// Helper to safely get element
-const getEl = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
+  const DC = window.DashCache;
+  const DCW = () => window.DashWidgets;
 
-function initTrafficChart() {
-  const canvas = getEl("trafficChart");
-  if (!canvas || !window.Chart) return;
-  const ctx = canvas.getContext("2d");
-  trafficChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [
-        {
+  const fmtInt = new Intl.NumberFormat();
+  const tokenColor = (name, alpha) => {
+    const W = DCW();
+    if (W) return W.getTokenColor(name, alpha);
+    return "rgb(99, 102, 241)";
+  };
+
+  // ── Live traffic chart (last 15 minutes) ──────────────────────────────
+  let trafficChart = null;
+
+  function initTrafficChart() {
+    const canvas = $("trafficChart");
+    if (!canvas || !window.Chart) return;
+    trafficChart = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
           label: "Requests / min",
           data: [],
-          borderColor: "rgb(59, 130, 246)",
-          backgroundColor: "rgba(59, 130, 246, 0.08)",
+          borderColor: tokenColor("--accent"),
+          backgroundColor: tokenColor("--accent", 0.08),
           fill: true,
           tension: 0.3,
           pointRadius: 2,
-          pointBackgroundColor: "rgb(59, 130, 246)",
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 400 },
-      plugins: { legend: { display: false } },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: "rgba(255, 255, 255, 0.05)" },
-          ticks: { color: "#64748b", font: { size: 10 }, precision: 0 },
-        },
-        x: {
-          grid: { color: "rgba(255, 255, 255, 0.05)" },
-          ticks: { color: "#64748b", font: { size: 10 }, maxRotation: 0 },
+          pointBackgroundColor: tokenColor("--accent"),
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: DC && DC.reducedMotion() ? false : { duration: 300 },
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: tokenColor("--hairline", 0.6) },
+            ticks: { color: tokenColor("--ink-muted"), font: { size: 10 }, precision: 0 },
+          },
+          x: {
+            grid: { display: false },
+            ticks: { color: tokenColor("--ink-muted"), font: { size: 10 }, maxRotation: 0 },
+          },
         },
       },
-    },
-  });
-}
-
-function updateTrafficChart(traffic) {
-  if (!traffic || !traffic.length || !trafficChart) return;
-  trafficChart.data.labels = traffic.map((t) => t.label);
-  trafficChart.data.datasets[0].data = traffic.map((t) => t.count);
-  trafficChart.update();
-}
-
-function init24hTrafficChart() {
-  const canvas = getEl("traffic24hChart");
-  if (!canvas || !window.Chart) return;
-  const ctx24 = canvas.getContext("2d");
-  traffic24hChart = new Chart(ctx24, {
-    data: {
-      labels: [],
-      datasets: [
-        {
-          type: "bar",
-          label: "Requests",
-          data: [],
-          backgroundColor: "rgba(99, 102, 241, 0.75)",
-          borderColor: "rgb(99, 102, 241)",
-          borderWidth: 1,
-          borderRadius: 3,
-          yAxisID: "y",
-        },
-        {
-          type: "line",
-          label: "RPS",
-          data: [],
-          borderColor: "rgb(56, 189, 248)",
-          backgroundColor: "rgba(56, 189, 248, 0.1)",
-          tension: 0.3,
-          pointRadius: 2,
-          yAxisID: "yRps",
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 400 },
-      plugins: {
-        legend: {
-          display: true,
-          position: "top",
-          align: "end",
-          labels: { color: "#94a3b8", font: { size: 11 }, boxWidth: 10 },
-        },
-        tooltip: {
-          backgroundColor: "#0f172a",
-          titleColor: "#f8fafc",
-          bodyColor: "#e2e8f0",
-          borderColor: "rgba(255, 255, 255, 0.1)",
-          borderWidth: 1,
-        },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: "rgba(255, 255, 255, 0.05)" },
-          ticks: { color: "#64748b", font: { size: 10 }, precision: 0 },
-          title: { display: true, text: "Requests", color: "#64748b", font: { size: 10 } },
-        },
-        yRps: {
-          beginAtZero: true,
-          position: "right",
-          grid: { drawOnChartArea: false },
-          ticks: { color: "#64748b", font: { size: 10 } },
-          title: { display: true, text: "RPS", color: "#64748b", font: { size: 10 } },
-        },
-        x: {
-          grid: { color: "rgba(255, 255, 255, 0.05)" },
-          ticks: { color: "#64748b", font: { size: 10 }, maxRotation: 0 },
-        },
-      },
-    },
-  });
-}
-
-function renderActiveIps(activeIps) {
-  const ipBody = getEl("ipTableBody");
-  if (!ipBody) return;
-  ipBody.innerHTML = "";
-
-  if (!activeIps || activeIps.length === 0) {
-    ipBody.innerHTML = `<tr><td colspan="3" class="p-5 text-center text-ink-muted text-xs"><i class="fas fa-satellite-dish mr-1 text-slate-500"></i> No external clients connected yet</td></tr>`;
-    return;
+    });
   }
 
-  const fragment = document.createDocumentFragment();
-  activeIps.forEach((entry) => {
+  function updateTrafficChart(traffic) {
+    if (!trafficChart || !Array.isArray(traffic)) return;
+    trafficChart.data.labels = traffic.map((t) => t.label);
+    trafficChart.data.datasets[0].data = traffic.map((t) => t.count || 0);
+    trafficChart.update("none"); // live tick: repaint, don't animate
+  }
+
+  // ── Edge connectivity table (keyed rows; never innerHTML with data) ───
+  let ipRowTemplate = null;
+  const ipRows = new Map(); // ip -> {tr, time}
+
+  function ipEmpty(msg) {
+    const row = $("ipEmptyRow");
+    if (row) {
+      const cell = row.querySelector("td");
+      if (cell) cell.lastChild.textContent = " " + (msg || "No external clients connected yet");
+      return row;
+    }
     const tr = document.createElement("tr");
-    tr.className = "group hover:bg-surface-inset transition-colors";
+    const td = document.createElement("td");
+    td.colSpan = 3;
+    td.className = "p-5 text-center text-ink-muted text-xs";
+    td.textContent = " " + (msg || "No external clients connected yet");
+    tr.append(td);
+    return tr;
+  }
 
-    const tdIp = document.createElement("td");
-    tdIp.className = "px-3.5 py-2 font-mono text-accent font-medium text-xs";
-    tdIp.textContent = entry.ip;
+  function makeIpRow(ip) {
+    if (!ipRowTemplate) {
+      ipRowTemplate = $("ipRowTemplate");
+    }
+    const tr = ipRowTemplate ? ipRowTemplate.content.firstElementChild.cloneNode(true) : document.createElement("tr");
+    const time = tr.querySelector("[data-ip-time]");
+    return { tr, time };
+  }
 
-    const tdTime = document.createElement("td");
-    tdTime.className = "px-3.5 py-2 text-ink-muted text-xs";
-    tdTime.textContent = (entry.last_seen_seconds_ago || 0) + "s ago";
-
-    const tdStatus = document.createElement("td");
-    tdStatus.className = "px-3.5 py-2 text-right text-xs";
-    tdStatus.innerHTML = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-micro font-bold bg-ok/10 text-ok border border-ok/20"><span class="w-1.5 h-1.5 rounded-full bg-ok mr-1 animate-pulse"></span>ACTIVE</span>`;
-
-    tr.append(tdIp, tdTime, tdStatus);
-    fragment.appendChild(tr);
-  });
-  ipBody.appendChild(fragment);
-}
-
-async function loadMetrics() {
-  try {
-    const response = await fetch("/admin/metrics", {
-      credentials: "include",
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        window.location.href = "/auth/login";
-        return;
+  function renderActiveIps(activeIps) {
+    const body = $("ipTableBody");
+    if (!body) return;
+    if (window.dashEdgeSkeleton) { window.dashEdgeSkeleton(); window.dashEdgeSkeleton = null; }
+    const list = Array.isArray(activeIps) ? activeIps : [];
+    const seen = new Set();
+    for (const entry of list) {
+      if (!entry || typeof entry.ip !== "string") continue;
+      seen.add(entry.ip);
+      let row = ipRows.get(entry.ip);
+      if (!row) {
+        row = makeIpRow(entry.ip);
+        ipRows.set(entry.ip, row);
+        const emptyRow = $("ipEmptyRow");
+        if (emptyRow && emptyRow.parentNode === body) body.removeChild(emptyRow);
+        body.append(row.tr);
       }
+      if (row.time) row.time.textContent = (Number(entry.last_seen_seconds_ago) || 0) + "s ago";
+    }
+    for (const [ip, row] of ipRows) {
+      if (!seen.has(ip)) { row.tr.remove(); ipRows.delete(ip); }
+    }
+    if (!ipRows.size && !$("ipEmptyRow")) body.append(ipEmpty());
+    const statIps = $("stat-ips");
+    if (statIps) statIps.textContent = list.length ? String(list.length) : "0";
+  }
+
+  function showEdgeEmpty(msg) {
+    const body = $("ipTableBody");
+    if (!body || ipRows.size) return;
+    body.replaceChildren(ipEmpty(msg));
+  }
+
+  // ── KPI tiles fed by the richer metrics payload ───────────────────────
+  function renderStats(data) {
+    if (data.total_active_ips !== undefined) $("stat-ips") && ($("stat-ips").textContent = data.total_active_ips);
+    if (data.active_backends !== undefined) $("stat-active-backends") && ($("stat-active-backends").textContent = data.active_backends);
+    if (data.total_backends !== undefined) $("stat-total-backends") && ($("stat-total-backends").textContent = data.total_backends);
+    if (data.total_models_available !== undefined) $("stat-total-models") && ($("stat-total-models").textContent = data.total_models_available);
+    if (data.traffic) updateTrafficChart(data.traffic);
+    if (data.active_ips) renderActiveIps(data.active_ips);
+  }
+
+  // ── Transport: SSE primary, scheduler-driven poll fallback ────────────
+  let es = null;
+  let usePoll = false;
+  let esErrors = 0;
+  let transportMode = "off"; // "sse" | "poll" | "off"
+  let statsTask = null;
+
+  async function pollLive() {
+    const res = await fetch("/admin/metrics/live", { credentials: "include" });
+    if (res.status === 401) { if (window.handleSessionExpiry) window.handleSessionExpiry(); throw new Error("session"); }
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    renderStats(await res.json());
+  }
+
+  async function pollFullStats() {
+    const res = await fetch("/admin/metrics", { credentials: "include" });
+    if (res.status === 401) { if (window.handleSessionExpiry) window.handleSessionExpiry(); throw new Error("session"); }
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    renderStats(await res.json());
+    if (window.dashEdgeSkeleton) { window.dashEdgeSkeleton(); window.dashEdgeSkeleton = null; }
+  }
+
+  function openTransport() {
+    const W = DCW();
+    if (!W || !W.scheduler || W.prefs.live.enabled === false) return;
+    if (transportMode === "sse" && es && es.readyState !== 2) return;
+    if (usePoll) {
+      if (transportMode !== "poll") { transportMode = "poll"; pollLive().catch(() => {}); }
       return;
     }
-    const data = await response.json();
-
-    const statIps = getEl("stat-ips");
-    if (statIps && data.total_active_ips !== undefined) {
-      statIps.textContent = data.total_active_ips;
-    }
-
-    const statActiveB = getEl("stat-active-backends");
-    if (statActiveB && data.active_backends !== undefined) {
-      statActiveB.textContent = data.active_backends;
-    }
-
-    const statTotalB = getEl("stat-total-backends");
-    if (statTotalB && data.total_backends !== undefined) {
-      statTotalB.textContent = data.total_backends;
-    }
-
-    if (data.total_models_available !== undefined) {
-      const statTotalM = getEl("stat-total-models");
-      if (statTotalM) statTotalM.textContent = data.total_models_available;
-    }
-
-    if (data.traffic) updateTrafficChart(data.traffic);
-    renderActiveIps(data.active_ips);
-  } catch (e) {
-    console.warn("Telemetry metrics sync deferred:", e);
-    const ipBody = getEl("ipTableBody");
-    if (ipBody && (!ipBody.children.length || ipBody.innerText.includes("Syncing"))) {
-      ipBody.innerHTML = `<tr><td colspan="3" class="p-5 text-center text-ink-muted text-xs"><i class="fas fa-satellite-dish mr-1 text-slate-500"></i> Listening for edge connections…</td></tr>`;
-    }
-  }
-}
-
-function updateFromSSE(data) {
-  if (!data) return;
-  const statIps = getEl("stat-ips");
-  if (statIps && data.total_active_ips !== undefined) {
-    statIps.textContent = data.total_active_ips;
-  }
-  if (data.traffic) updateTrafficChart(data.traffic);
-  if (data.active_ips) renderActiveIps(data.active_ips);
-}
-
-function startSSE() {
-  if (_eventSource) return;
-  try {
-    _eventSource = new EventSource("/admin/metrics/stream");
-    _eventSource.onmessage = (e) => {
-      try { updateFromSSE(JSON.parse(e.data)); } catch (err) {}
-    };
-    _eventSource.onerror = () => {
-      if (_eventSource) {
-        _eventSource.close();
-        _eventSource = null;
-      }
-      startPolling();
-    };
-  } catch (e) {
-    startPolling();
-  }
-}
-
-function stopSSE() {
-  if (_eventSource) {
-    _eventSource.close();
-    _eventSource = null;
-  }
-}
-
-function startPolling() {
-  if (_metricsTimer) return;
-  loadMetrics();
-  _metricsTimer = setInterval(loadMetrics, 5000);
-}
-
-function stopPolling() {
-  if (_metricsTimer) {
-    clearInterval(_metricsTimer);
-    _metricsTimer = null;
-  }
-}
-
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    stopSSE();
-    stopPolling();
-  } else {
-    startSSE();
-  }
-});
-
-async function load24hTraffic() {
-  const canvas = getEl("traffic24hChart");
-  if (!canvas) return;
-  try {
-    let resp = await fetch("/admin/dashboard/traffic-24h", { credentials: "include" });
-    if (!resp.ok) {
-      resp = await fetch("/admin/observability/history?timeframe=24h", { credentials: "include" });
-    }
-    if (!resp.ok) return;
-    const data = await resp.json();
-    render24hTraffic(data);
-  } catch (e) {
-    console.debug("24h traffic telemetry unavailable", e);
-  }
-}
-
-function render24hTraffic(data) {
-  if (!data) return;
-  const peakRpsEl = getEl("dash24hPeakRps");
-  const p50TtftEl = getEl("dash24hP50Ttft");
-  const totalTokensEl = getEl("dash24hTotalTokens");
-
-  let buckets = [];
-  if (Array.isArray(data)) {
-    buckets = data;
-  } else if (Array.isArray(data.hourly)) {
-    buckets = data.hourly;
-  } else if (Array.isArray(data.traffic)) {
-    buckets = data.traffic;
-  } else if (Array.isArray(data.series)) {
-    buckets = data.series;
-  } else if (Array.isArray(data.buckets)) {
-    buckets = data.buckets;
-  } else if (Array.isArray(data.models)) {
-    const bucketMap = new Map();
-    for (const m of data.models) {
-      for (const pt of (m.series || m.timeseries || m.buckets || [])) {
-        const timeKey = pt.bucket_time || pt.time || pt.label || pt.hour || pt.timestamp;
-        if (!timeKey) continue;
-        const cur = bucketMap.get(timeKey) || { label: timeKey, count: 0, rps: 0, tokens: 0, ttfts: [] };
-        cur.count += (Number(pt.requests) || 0);
-        cur.rps += (Number(pt.rps) || 0);
-        cur.tokens += (Number(pt.total_tokens) || ((Number(pt.prompt_tokens) || 0) + (Number(pt.completion_tokens) || 0)));
-        if (pt.ttft_p50_ms !== undefined && pt.ttft_p50_ms !== null) cur.ttfts.push(Number(pt.ttft_p50_ms));
-        bucketMap.set(timeKey, cur);
-      }
-    }
-    buckets = Array.from(bucketMap.values());
-  }
-
-  // Calculate metrics
-  let peakRps = data.peak_rps ?? data.summary?.peak_rps;
-  if (peakRps === undefined && buckets.length) {
-    peakRps = Math.max(...buckets.map(b => Number(b.rps || ((b.requests || b.count) ? (b.requests || b.count) / 3600 : 0))), 0);
-  }
-
-  let p50Ttft = data.avg_ttft_ms ?? data.p50_ttft_ms ?? data.summary?.p50_ttft_ms;
-  if (p50Ttft === undefined && buckets.length) {
-    const allTtfts = buckets.flatMap(b => b.ttfts || (b.ttft_p50_ms !== undefined ? [Number(b.ttft_p50_ms)] : (b.avg_ttft_ms !== undefined ? [Number(b.avg_ttft_ms)] : [])));
-    if (allTtfts.length) {
-      allTtfts.sort((a, b) => a - b);
-      p50Ttft = allTtfts[Math.floor(allTtfts.length / 2)];
-    }
-  }
-
-  let totalTokens = data.total_tokens ?? data.summary?.total_tokens;
-  if (totalTokens === undefined && buckets.length) {
-    totalTokens = buckets.reduce((s, b) => s + (Number(b.tokens || b.total_tokens || 0)), 0);
-  } else if (totalTokens === undefined && Array.isArray(data.models)) {
-    totalTokens = data.models.reduce((s, m) => s + (Number(m.total_tokens || 0)), 0);
-  }
-
-  if (peakRpsEl) peakRpsEl.textContent = (typeof peakRps === "number" && Number.isFinite(peakRps)) ? peakRps.toFixed(2) + " RPS" : "0.00 RPS";
-  if (p50TtftEl) p50TtftEl.textContent = (typeof p50Ttft === "number" && Number.isFinite(p50Ttft)) ? p50Ttft.toFixed(1) + " ms" : "—";
-  if (totalTokensEl) totalTokensEl.textContent = (typeof totalTokens === "number" && Number.isFinite(totalTokens)) ? new Intl.NumberFormat().format(totalTokens) : "0";
-
-  if (traffic24hChart && buckets.length) {
-    const labels = buckets.map(b => {
-      const lbl = b.label || b.time || b.bucket_time || b.hour || b.timestamp || "";
-      if (lbl.includes("T")) {
-        try {
-          const d = window.parseIsoDate ? window.parseIsoDate(lbl) : new Date(lbl);
-          return d ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : lbl;
-        } catch (e) {
-          return lbl;
+    try {
+      // withCredentials so the session cookie rides along on same-origin SSE.
+      es = new EventSource("/admin/metrics/stream", { withCredentials: true });
+      transportMode = "sse";
+      es.onmessage = (e) => {
+        esErrors = 0;
+        try { renderStats(JSON.parse(e.data)); } catch (err) { /* ignore malformed frame */ }
+      };
+      es.onerror = () => {
+        esErrors++;
+        if (es) { es.close(); es = null; }
+        transportMode = "off";
+        if (esErrors >= 2) {
+          usePoll = true; // proxy buffers the stream / connection cap reached
+          transportMode = "poll";
+          pollLive().catch(() => {});
+        } else {
+          // transient blip: retry via SSE soon; don't hammer
+          setTimeout(() => { if (!es && !usePoll) openTransport(); }, 4000);
         }
-      }
-      return lbl;
-    });
-    const reqCounts = buckets.map(b => Number(b.requests ?? b.count ?? 0));
-    const rpsValues = buckets.map(b => Number(b.rps ?? ((b.requests || b.count) ? (b.requests || b.count) / 3600 : 0)));
-
-    traffic24hChart.data.labels = labels;
-    traffic24hChart.data.datasets[0].data = reqCounts;
-    traffic24hChart.data.datasets[1].data = rpsValues;
-    traffic24hChart.update();
+      };
+    } catch (e) {
+      usePoll = true;
+      transportMode = "poll";
+      pollLive().catch(() => {});
+    }
   }
-}
 
-// Initialise charts and start live listeners
-initTrafficChart();
-init24hTrafficChart();
-loadMetrics();
-startSSE();
-load24hTraffic();
+  function closeTransport() {
+    if (es) { es.close(); es = null; }
+    transportMode = "off";
+  }
 
+  // A slow scheduler task keeps transport decisions aligned with Live/pause
+  // state; SSE pushes arrive on their own.
+  function setupTransport(W) {
+    W.scheduler.add(async () => {
+      if (W.prefs.live.enabled === false) { closeTransport(); return; }
+      if (usePoll && transportMode !== "poll") { usePoll = false; esErrors = 0; } // give SSE another chance
+      if (transportMode === "off" || (transportMode === "sse" && (!es || es.readyState === 2))) {
+        openTransport();
+        if (!ipRows.size) await pollLive().catch(() => {});
+      }
+    }, 30000, { firstDelayMs: 100, backoff: true });
+
+    // First load + occasional richer snapshot (backend/model counts when
+    // Mission Control is enabled; the live endpoint omits them).
+    statsTask = W.scheduler.add(async () => {
+      try { await pollFullStats(); }
+      catch (e) {
+        if (e && e.message === "session") throw e;
+        showEdgeEmpty("Listening for edge connections…");
+        throw e;
+      }
+    }, 60000, { firstDelayMs: 300, backoff: true });
+  }
+
+  // ── Telemetry timeline (range-scoped, DB-backed, cached) ──────────────
+  let chart24 = null;
+
+  function init24hChart() {
+    const canvas = $("traffic24hChart");
+    if (!canvas || !window.Chart) return;
+    chart24 = new Chart(canvas.getContext("2d"), {
+      data: {
+        labels: [],
+        datasets: [
+          {
+            type: "bar",
+            label: "Requests",
+            data: [],
+            backgroundColor: tokenColor("--accent", 0.75),
+            borderColor: tokenColor("--accent"),
+            borderWidth: 1,
+            borderRadius: 3,
+            yAxisID: "y",
+          },
+          {
+            type: "line",
+            label: "RPS",
+            data: [],
+            borderColor: "rgb(56, 189, 248)",
+            backgroundColor: "rgba(56, 189, 248, 0.1)",
+            tension: 0.3,
+            pointRadius: 2,
+            yAxisID: "yRps",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: DC && DC.reducedMotion() ? false : { duration: 400 },
+        plugins: {
+          legend: { display: true, position: "top", align: "end", labels: { color: tokenColor("--ink-muted"), font: { size: 11 }, boxWidth: 10 } },
+          tooltip: { mode: "index", intersect: false },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: tokenColor("--hairline", 0.6) },
+            ticks: { color: tokenColor("--ink-muted"), font: { size: 10 }, precision: 0 },
+            title: { display: true, text: "Requests", color: tokenColor("--ink-muted"), font: { size: 10 } },
+          },
+          yRps: {
+            beginAtZero: true,
+            position: "right",
+            grid: { drawOnChartArea: false },
+            ticks: { color: tokenColor("--ink-muted"), font: { size: 10 } },
+            title: { display: true, text: "RPS", color: tokenColor("--ink-muted"), font: { size: 10 } },
+          },
+          x: {
+            grid: { display: false },
+            ticks: { color: tokenColor("--ink-muted"), font: { size: 10 }, maxRotation: 0, autoSkip: true },
+          },
+        },
+      },
+    });
+  }
+
+  function bucketLabel(b, granularity) {
+    const raw = b.timestamp || b.hour;
+    const d = window.parseIsoDate ? window.parseIsoDate(raw) : new Date(raw);
+    if (!d || Number.isNaN(d.getTime())) return String(raw || "");
+    if (granularity === "day") return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+    return window.formatTime ? window.formatTime(d) : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function render24hTraffic(d) {
+    if (window.dashTimelineSkeleton) { window.dashTimelineSkeleton(); window.dashTimelineSkeleton = null; }
+    if (!d || !Array.isArray(d.hourly)) return;
+    const set = (id, txt) => { const n = $(id); if (n) n.textContent = txt; };
+    set("dash24hPeakRps", (Number(d.peak_rps) || 0).toFixed(2) + " RPS");
+    const p50 = d.ttft_p50_ms != null ? d.ttft_p50_ms
+      : (d.hourly.find((b) => b.ttft_p50_ms != null) || {}).ttft_p50_ms;
+    set("dash24hP50Ttft", p50 != null ? Math.round(p50) + " ms" : "—");
+    set("dash24hTotalTokens", fmtInt.format(Number(d.total_tokens) || 0));
+
+    if (!chart24) init24hChart();
+    if (!chart24) return;
+    const g = d.granularity || "hour";
+    chart24.data.labels = d.hourly.map((b) => bucketLabel(b, g));
+    chart24.data.datasets[0].data = d.hourly.map((b) => Number(b.requests) || 0);
+    const div = g === "minute" ? 60 : g === "day" ? 86400 : 3600;
+    chart24.data.datasets[1].data = d.hourly.map((b) => +((Number(b.requests) || 0) / div).toFixed(3));
+    chart24.update(painted24 ? "none" : undefined);
+    painted24 = true;
+  }
+  let painted24 = false;
+
+  // Public: called by dashboard-summary.js after its render and by the slow
+  // scheduler tick. opts.force bypasses the cache TTL (range switch).
+  window.dashTick24h = async function (opts) {
+    opts = opts || {};
+    if (!DC || typeof DC.swr !== "function") return;
+    const W = DCW();
+    const range = ((W && W.prefs.timeRange) || "24h");
+    const canvas = $("traffic24hChart");
+    if (!canvas) return;
+    if (!painted24) DC.skeletonOn(canvas.closest("section") || canvas, 250);
+    try {
+      const ttl = opts.force ? 0 : 60000;
+      const r = await DC.swr("/admin/dashboard/traffic-24h?range=" + encodeURIComponent(range),
+        { ttlMs: ttl, user: String(window.dashboardUser || "").toLowerCase() });
+      if (r && r.data) render24hTraffic(r.data);
+    } catch (e) {
+      if (e && e.message === "session") return;
+      console.debug("telemetry timeline refresh deferred:", e);
+    }
+  };
+
+  // dashboard-summary.js hands us the summary payload; the timeline needs the
+  // dedicated traffic endpoint, so piggyback a (cheap, cached) tick.
+  window.dashRenderSecondary = function () {
+    return window.dashTick24h();
+  };
+
+  // ── Theme: rebuild charts so colours follow tokens ────────────────────
+  document.addEventListener("dash:themerebuild", () => {
+    if (trafficChart) { trafficChart.destroy(); trafficChart = null; }
+    if (chart24) { chart24.destroy(); chart24 = null; painted24 = false; }
+    initTrafficChart();
+    init24hChart();
+    pollLive().catch(() => {});
+    window.dashTick24h({ force: true });
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────────────
+  if (!$("trafficChart")) return;
+  if (!DC) { console.warn("dash-cache.js must load before dashboard.js"); return; }
+  initTrafficChart();
+  init24hChart();
+
+  const ready = () => {
+    const W = DCW();
+    if (!W || !W.scheduler) { setTimeout(ready, 50); return; }
+    setupTransport(W);
+    // Skeletons for below-the-fold widgets until their first render.
+    const edgeSection = $("ipTableBody") && $("ipTableBody").closest("section");
+    if (edgeSection) {
+      window.dashEdgeSkeleton = () => DC.skeletonOff(edgeSection);
+      DC.skeletonOn(edgeSection, 250);
+    }
+    const tl = $("traffic24hChart") && $("traffic24hChart").closest("section");
+    if (tl) {
+      window.dashTimelineSkeleton = () => DC.skeletonOff(tl);
+      DC.skeletonOn(tl, 250);
+    }
+  };
+  if (window.DashWidgets) ready();
+  else document.addEventListener("DOMContentLoaded", ready);
+})();

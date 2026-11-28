@@ -46,7 +46,7 @@ SPIFFE_TRUSTED_HEADER = os.getenv("SPIFFE_TRUSTED_HEADER", "false").lower() == "
 SPIFFE_SIDECAR_TOKEN = os.getenv("SPIFFE_SIDECAR_TOKEN", "")
 
 # Licencia Licensing Engine Configuration
-LICENCIA_URL = os.getenv("LICENCIA_URL", "http://172.20.0.11:3000")
+LICENCIA_URL = os.getenv("LICENCIA_URL", "https://licencia.deziss.com")
 LICENCIA_API_KEY = os.getenv("LICENCIA_API_KEY", "")
 LICENCIA_LICENSE_KEY = os.getenv("LICENCIA_LICENSE_KEY", "")
 LICENCIA_LEASE_FILE = os.getenv("LICENCIA_LEASE_FILE", "/tmp/gateway_license_lease.json")

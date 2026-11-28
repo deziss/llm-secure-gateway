@@ -10,7 +10,9 @@
 
 services:
   migrate:
-    build: .
+    build:
+      context: .
+      target: runtime
     container_name: llm-gw-test-migrate
     environment:
     - DATABASE_URL=postgresql+asyncpg://gateway_test:testpass@postgres-test:5432/gateway_test_db
@@ -26,7 +28,11 @@ services:
     restart: "no"
 
   gateway:
-    build: .
+    # Deliberately the published `runtime` target: a "fresh install" is only
+    # meaningful if it tests the image users actually get.
+    build:
+      context: .
+      target: runtime
     container_name: llm-gw-test
     ports:
     - "6131:8000"

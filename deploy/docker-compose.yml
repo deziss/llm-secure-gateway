@@ -1,7 +1,11 @@
 # Pull-and-run deployment from GHCR (no source checkout needed).
 #   cp .env.example .env   # fill in the secrets
-#   docker compose pull && docker compose up -d
+#   docker compose pull && docker compose up -d --wait --wait-timeout 300
 # Pin a release with GATEWAY_TAG=0.14.0 (default: latest).
+#
+# `--wait` blocks until every long-running service reports healthy, so a bad
+# release is caught by the deploy command instead of by users. `up` alone would
+# return as soon as containers started.
 services:
   migrate:
     image: ghcr.io/deziss/llm-secure-gateway:${GATEWAY_TAG:-latest}
@@ -28,6 +32,14 @@ services:
         condition: service_completed_successfully
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # The image is Debian slim (no curl/wget), so probe /health with the stdlib.
+    # /health runs `SELECT 1`, i.e. it verifies DB connectivity as well.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   postgres:
@@ -46,7 +58,13 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
     restart: unless-stopped
 
 volumes:

@@ -305,3 +305,41 @@ async def test_client_expired_lease_falls_back_to_community():
         if os.path.exists(lease_path):
             os.remove(lease_path)
 
+
+
+@pytest.mark.asyncio
+async def test_upgrade_without_api_key_reports_misconfiguration_without_network():
+    """A missing LICENCIA_API_KEY must fail fast with an explicit reason and must not
+    contact the server; the failure must not be blamed on the licensing server."""
+    client = LicenciaClient(url="http://mock-licencia", api_key="", license_key="",
+                            lease_file="/tmp/test_no_api_key_lease.json")
+    with patch("llm_gateway.licensing.client.httpx.AsyncClient") as mock_http:
+        upgraded, state = await client.upgrade("LIC-NEW-KEY")
+        mock_http.assert_not_called()
+    assert upgraded is False
+    assert state.last_error and "LICENCIA_API_KEY" in state.last_error
+    assert "was NOT contacted" in state.last_error
+
+
+@pytest.mark.asyncio
+async def test_community_state_exposes_real_hardware_fingerprint():
+    """The Upgrade dialog prints state.hardware_id as the fingerprint to activate;
+    it must be the real fingerprint even in Community mode, never 'localhost'."""
+    from llm_gateway.licensing.fingerprint import generate_hardware_id
+    client = LicenciaClient(url="http://mock-licencia", api_key="", license_key="")
+    assert client.state.hardware_id == generate_hardware_id()
+    state = await client.validate()
+    assert state.hardware_id == generate_hardware_id()
+
+
+@pytest.mark.asyncio
+async def test_validate_rejection_reason_is_recorded():
+    client = LicenciaClient(url="http://mock-licencia", api_key="lic_key",
+                            license_key="LIC-123", lease_file="/tmp/test_reason_lease.json")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 403
+    with patch("llm_gateway.licensing.client.httpx.AsyncClient") as mock_http:
+        mock_http.return_value.__aenter__.return_value.post = AsyncMock(return_value=mock_resp)
+        state = await client.validate(lease_fallback=False)
+    assert state.is_community is True
+    assert state.last_error and "403" in state.last_error and "mock-licencia" in state.last_error

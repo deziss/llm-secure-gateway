@@ -5,7 +5,11 @@ services:
   # Runs once on first `docker compose up`, applies migrations, then exits.
   # The gateway waits for this to complete before starting.
   migrate:
-    build: .
+    # `runtime` (not `ci`): a one-shot migration job should run in the same
+    # shape as production — smallest surface, no test deps.
+    build:
+      context: .
+      target: runtime
     container_name: llm-gateway-migrate
     environment:
     - DATABASE_URL=postgresql+asyncpg://gateway:password@postgres:5432/gateway_db
@@ -22,7 +26,12 @@ services:
 
   # ── Main gateway service ────────────────────────────────────────────
   gateway:
-    build: .
+    # The `ci` target = runtime + pytest/respx/aiosqlite + tests/ + sdk/, i.e.
+    # this container stays able to run the suite in place
+    # (`docker compose exec gateway python -m pytest tests/ -q`).
+    build:
+      context: .
+      target: ci
     container_name: llm-gateway
     env_file:
     - path: .env
@@ -53,7 +62,8 @@ services:
     - OBS_TRACEMALLOC=${OBS_TRACEMALLOC:-false}
     - GPU_AGENT_TOKEN=${GPU_AGENT_TOKEN:-}
     - LOG_LEVEL=debug
-    - UVICORN_LOOP=asyncio
+    # Loop unset: uvicorn's default "auto" picks uvloop (from uvicorn[standard]),
+    # matching production and UPGRADE.md's "the event loop is now uvloop".
     - DATABASE_URL=postgresql+asyncpg://gateway:password@postgres:5432/gateway_db
     - AUTH_SECRET=${AUTH_SECRET}
     - ENCRYPTION_KEY=${ENCRYPTION_KEY}
@@ -85,6 +95,14 @@ services:
     - ./scripts:/app/scripts
     extra_hosts:
     - "host.docker.internal:host-gateway"
+    # The image is Debian slim (no curl/wget): probe /health with the stdlib.
+    # /health runs `SELECT 1`, so it also proves DB connectivity.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
     - default
     - phoenix_net
@@ -112,10 +130,15 @@ services:
 
   # ── Redis Cache (Optional) ─────────────────────────────────────────
   redis:
-    image: redis:alpine
+    image: redis:7.4-alpine
     container_name: llm-gateway-redis
     ports:
     - "6382:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
     restart: unless-stopped
 
 volumes:

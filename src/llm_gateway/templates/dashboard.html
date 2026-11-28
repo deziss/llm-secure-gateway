@@ -9,19 +9,101 @@
     </h1>
     <p class="text-xs sm:text-caption text-ink-muted mt-0.5">Real-time gateway telemetry, traffic routing, and security governance</p>
   </div>
-  <div class="flex items-center gap-3 text-caption text-ink-muted">
+  <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-caption text-ink-muted">
     <span id="dashLiveIndicator" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-inset border border-hairline text-micro font-medium">
       <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
       <span class="text-ink font-semibold">Cluster Online</span>
     </span>
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-inset border border-hairline text-micro" title="Gateway uptime">
+      <i data-lucide="timer" class="w-3 h-3 text-accent" aria-hidden="true"></i>
+      <span id="dashUptime" class="text-ink font-semibold tabular-nums">—</span>
+    </span>
+    <div id="dashControls" class="flex flex-wrap items-center gap-2"></div>
     <span id="dashUpdated" class="text-micro tabular-nums text-ink-muted"></span>
   </div>
 </div>
+{# Single polite live region for the whole dashboard; per-tile regions make
+   screen readers spam on every poll. #}
+<p id="dashAnnounce" class="sr-only" aria-live="polite"></p>
 
 {% if user_role in ['admin', 'manager'] %}
-<!-- Key Telemetry Metrics Grid (5 Columns) -->
-<div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3.5 lg:gap-4">
-  <!-- Active Clients / IPs -->
+<!-- Key Telemetry Metrics Grid -->
+<div data-widget="kpi" data-dash-skeleton class="dash-kpi-grid grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-3.5 lg:gap-4">
+  <!-- Requests in selected range -->
+  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between">
+    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
+      <span id="stat-req-range-label">Requests · last 24h</span>
+      <i data-lucide="zap" class="w-4 h-4 text-accent"></i>
+    </div>
+    <div class="my-2">
+      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-req-range" role="status">–</p>
+    </div>
+    <div class="text-micro text-ink-muted font-medium flex items-center gap-1 tabular-nums" id="stat-req-delta"></div>
+  </div>
+
+  <!-- Error rate in selected range -->
+  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between">
+    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
+      <span>Error Rate</span>
+      <i data-lucide="alert-triangle" class="w-4 h-4 text-warn"></i>
+    </div>
+    <div class="my-2">
+      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-error-rate" role="status">–</p>
+    </div>
+    <div class="text-micro text-ink-muted font-medium tabular-nums" id="stat-error-detail"></div>
+  </div>
+
+  <!-- p90 time-to-first-token -->
+  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between">
+    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
+      <span>p90 TTFT</span>
+      <i data-lucide="gauge" class="w-4 h-4 text-ink-muted"></i>
+    </div>
+    <div class="my-2 flex items-baseline gap-1">
+      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-p90-ttft" role="status">–</p>
+      <span class="text-caption text-ink-muted font-medium">ms</span>
+    </div>
+    <div class="text-micro text-ink-muted font-medium tabular-nums" id="stat-ttft-detail"></div>
+  </div>
+
+  <!-- Monthly Spend -->
+  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between">
+    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
+      <span>Monthly Spend</span>
+      <i data-lucide="dollar-sign" class="w-4 h-4 text-ink-muted"></i>
+    </div>
+    <div class="my-2">
+      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-spend-month" role="status">–</p>
+    </div>
+    <div class="flex items-center gap-2 text-micro text-ink-muted font-medium">
+      <span>Today: <strong id="stat-spend-today" class="text-ink tabular-nums">–</strong></span>
+      <span id="stat-spend-delta" class="tabular-nums"></span>
+    </div>
+  </div>
+
+  <!-- Tokens Today -->
+  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between col-span-2 sm:col-span-1">
+    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
+      <span>Tokens Today</span>
+      <i data-lucide="cpu" class="w-4 h-4 text-accent"></i>
+    </div>
+    <div class="my-2">
+      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-tokens-today" role="status">–</p>
+    </div>
+    <div>
+      <div class="flex h-1.5 overflow-hidden rounded-full bg-surface-inset" aria-hidden="true">
+        <span id="stat-tokens-in-bar" class="bg-accent transition-all duration-500" style="width:0%"></span>
+        <span id="stat-tokens-out-bar" class="bg-ok transition-all duration-500" style="width:0%"></span>
+      </div>
+      <div class="mt-1.5 flex justify-between text-micro text-ink-muted">
+        <span>In: <strong id="stat-tokens-in" class="text-ink tabular-nums">–</strong></span>
+        <span>Out: <strong id="stat-tokens-out" class="text-ink tabular-nums">–</strong></span>
+        <span id="stat-requests-today" class="tabular-nums font-medium"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connected Clients / IPs -->
   <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between">
     <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
       <span>Connected Clients</span>
@@ -69,48 +151,11 @@
       <span>Federated discovery</span>
     </div>
   </div>
-
-  <!-- Spend This Month -->
-  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between">
-    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
-      <span>Monthly Spend</span>
-      <i data-lucide="dollar-sign" class="w-4 h-4 text-ink-muted"></i>
-    </div>
-    <div class="my-2">
-      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-spend-month" role="status">–</p>
-    </div>
-    <div class="flex items-center gap-2 text-micro text-ink-muted font-medium">
-      <span>Today: <strong id="stat-spend-today" class="text-ink tabular-nums">–</strong></span>
-      <span id="stat-spend-delta" class="tabular-nums"></span>
-    </div>
-  </div>
-
-  <!-- Tokens Today -->
-  <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 flex flex-col justify-between col-span-2 sm:col-span-1">
-    <div class="flex items-center justify-between text-caption font-medium text-ink-muted">
-      <span>Tokens Today</span>
-      <i data-lucide="cpu" class="w-4 h-4 text-accent"></i>
-    </div>
-    <div class="my-2">
-      <p class="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight tabular-nums" id="stat-tokens-today" role="status">–</p>
-    </div>
-    <div>
-      <div class="flex h-1.5 overflow-hidden rounded-full bg-surface-inset" aria-hidden="true">
-        <span id="stat-tokens-in-bar" class="bg-accent transition-all duration-500" style="width:0%"></span>
-        <span id="stat-tokens-out-bar" class="bg-ok transition-all duration-500" style="width:0%"></span>
-      </div>
-      <div class="mt-1.5 flex justify-between text-micro text-ink-muted">
-        <span>In: <strong id="stat-tokens-in" class="text-ink tabular-nums">–</strong></span>
-        <span>Out: <strong id="stat-tokens-out" class="text-ink tabular-nums">–</strong></span>
-        <span id="stat-requests-today" class="tabular-nums font-medium"></span>
-      </div>
-    </div>
-  </div>
 </div>
 
-<div id="dashSummary" class="space-y-5 lg:space-y-6" aria-live="polite">
+<div id="dashSummary" class="dash-ordered grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
   <!-- 24-Hour Traffic Activity & Latency Timeline -->
-  <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-24h-traffic-h">
+  <section data-widget="traffic24h" data-order="1" class="dash-card col-span-full rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0" aria-labelledby="dash-24h-traffic-h">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
       <div>
         <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
@@ -142,10 +187,8 @@
     </div>
   </section>
 
-  <!-- Live Traffic Activity (15m SSE) & Edge Ingress IPs -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-    <!-- Live Traffic Chart -->
-    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between">
+  <!-- Live Traffic Chart -->
+  <div data-widget="live" data-order="2" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between">
       <div class="flex items-center justify-between gap-2 mb-3">
         <div>
           <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
@@ -161,7 +204,7 @@
     </div>
 
     <!-- Active Edge IPs -->
-    <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between">
+    <div data-widget="edge" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between">
       <div class="flex items-center justify-between gap-2 mb-3">
         <div>
           <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
@@ -181,7 +224,7 @@
             </tr>
           </thead>
           <tbody id="ipTableBody" class="divide-y divide-hairline">
-            <tr>
+            <tr id="ipEmptyRow">
               <td colspan="3" class="p-6 text-center text-ink-muted text-xs">
                 <div class="inline-flex items-center gap-2">
                   <span class="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin"></span>
@@ -193,11 +236,9 @@
         </table>
       </div>
     </div>
-  </div>
 
-  <!-- Spend (Last 14 Days) & Top Models Distribution -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-spend-h">
+  <!-- Spend (Last 14 Days) -->
+    <section data-widget="spend" data-order="4" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-spend-h">
       <div class="flex items-center justify-between gap-2 mb-3">
         <div>
           <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
@@ -214,7 +255,7 @@
       </div>
     </section>
 
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-models-h">
+    <section data-widget="models" data-order="5" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between" aria-labelledby="dash-models-h">
       <div class="flex items-center justify-between gap-2 mb-3">
         <div>
           <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
@@ -228,12 +269,9 @@
         <ol id="dashTopModels" class="space-y-2"><p class="text-xs text-ink-muted">Loading model metrics…</p></ol>
       </div>
     </section>
-  </div>
 
-  <!-- Operational Status Grid (4 Columns) -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
     <!-- Attention Alerts -->
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-alerts-h">
+    <section data-widget="alerts" data-order="6" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-alerts-h">
       <div class="flex items-center justify-between gap-2 mb-2">
         <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
           <i data-lucide="bell" class="h-4 w-4 text-warn" aria-hidden="true"></i> <span id="dash-alerts-h">Attention Needed</span>
@@ -246,7 +284,7 @@
     </section>
 
     <!-- Response Cache -->
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-cache-h">
+    <section data-widget="cache" data-order="7" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-cache-h">
       <div class="flex items-center justify-between gap-2 mb-2">
         <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
           <i data-lucide="database" class="h-4 w-4 text-accent" aria-hidden="true"></i> <span id="dash-cache-h">Response Cache</span>
@@ -270,7 +308,7 @@
     </section>
 
     <!-- Security Events -->
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-sec-h">
+    <section data-widget="security" data-order="8" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-sec-h">
       <div class="flex items-center justify-between gap-2 mb-2">
         <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
           <i data-lucide="shield-alert" class="h-4 w-4 text-down" aria-hidden="true"></i> <span id="dash-sec-h">Security (24h)</span>
@@ -293,7 +331,7 @@
     </section>
 
     <!-- Server Health -->
-    <section class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-health-h">
+    <section data-widget="health" data-order="9" class="dash-card rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 sm:p-5 min-w-0 flex flex-col justify-between min-h-[190px]" aria-labelledby="dash-health-h">
       <div class="flex items-center justify-between gap-2 mb-2">
         <h2 class="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
           <i data-lucide="heart-pulse" class="h-4 w-4 text-ok" aria-hidden="true"></i> <span id="dash-health-h">Server Health</span>
@@ -304,10 +342,26 @@
         <ul id="dashBackends" class="space-y-2 text-xs"><p class="text-xs text-ink-muted">Probing backends…</p></ul>
       </div>
     </section>
-  </div>
 </div>
-<script src="/static/js/dashboard-summary.js?v={{ asset_v }}"></script>
+
+{# Row prototype for the edge-connectivity table (cloned by dashboard.js;
+   keeps rendering data-free of innerHTML). #}
+<template id="ipRowTemplate">
+  <tr class="group hover:bg-surface-inset transition-colors">
+    <td class="px-3.5 py-2 font-mono text-accent font-medium text-xs"></td>
+    <td class="px-3.5 py-2 text-ink-muted text-xs tabular-nums" data-ip-time>0s ago</td>
+    <td class="px-3.5 py-2 text-right text-xs">
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-micro font-bold bg-ok/10 text-ok border border-ok/20">
+        <span class="w-1.5 h-1.5 rounded-full bg-ok mr-1 animate-pulse" aria-hidden="true"></span>ACTIVE
+      </span>
+    </td>
+  </tr>
+</template>
+
+<script>window.dashboardUser = {{ user.email | tojson }};</script>
+<script src="/static/js/dash-cache.js?v={{ asset_v }}"></script>
 <script src="/static/js/dashboard.js?v={{ asset_v }}"></script>
+<script src="/static/js/dashboard-summary.js?v={{ asset_v }}"></script>
 
 {% else %}
 {# Developer and viewer workspace view #}

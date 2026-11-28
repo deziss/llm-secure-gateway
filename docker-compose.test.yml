@@ -1,6 +1,10 @@
 services:
   test:
-    build: .
+    # `ci` = runtime + the [test] extra + tests/ + sdk/, all pinned by
+    # requirements.test.txt.
+    build:
+      context: .
+      target: ci
     container_name: llm-gateway-test
     environment:
     - ENCRYPTION_KEY=ikwBWtl7m0nMqsbZohd3Lbjqf0QMlWgENLVOAxkAbWY=
