@@ -76,8 +76,8 @@
   function ipEmpty(msg) {
     const row = $("ipEmptyRow");
     if (row) {
-      const cell = row.querySelector("td");
-      if (cell) cell.lastChild.textContent = " " + (msg || "No external clients connected yet");
+      const msgEl = row.querySelector("[data-ip-empty-msg]") || row.querySelector("td");
+      if (msgEl) msgEl.textContent = (msg || "No external clients connected yet");
       return row;
     }
     const tr = document.createElement("tr");
@@ -94,8 +94,10 @@
       ipRowTemplate = $("ipRowTemplate");
     }
     const tr = ipRowTemplate ? ipRowTemplate.content.firstElementChild.cloneNode(true) : document.createElement("tr");
+    const addr = tr.querySelector("[data-ip-address]");
     const time = tr.querySelector("[data-ip-time]");
-    return { tr, time };
+    if (addr) addr.textContent = ip; // data-free of innerHTML; textContent only
+    return { tr, addr, time };
   }
 
   function renderActiveIps(activeIps) {

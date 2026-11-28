@@ -1,10 +1,18 @@
 ## [Unreleased]
 
+### 🐛 Dashboard edge table
+
+- Edge Connectivity rows now show the origin IP: `dashboard.js` filled only the "Last Activity" cell, leaving the "Origin IP" cell permanently blank. The empty-state message also targets a dedicated element instead of the cell's last child (the loading spinner).
+
 ### 🧪 Test and async correctness
 
 - Fixed key rotation to await SQLAlchemy's async refresh calls.
 - Removed legacy pytest event-loop fixtures, fixed mock AsyncSession result types, and resolved duplicate proxy operation IDs and test-only deprecation/security warnings.
 - The development Compose service now starts Uvicorn explicitly while retaining the CI image's test tooling.
+
+### 🖥 GPU agent in Compose
+
+- Development and production Compose files include an optional `llm-gpu-agent` service (build context `./agent`, NVIDIA GPU reservations, `pid: host`) gated behind `--profile gpu`, mirroring the standalone `agent/docker-compose.yml`.
 
 ### 🧰 Redis
 

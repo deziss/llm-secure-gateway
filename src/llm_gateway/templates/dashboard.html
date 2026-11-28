@@ -228,7 +228,7 @@
               <td colspan="3" class="p-6 text-center text-ink-muted text-xs">
                 <div class="inline-flex items-center gap-2">
                   <span class="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin"></span>
-                  <span>Listening for edge connections…</span>
+                  <span data-ip-empty-msg>Listening for edge connections…</span>
                 </div>
               </td>
             </tr>
@@ -348,7 +348,7 @@
    keeps rendering data-free of innerHTML). #}
 <template id="ipRowTemplate">
   <tr class="group hover:bg-surface-inset transition-colors">
-    <td class="px-3.5 py-2 font-mono text-accent font-medium text-xs"></td>
+    <td class="px-3.5 py-2 font-mono text-accent font-medium text-xs" data-ip-address>—</td>
     <td class="px-3.5 py-2 text-ink-muted text-xs tabular-nums" data-ip-time>0s ago</td>
     <td class="px-3.5 py-2 text-right text-xs">
       <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-micro font-bold bg-ok/10 text-ok border border-ok/20">
