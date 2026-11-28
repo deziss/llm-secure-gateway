@@ -360,7 +360,7 @@ async function loadSpendData() {
         totalReq += o.request_count || 0;
         return `
           <tr class="hover:bg-surface-inset transition-colors">
-            <td class="p-4 font-semibold text-ink">${o.owner_id}</td>
+            <td class="p-4 font-semibold text-ink" title="${o.owner_id}">${o.owner_id}</td>
             <td class="p-4 text-ink">${o.request_count.toLocaleString()}</td>
             <td class="p-4 text-ink">${o.total_input_tokens.toLocaleString()}</td>
             <td class="p-4 text-ink">${o.total_output_tokens.toLocaleString()}</td>
@@ -381,8 +381,8 @@ async function loadSpendData() {
     } else {
       modelTbody.innerHTML = models.map(m => `
         <tr class="hover:bg-surface-inset transition-colors">
-          <td class="p-4 font-semibold text-ink">${m.model}</td>
-          <td class="p-4"><span class="px-2.5 py-1 text-xs rounded-full bg-accent/10 text-accent font-semibold">${m.provider}</span></td>
+          <td class="p-4 font-semibold text-ink" title="${m.model}">${m.model}</td>
+          <td class="p-4"><span class="px-2.5 py-1 text-xs rounded-full bg-accent/10 text-accent font-semibold" title="Provider: ${m.provider}">${m.provider}</span></td>
           <td class="p-4 text-ink">${m.request_count.toLocaleString()}</td>
           <td class="p-4 font-mono font-semibold text-ink text-right">$${Number(m.total_cost).toFixed(4)}</td>
         </tr>
@@ -426,9 +426,9 @@ function renderPricingTable(rules) {
 
     return `
       <tr class="hover:bg-surface-inset transition-colors">
-        <td class="p-4 font-mono font-semibold text-ink">
+        <td class="p-4 font-mono font-semibold text-ink" title="${r.model}">
           ${r.model}
-          ${r.description ? `<span class="block text-micro text-ink-muted font-sans font-normal mt-0.5">${r.description}</span>` : ''}
+          ${r.description ? `<span class="block text-micro text-ink-muted font-sans font-normal mt-0.5 truncate" title="${r.description}">${r.description}</span>` : ''}
         </td>
         <td class="p-4"><span class="px-2 py-0.5 text-micro rounded-full bg-surface-inset border border-hairline font-semibold text-ink">${r.provider}</span></td>
         <td class="p-4 font-mono font-semibold text-ink">
@@ -446,24 +446,27 @@ function renderPricingTable(rules) {
             type="button"
             data-action="edit-pricing"
             data-id="${r.id}"
-            class="px-2.5 py-1 text-xs rounded-control border border-hairline hover:bg-surface-inset text-ink mr-1.5 transition-colors"
+            class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-hairline bg-surface-inset text-ink hover:bg-hairline transition-all mr-1.5 cursor-pointer"
             title="Edit token rate"
+            aria-label="Edit token rate for ${r.model}"
           >
-            Edit
+            <i data-lucide="edit-3" class="w-4 h-4" aria-hidden="true"></i>
           </button>
           <button
             type="button"
             data-action="delete-pricing"
             data-id="${r.id}"
-            class="px-2 py-1 text-xs rounded-control text-down hover:bg-down/10 transition-colors"
+            class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
             title="Delete pricing rule"
+            aria-label="Delete token rate for ${r.model}"
           >
-            Delete
+            <i data-lucide="trash-2" class="w-4 h-4" aria-hidden="true"></i>
           </button>
         </td>
       </tr>
     `;
   }).join('');
+  if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 }
 
 function filterPricingTable() {

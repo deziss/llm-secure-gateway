@@ -195,6 +195,13 @@
     return el("td", { cls: "px-3 py-2 " + (cls || ""), text: text === null || text === undefined ? DASH : String(text) });
   }
 
+  // td() + native tooltip; use for cells that may truncate their content.
+  function tdTitle(text, cls) {
+    const node = td(text, cls);
+    if (text !== null && text !== undefined) node.setAttribute("title", String(text));
+    return node;
+  }
+
   function badge(text, tone) {
     const tones = {
       ok: "text-ok border-hairline",
@@ -542,8 +549,8 @@
       tr.dataset.model = m.model;
 
       // Server + Model stay pinned while the metrics columns scroll sideways.
-      tr.appendChild(td(m.server, "sticky left-0 z-10 bg-surface-raised w-32 min-w-32 max-w-32 truncate"));
-      const modelCell = td(m.model, "font-mono text-xs sticky left-32 z-10 bg-surface-raised w-44 min-w-44 max-w-44");
+      tr.appendChild(tdTitle(m.server, "sticky left-0 z-10 bg-surface-raised w-32 min-w-32 max-w-32 truncate"));
+      const modelCell = tdTitle(m.model, "font-mono text-xs sticky left-32 z-10 bg-surface-raised w-44 min-w-44 max-w-44");
       if (m.tokens_estimated) modelCell.appendChild(el("span", { cls: "ml-2", text: "≈ est. tokens" }));
       tr.appendChild(modelCell);
 
@@ -1445,7 +1452,7 @@
         ? `${fmt(g.power_w, 0, " W")} / ${fmt(g.power_limit_w, 0, " W")}` : DASH;
       tbody.appendChild(el("tr", null, [
         td(isNum(g.index) ? "GPU" + g.index : DASH, "font-medium"),
-        td(g.name, "truncate"),
+        tdTitle(g.name, "truncate"),
         el("td", { cls: "px-3 py-1.5 tabular-nums" }, [el("div", { text: fmtPct(g.util_pct, 0) }), bar(g.util_pct, "ok")]),
         vram,
         td(isNum(g.temp_c) ? fmt(g.temp_c, 0, " °C") : DASH, "text-right tabular-nums"),
@@ -1533,13 +1540,14 @@
         el("p", { cls: "text-caption text-ink-muted break-all", text: `${h.source} · ${h.url}${h.enabled ? "" : " · disabled"}` }),
       ]);
       const actions = el("div", { cls: "flex shrink-0 gap-2" }, [
-        el("button", { cls: "min-h-touch px-2 text-accent", text: "Edit", attrs: { type: "button" }, data: { action: "host-edit", name: h.name } }),
-        el("button", { cls: "min-h-touch px-2 text-down", text: "Delete", attrs: { type: "button" }, data: { action: "host-delete", name: h.name } }),
+        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-hairline bg-surface-inset text-ink hover:bg-hairline transition-all", attrs: { type: "button", title: "Edit GPU host", "aria-label": "Edit GPU host " + h.name }, data: { action: "host-edit", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "edit-3", "aria-hidden": "true" } })]),
+        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all", attrs: { type: "button", title: "Delete GPU host", "aria-label": "Delete GPU host " + h.name }, data: { action: "host-delete", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]),
       ]);
       return el("li", { cls: "flex items-start gap-3 py-2" }, [label, actions]);
     });
     if (!items.length) items.push(el("li", { cls: "py-2 text-ink-muted", text: "No GPU hosts yet." }));
     list.replaceChildren(...items);
+    if (window.lucide && typeof window.lucide.createIcons === "function") window.lucide.createIcons();
     if (state.payload) fillLinkServers(state.payload);
   }
 
@@ -1638,10 +1646,10 @@
     if (!conts.length) return null;
     const cols = [["Container", "w-[40%]", ""], ["Memory", "w-[20%]", "text-right"], ["CPU-sec (cum.)", "w-[20%]", "text-right"], ["Id", "w-[20%]", ""]];
     const rows = conts.map((c) => el("tr", null, [
-      td(c.name, "truncate"),
+      tdTitle(c.name, "truncate"),
       td(fmtBytes(c.mem_used_bytes), "text-right tabular-nums"),
       td(isNum(c.cpu_seconds_total) ? fmt(c.cpu_seconds_total, 0, "s") : DASH, "text-right tabular-nums"),
-      td(c.id, "text-caption text-ink-muted truncate"),
+      tdTitle(c.id, "text-caption text-ink-muted truncate"),
     ]));
     const more = isNum(n.container_count) && n.container_count > conts.length
       ? el("p", { cls: "text-caption text-ink-muted", text: `Showing top ${conts.length} of ${n.container_count} containers by memory.` }) : null;
@@ -1679,13 +1687,14 @@
         el("p", { cls: "text-caption text-ink-muted break-all", text: `${h.source} · ${h.url}${h.enabled ? "" : " · disabled"}` }),
       ]);
       const actions = el("div", { cls: "flex shrink-0 gap-2" }, [
-        el("button", { cls: "min-h-touch px-2 text-accent", text: "Edit", attrs: { type: "button" }, data: { action: "node-edit", name: h.name } }),
-        el("button", { cls: "min-h-touch px-2 text-down", text: "Delete", attrs: { type: "button" }, data: { action: "node-delete", name: h.name } }),
+        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-hairline bg-surface-inset text-ink hover:bg-hairline transition-all", attrs: { type: "button", title: "Edit node", "aria-label": "Edit node " + h.name }, data: { action: "node-edit", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "edit-3", "aria-hidden": "true" } })]),
+        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all", attrs: { type: "button", title: "Delete node", "aria-label": "Delete node " + h.name }, data: { action: "node-delete", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]),
       ]);
       return el("li", { cls: "flex items-start gap-3 py-2" }, [label, actions]);
     });
     if (!items.length) items.push(el("li", { cls: "py-2 text-ink-muted", text: "No nodes yet." }));
     list.replaceChildren(...items);
+    if (window.lucide && typeof window.lucide.createIcons === "function") window.lucide.createIcons();
   }
 
   function nodeFormReset() {

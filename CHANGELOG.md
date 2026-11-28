@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### 🎨 Action columns and table tooltips
+
+- Pricing table actions now use the same edit / trash icon buttons as servers, users, projects, aliases and bots; tooltips (`title`) and screen-reader labels name the action and the model.
+- GPU host and node lists in Observability use the same icon buttons instead of "Edit" / "Delete" text.
+- Cells that can truncate (per-models Server/Model, GPU name, container name/id, spend model and owner) now show their full text in a native tooltip.
+- Clear buttons on the Models, Groups and Live Traces toolbars match the height of the inputs beside them.
+
 ### 🐛 Pricing page CSRF fix
 
 - Catalog sync, price upsert and price delete now send the `X-CSRF-Token` header (via `fetchWithCsrf`); previously every click returned 403 "Failed to sync catalog." for cookie-authenticated admins.
