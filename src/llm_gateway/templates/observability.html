@@ -25,23 +25,23 @@
 
   <div role="tablist" aria-label="Observability sections" class="flex flex-wrap gap-1 border-b border-hairline">
     <button type="button" role="tab" id="tab-models" aria-controls="panel-models" aria-selected="true" data-action="tab" data-tab="models"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted bg-accent/10 text-accent">Models</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted bg-accent/10 text-accent">Models</button>
     <button type="button" role="tab" id="tab-groups" aria-controls="panel-groups" aria-selected="false" data-action="tab" data-tab="groups"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Groups</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Groups</button>
     <button type="button" role="tab" id="tab-gpus" aria-controls="panel-gpus" aria-selected="false" data-action="tab" data-tab="gpus"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">GPUs</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">GPUs</button>
     <button type="button" role="tab" id="tab-infra" aria-controls="panel-infra" aria-selected="false" data-action="tab" data-tab="infra"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Infrastructure</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Infrastructure</button>
     <button type="button" role="tab" id="tab-gateway" aria-controls="panel-gateway" aria-selected="false" data-action="tab" data-tab="gateway"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Gateway</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Gateway</button>
     <button type="button" role="tab" id="tab-traces" aria-controls="panel-traces" aria-selected="false" data-action="tab" data-tab="traces"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Live Traces</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Live Traces</button>
     <button type="button" role="tab" id="tab-integrations" aria-controls="panel-integrations" aria-selected="false" data-action="tab" data-tab="integrations"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Integrations</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Integrations</button>
     <button type="button" role="tab" id="tab-alerts" aria-controls="panel-alerts" aria-selected="false" data-action="tab" data-tab="alerts"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Alert Center</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Alert Center</button>
     <button type="button" role="tab" id="tab-agents" aria-controls="panel-agents" aria-selected="false" data-action="tab" data-tab="agents"
-            class="min-h-touch px-4 py-2 text-sm font-medium text-ink-muted">Agent Intelligence</button>
+            class="min-h-9 px-4 py-2 text-sm font-medium text-ink-muted">Agent Intelligence</button>
   </div>
 
   <!-- ── Models ─────────────────────────────────────────────── -->
@@ -51,12 +51,12 @@
       <div class="flex items-center gap-2">
         <span class="text-caption font-semibold text-ink-muted uppercase tracking-wider">Timeframe:</span>
         <div class="inline-flex rounded-control border border-hairline bg-surface-inset p-0.5" role="group" aria-label="Observability timeframe">
-          <button type="button" data-action="timeframe" data-tf="1s" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1s (Live)</button>
-          <button type="button" data-action="timeframe" data-tf="1m" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1m</button>
-          <button type="button" data-action="timeframe" data-tf="1h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold bg-accent text-accent-ink shadow-sm" aria-pressed="true">1h</button>
-          <button type="button" data-action="timeframe" data-tf="6h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">6h</button>
-          <button type="button" data-action="timeframe" data-tf="12h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">12h</button>
-          <button type="button" data-action="timeframe" data-tf="24h" class="min-h-touch rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">24h</button>
+          <button type="button" data-action="timeframe" data-tf="1s" class="min-h-9 rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1s (Live)</button>
+          <button type="button" data-action="timeframe" data-tf="1m" class="min-h-9 rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">1m</button>
+          <button type="button" data-action="timeframe" data-tf="1h" class="min-h-9 rounded px-3 py-1 text-xs font-semibold bg-accent text-accent-ink shadow-sm" aria-pressed="true">1h</button>
+          <button type="button" data-action="timeframe" data-tf="6h" class="min-h-9 rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">6h</button>
+          <button type="button" data-action="timeframe" data-tf="12h" class="min-h-9 rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">12h</button>
+          <button type="button" data-action="timeframe" data-tf="24h" class="min-h-9 rounded px-3 py-1 text-xs font-semibold text-ink-muted hover:text-ink" aria-pressed="false">24h</button>
         </div>
       </div>
       <!-- Inline token throughput (was standalone stat cards; compacted to save space) -->
@@ -100,15 +100,15 @@
         <option value="idle">Idle</option>
         <option value="errors">Errors / server down</option>
       </select>
-      <button type="button" data-action="filters-clear" data-scope="models" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
+      <button type="button" data-action="filters-clear" data-scope="models" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
       <span id="fModelsCount" class="ml-auto text-caption text-ink-muted" aria-live="polite"></span>
     </div>
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
       <table class="w-full text-left text-sm border-separate border-spacing-0" aria-label="Per-model live statistics">
         <thead class="bg-surface-inset text-ink-muted text-micro font-bold uppercase tracking-widest">
           <tr>
-            <th scope="col" class="p-3 border-b border-hairline" data-scope="models" data-key="server">Server</th>
-            <th scope="col" class="p-3 border-b border-hairline" data-scope="models" data-key="model">Model</th>
+            <th scope="col" class="p-3 border-b border-hairline sticky left-0 z-20 bg-surface-inset w-32 min-w-32 max-w-32" data-scope="models" data-key="server">Server</th>
+            <th scope="col" class="p-3 border-b border-hairline sticky left-32 z-20 bg-surface-inset w-44 min-w-44 max-w-44" data-scope="models" data-key="model">Model</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="rps_10s">RPS 10s</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="rps_60s">RPS 60s</th>
             <th scope="col" class="p-3 border-b border-hairline text-right" data-scope="models" data-key="waiting">Waiting</th>
@@ -154,7 +154,7 @@
         <option value="tok">Sort: tok/s</option>
         <option value="queue">Sort: queue</option>
       </select>
-      <button type="button" data-action="filters-clear" data-scope="groups" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
+      <button type="button" data-action="filters-clear" data-scope="groups" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
       <span id="fGroupsCount" class="text-caption text-ink-muted" aria-live="polite"></span>
       <div class="ml-auto inline-flex overflow-hidden rounded-control border border-hairline" role="group" aria-label="View mode">
         <button type="button" data-action="view" data-view="cards" aria-pressed="true" class="px-3 py-1.5 text-sm text-ink">Cards</button>
@@ -175,7 +175,7 @@
       <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-sm font-bold text-ink">GPU hosts</h2>
-          <button type="button" data-action="host-add" class="min-h-touch inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
+          <button type="button" data-action="host-add" class="min-h-9 inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
             <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
             Add server
           </button>
@@ -186,7 +186,7 @@
       <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-4">
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-sm font-bold text-ink">Link a model server to GPUs</h2>
-          <button type="button" data-action="link-add" class="min-h-touch inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
+          <button type="button" data-action="link-add" class="min-h-9 inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
             <i data-lucide="link" class="h-4 w-4" aria-hidden="true"></i>
             Add link
           </button>
@@ -229,8 +229,8 @@
           <span>Enabled</span>
         </label>
         <div class="md:col-span-2 flex gap-2">
-          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save node</button>
-          <button type="button" data-action="node-reset" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Clear</button>
+          <button type="submit" class="min-h-9 rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save node</button>
+          <button type="button" data-action="node-reset" class="min-h-9 rounded-control border border-hairline px-4 py-2 font-medium text-ink">Clear</button>
         </div>
       </form>
     </div>
@@ -325,7 +325,7 @@
         </div>
         {% if is_admin %}
         <button type="button" id="obsTraceBtn" data-action="tracemalloc" aria-pressed="false"
-                class="min-h-touch rounded-control border border-hairline px-4 py-2 text-sm font-medium text-ink">Enable tracemalloc</button>
+                class="min-h-9 rounded-control border border-hairline px-4 py-2 text-sm font-medium text-ink">Enable tracemalloc</button>
         {% endif %}
       </div>
       <div class="overflow-x-auto">
@@ -353,7 +353,7 @@
                 class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 font-mono text-sm text-ink"
                 aria-label="Group overrides, one group per line"></textarea>
       <div>
-        <button type="button" data-action="save-overrides" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save overrides</button>
+        <button type="button" data-action="save-overrides" class="min-h-9 rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save overrides</button>
       </div>
     </div>
     {% endif %}
@@ -414,7 +414,7 @@
       <div class="flex items-center gap-2">
         <span id="obsTracesLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
         <span id="obsTracesLiveStatus" class="text-caption text-ink-muted">Polling live (3s)</span>
-        <button type="button" id="obsTracesRefreshBtn" data-action="traces-refresh" class="min-h-touch rounded-control border border-hairline px-3 py-1 text-xs font-semibold text-ink hover:bg-surface-inset flex items-center gap-1">
+        <button type="button" id="obsTracesRefreshBtn" data-action="traces-refresh" class="min-h-9 rounded-control border border-hairline px-3 py-1 text-xs font-semibold text-ink hover:bg-surface-inset flex items-center gap-1">
           <i data-lucide="refresh-cw" class="h-3 w-3" aria-hidden="true"></i> Refresh
         </button>
       </div>
@@ -437,7 +437,7 @@
         <option value="hit">Cache Hits only</option>
         <option value="miss">Cache Misses only</option>
       </select>
-      <button type="button" id="fTracesClearBtn" data-action="traces-clear-filters" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
+      <button type="button" id="fTracesClearBtn" data-action="traces-clear-filters" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm text-ink">Clear</button>
       <span id="fTracesCount" class="ml-auto text-caption text-ink-muted" aria-live="polite">0 traces</span>
     </div>
 
@@ -478,7 +478,7 @@
               </h3>
               <p id="traceDrawerReqId" class="font-mono text-xs text-ink-muted truncate mt-0.5">req-...</p>
             </div>
-            <button type="button" id="traceDrawerCloseBtn" class="min-h-touch rounded-control border border-hairline p-1.5 text-ink-muted hover:text-ink hover:bg-surface-base" aria-label="Close trace details">
+            <button type="button" id="traceDrawerCloseBtn" class="min-h-9 rounded-control border border-hairline p-1.5 text-ink-muted hover:text-ink hover:bg-surface-base" aria-label="Close trace details">
               <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
             </button>
           </div>
@@ -562,7 +562,7 @@
 
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" id="obsAlertsRefreshBtn" data-action="alerts-refresh" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+      <button type="button" id="obsAlertsRefreshBtn" data-action="alerts-refresh" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
         <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
       </button>
       <label class="flex items-center gap-2 text-caption text-ink-muted">
@@ -638,24 +638,24 @@
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-x-auto">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3">
         <h2 class="text-sm font-bold text-ink mr-auto self-center">Alert rules</h2>
-        <button type="button" id="obsAlertsTestBtn" data-action="alerts-test-notify" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+        <button type="button" id="obsAlertsTestBtn" data-action="alerts-test-notify" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
           <i data-lucide="send" class="h-3.5 w-3.5" aria-hidden="true"></i> Send test alert
         </button>
         <label class="flex items-center gap-2 text-caption text-ink-muted">via
-          <select id="fAlertsTestChannel" aria-label="Channel for test alert" class="min-h-touch rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
+          <select id="fAlertsTestChannel" aria-label="Channel for test alert" class="min-h-9 rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink">
             <option value="webhook">webhook</option>
             <option value="email">email</option>
           </select>
         </label>
         <span class="hidden sm:block h-6 w-px bg-hairline" aria-hidden="true"></span>
-        <button type="button" id="obsAlertRuleExportBtn" data-action="alert-rule-export" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5" title="Download all alert rules as a JSON file">
+        <button type="button" id="obsAlertRuleExportBtn" data-action="alert-rule-export" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5" title="Download all alert rules as a JSON file">
           <i data-lucide="download" class="h-3.5 w-3.5" aria-hidden="true"></i> Export
         </button>
-        <button type="button" id="obsAlertRuleImportBtn" data-action="alert-rule-import-pick" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5" title="Import alert rules from a JSON file">
+        <button type="button" id="obsAlertRuleImportBtn" data-action="alert-rule-import-pick" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5" title="Import alert rules from a JSON file">
           <i data-lucide="upload" class="h-3.5 w-3.5" aria-hidden="true"></i> Import
         </button>
         <input type="file" id="obsAlertRuleImportFile" accept="application/json,.json" class="hidden" aria-hidden="true" />
-        <button type="button" id="obsAlertRuleNewBtn" data-action="alert-rule-new" class="min-h-touch rounded-control bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink flex items-center gap-1.5">
+        <button type="button" id="obsAlertRuleNewBtn" data-action="alert-rule-new" class="min-h-9 rounded-control bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink flex items-center gap-1.5">
           <i data-lucide="plus" class="h-3.5 w-3.5" aria-hidden="true"></i> New rule
         </button>
       </div>
@@ -725,8 +725,8 @@
           <input type="text" name="description" maxlength="200" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
         </label>
         <div class="md:col-span-2 flex gap-2">
-          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save rule</button>
-          <button type="button" data-action="alert-rule-cancel" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
+          <button type="submit" class="min-h-9 rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save rule</button>
+          <button type="button" data-action="alert-rule-cancel" class="min-h-9 rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
         </div>
       </form>
 
@@ -757,7 +757,7 @@
 
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" id="obsAgentsRefreshBtn" data-action="agents-refresh" class="min-h-touch rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
+      <button type="button" id="obsAgentsRefreshBtn" data-action="agents-refresh" class="min-h-9 rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
         <i data-lucide="refresh-cw" class="h-3.5 w-3.5" aria-hidden="true"></i> Refresh
       </button>
       <input id="fAgentsQ" type="search" placeholder="Filter agent…" aria-label="Filter agent runs by agent name" class="rounded-control border border-hairline bg-surface-inset px-2.5 py-1.5 text-sm text-ink" style="min-width:12rem" />
@@ -836,7 +836,7 @@
           <i data-lucide="cpu" class="h-4 w-4 text-accent" aria-hidden="true"></i>
           <span id="obsHostModalHeading">Add GPU server</span>
         </h2>
-        <button type="button" data-action="host-modal-close" aria-label="Close" class="min-h-touch rounded p-1 text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors">
+        <button type="button" data-action="host-modal-close" aria-label="Close" class="min-h-9 rounded p-1 text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors">
           <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
         </button>
       </div>
@@ -864,8 +864,8 @@
           <span>Enabled</span>
         </label>
         <div class="md:col-span-2 flex gap-2 justify-end pt-1">
-          <button type="button" data-action="host-modal-close" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
-          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save host</button>
+          <button type="button" data-action="host-modal-close" class="min-h-9 rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
+          <button type="submit" class="min-h-9 rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save host</button>
         </div>
       </form>
     </div>
@@ -879,7 +879,7 @@
           <i data-lucide="link" class="h-4 w-4 text-accent" aria-hidden="true"></i>
           Link a model server to GPUs
         </h2>
-        <button type="button" data-action="link-modal-close" aria-label="Close" class="min-h-touch rounded p-1 text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors">
+        <button type="button" data-action="link-modal-close" aria-label="Close" class="min-h-9 rounded p-1 text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors">
           <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
         </button>
       </div>
@@ -897,8 +897,8 @@
           <input type="text" name="gpu_indices" placeholder="0,1" maxlength="64" class="w-full rounded-control border border-hairline bg-surface-inset px-3 py-2 text-ink" />
         </label>
         <div class="md:col-span-2 flex gap-2 justify-end pt-1">
-          <button type="button" data-action="link-modal-close" class="min-h-touch rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
-          <button type="submit" class="min-h-touch rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save link</button>
+          <button type="button" data-action="link-modal-close" class="min-h-9 rounded-control border border-hairline px-4 py-2 font-medium text-ink">Cancel</button>
+          <button type="submit" class="min-h-9 rounded-control bg-accent px-4 py-2 font-medium text-accent-ink">Save link</button>
         </div>
       </form>
     </div>
@@ -925,7 +925,7 @@
             </div>
           </div>
         </div>
-        <button type="button" data-action="close-modal" aria-label="Close modal" data-modal-close class="min-h-touch rounded-control p-2 text-ink-muted hover:text-ink hover:bg-surface-raised border border-transparent hover:border-hairline transition-colors">
+        <button type="button" data-action="close-modal" aria-label="Close modal" data-modal-close class="min-h-9 rounded-control p-2 text-ink-muted hover:text-ink hover:bg-surface-raised border border-transparent hover:border-hairline transition-colors">
           <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
         </button>
       </div>

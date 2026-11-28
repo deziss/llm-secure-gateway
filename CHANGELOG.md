@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### 🎛 Observability & settings polish
+
+- Toolbar controls (timeframe switch, Clear, Refresh) dropped from a 44px minimum to 36px, matching the height of the inputs beside them.
+- The per-models table now pins Server and Model columns while the metric columns scroll horizontally; columns have fixed widths so the pinned cells align.
+- Feature Laboratory toggles render three per row on wide screens (one on mobile, two on tablet).
+
 ### 🐛 Dashboard edge table
 
 - Edge Connectivity rows now show the origin IP: `dashboard.js` filled only the "Last Activity" cell, leaving the "Origin IP" cell permanently blank. The empty-state message also targets a dedicated element instead of the cell's last child (the loading spinner).

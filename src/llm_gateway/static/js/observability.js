@@ -541,8 +541,9 @@
       tr.dataset.server = m.server;
       tr.dataset.model = m.model;
 
-      tr.appendChild(td(m.server));
-      const modelCell = td(m.model, "font-mono text-xs");
+      // Server + Model stay pinned while the metrics columns scroll sideways.
+      tr.appendChild(td(m.server, "sticky left-0 z-10 bg-surface-raised w-32 min-w-32 max-w-32 truncate"));
+      const modelCell = td(m.model, "font-mono text-xs sticky left-32 z-10 bg-surface-raised w-44 min-w-44 max-w-44");
       if (m.tokens_estimated) modelCell.appendChild(el("span", { cls: "ml-2", text: "≈ est. tokens" }));
       tr.appendChild(modelCell);
 
