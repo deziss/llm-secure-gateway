@@ -34,7 +34,7 @@ $(document).ready(function () {
           const initials = getInitials(data.email);
           return `
             <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/10" style="background:${bg}">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-accent/10" style="background:${bg}">
                 ${initials}
               </div>
               <div class="flex flex-col">
@@ -50,8 +50,8 @@ $(document).ready(function () {
         data: "is_active",
         render: (data, type, row) => {
           const statusCls = data
-            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-            : "bg-rose-500/10 text-rose-400 border-rose-500/20";
+            ? "bg-ok/10 text-ok border-ok/25"
+            : "bg-down/10 text-down border-down/25";
           const statusText = data ? "ACTIVE" : "SUSPENDED";
 
           let roleVal =
@@ -60,17 +60,17 @@ $(document).ready(function () {
 
           const roleCls =
             {
-              ADMIN: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-              MANAGER: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-              DEVELOPER: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-              VIEWER: "bg-slate-500/10 text-ink-muted border-slate-500/20",
+              ADMIN: "bg-accent/10 text-accent border-accent/25",
+              MANAGER: "bg-accent/10 text-accent border-accent/25",
+              DEVELOPER: "bg-ok/10 text-ok border-ok/25",
+              VIEWER: "bg-surface-inset text-ink-muted border-hairline",
             }[roleVal] ||
-            "bg-slate-500/10 text-ink-muted border-slate-500/20";
+            "bg-surface-inset text-ink-muted border-hairline";
 
           return `
             <div class="flex flex-col gap-2">
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold border ${statusCls} w-fit">
-                <span class="w-1 h-1 rounded-full ${data ? "bg-emerald-400" : "bg-rose-400"} mr-1.5 ${data ? "animate-pulse" : ""}"></span>
+                <span class="w-1 h-1 rounded-full ${data ? "bg-ok" : "bg-down"} mr-1.5 ${data ? "animate-pulse" : ""}"></span>
                 ${statusText}
               </span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-micro font-extrabold border ${roleCls} w-fit uppercase">
@@ -112,10 +112,10 @@ $(document).ready(function () {
 
             if (USER_ROLE === "admin") {
               actions += `
-                <button type="button" data-action="reset" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Reset Password" aria-label="Reset Password">
+                <button type="button" data-action="reset" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-warn/10 text-warn hover:bg-warn hover:text-white rounded-lg transition-all border border-warn/25 cursor-pointer" title="Reset Password" aria-label="Reset Password">
                   <i data-lucide="key" class="w-4 h-4"></i>
                 </button>
-                <button type="button" data-action="delete" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Delete Account" aria-label="Delete Account">
+                <button type="button" data-action="delete" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-down/10 text-down hover:bg-down hover:text-white rounded-lg transition-all border border-down/25 cursor-pointer" title="Delete Account" aria-label="Delete Account">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
               `;

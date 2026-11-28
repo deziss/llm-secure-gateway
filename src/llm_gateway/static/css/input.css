@@ -20,42 +20,60 @@
  */
 @layer base {
   :root {
-    /* Surfaces, back to front — Clean, high-contrast enterprise canvas */
-    --surface-base: 248 250 252;     /* slate-50   page canvas      */
-    --surface-raised: 255 255 255;   /* white      panels, sidebar  */
-    --surface-inset: 241 245 249;    /* slate-100  rows, inputs     */
-    --hairline: 226 232 240;         /* slate-200  borders          */
+    /* Surfaces, back to front — Phoenix: warm parchment canvas */
+    --surface-base: 252 250 248;     /* #FCFAF8  page canvas        */
+    --surface-raised: 255 255 255;   /* #FFFFFF  panels, sidebar    */
+    --surface-inset: 247 243 238;    /* #F7F3EE  rows, inputs       */
+    --hairline: 234 227 220;         /* #EAE3DC  borders            */
 
     /* Text */
-    --ink: 15 23 42;                 /* slate-900  primary          */
-    --ink-muted: 100 116 139;        /* slate-500  secondary        */
+    --ink: 28 25 23;                 /* #1C1917  primary            */
+    --ink-muted: 104 96 90;          /* #68605A  secondary          */
+    --ink-faint: 156 146 139;        /* #9C928B  tertiary           */
 
-    /* Brand — Enterprise Precision Security Cyan / Sapphire */
-    --accent: 14 116 144;            /* cyan-700   authoritative    */
+    /* Brand — Phoenix amber / ember */
+    --accent: 217 119 6;             /* #D97706  amber-600          */
+    --accent-hover: 180 83 9;        /* #B45309  amber-700          */
     --accent-ink: 255 255 255;
+    --accent-2: 220 38 38;           /* #DC2626  ember red          */
+    --accent-2-hover: 185 28 28;     /* #B91C1C                      */
+    --accent-2-ink: 255 255 255;
+    --phoenix-gradient: linear-gradient(135deg, #D97706 0%, #DC2626 100%);
 
-    /* Status — High-visibility semantic signals */
-    --ok: 5 150 105;                 /* emerald-600 */
-    --warn: 217 119 6;               /* amber-600   */
-    --down: 225 29 72;               /* rose-600    */
+    /* Status — semantic signals */
+    --ok: 21 128 61;                 /* #15803D  green-700           */
+    --warn: 180 83 9;                /* #B45309  amber-700           */
+    --down: 153 27 27;               /* #991B1B  red-800             */
+    --ok-ink: 255 255 255;
+    --warn-ink: 255 255 255;
+    --down-ink: 255 255 255;
   }
 
   .dark {
-    /* Deep titanium slate canvas for high precision & minimal eye fatigue */
-    --surface-base: 10 14 23;        /* dark titanium canvas        */
-    --surface-raised: 16 23 38;      /* slate-900 precision surface */
-    --surface-inset: 27 37 54;       /* elevated rows, inputs       */
-    --hairline: 35 48 71;            /* fine structural borders     */
+    /* Warm charcoal canvas — same Phoenix hue at low lightness */
+    --surface-base: 13 11 10;        /* #0D0B0A  canvas             */
+    --surface-raised: 24 21 19;      /* #181513  panels, sidebar    */
+    --surface-inset: 34 30 27;       /* #221E1B  rows, inputs       */
+    --hairline: 43 37 34;            /* #2B2522  borders            */
 
-    --ink: 243 244 246;              /* slate-100 crisp text        */
-    --ink-muted: 156 163 175;        /* slate-400 secondary text    */
+    --ink: 250 248 246;              /* #FAF8F6  primary            */
+    --ink-muted: 168 160 154;        /* #A8A09A  secondary          */
+    --ink-faint: 110 102 96;         /* #6E6660  tertiary           */
 
-    --accent: 56 189 248;            /* sky-400 cyber cyan          */
-    --accent-ink: 10 14 23;
+    --accent: 245 158 11;            /* #F59E0B  amber-500          */
+    --accent-hover: 251 191 36;      /* #FBBF24  amber-400          */
+    --accent-ink: 17 14 12;          /* #110E0C  on-amber           */
+    --accent-2: 239 68 68;           /* #EF4444  red-500            */
+    --accent-2-hover: 248 113 113;   /* #F87171  red-400            */
+    --accent-2-ink: 17 14 12;
+    --phoenix-gradient: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
 
-    --ok: 16 185 129;                /* emerald-500 */
-    --warn: 245 158 11;              /* amber-500   */
-    --down: 244 63 94;               /* rose-500    */
+    --ok: 34 197 94;                 /* #22C55E  green-500           */
+    --warn: 245 158 11;              /* #F59E0B  amber-500           */
+    --down: 248 113 113;             /* #F87171  red-400             */
+    --ok-ink: 13 11 10;              /* near-black on bright status  */
+    --warn-ink: 17 14 12;
+    --down-ink: 17 14 12;
   }
 
   /* Honour the OS setting only as the initial guess, before any explicit
@@ -73,6 +91,15 @@
     outline-offset: 2px;
     border-radius: 2px;
   }
+
+  /* Browser surfaces that belong to no component: selection, caret and
+     scrollbars pick up the Phoenix accent instead of UA defaults. */
+  ::selection {
+    background: rgb(var(--accent) / 0.25);
+    color: rgb(var(--ink));
+  }
+  caret-color: rgb(var(--accent));
+  scrollbar-color: rgb(var(--ink-muted) / 0.35) transparent;
 }
 
 @layer components {
@@ -292,12 +319,12 @@
   .md th, .md td { border: 1px solid rgb(var(--hairline)); padding: 0.3rem 0.6rem; text-align: left; }
   .md hr { border: 0; border-top: 1px solid rgb(var(--hairline)); margin: 0.9rem 0; }
 
-  .md-code { position: relative; border-radius: 0.5rem; overflow: hidden; background: #0d1117; }
-  .md-code pre { margin: 0 !important; padding: 0.85rem 1rem !important; overflow-x: auto; background: #0d1117 !important;
+  .md-code { position: relative; border-radius: 0.5rem; overflow: hidden; background: #161311; }
+  .md-code pre { margin: 0 !important; padding: 0.85rem 1rem !important; overflow-x: auto; background: #161311 !important;
     border: 0 !important; border-radius: 0 !important; font-size: 0.8125rem; line-height: 1.55; }
   .md-code pre code { background: transparent !important; color: #e6edf3; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .md-code-bar { display: flex; align-items: center; justify-content: space-between; padding: 0.3rem 0.5rem 0.3rem 0.85rem;
-    background: #161b22; color: #8b949e; font-size: 0.7rem; font-family: ui-monospace, monospace; }
+    background: #201B18; color: #A8A09A; font-size: 0.7rem; font-family: ui-monospace, monospace; }
   .md-copy { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 1.75rem; padding: 0 0.5rem; border-radius: 0.375rem;
     font-size: 0.7rem; font-family: inherit; color: inherit; background: transparent; border: 1px solid transparent; cursor: pointer; }
   .md-copy svg { width: 0.85rem; height: 0.85rem; }

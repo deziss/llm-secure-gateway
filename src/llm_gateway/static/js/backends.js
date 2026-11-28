@@ -24,22 +24,22 @@ $(document).ready(function () {
         data: "backend_type",
         render: (data, type, row) => {
           const types = {
-            ollama: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-            vllm: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-            llamacpp: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-            openai: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-            groq: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-            anthropic: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-            google: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+            ollama: "bg-accent/10 text-accent border-accent/25",
+            vllm: "bg-accent/10 text-accent border-accent/25",
+            llamacpp: "bg-ok/10 text-ok border-ok/25",
+            openai: "bg-ok/10 text-ok border-ok/25",
+            groq: "bg-accent/10 text-accent border-accent/25",
+            anthropic: "bg-accent/10 text-accent border-accent/25",
+            google: "bg-accent/10 text-accent border-accent/25",
           };
           const cls =
             types[data] ||
-            "bg-slate-500/10 text-ink-muted border-slate-500/20";
+            "bg-surface-inset text-ink-muted border-hairline";
           return `
             <div class="flex items-center gap-3">
               <span class="px-2 py-0.5 rounded text-micro font-bold border ${cls} uppercase">${escapeHtml(data)}</span>
               <div id="health-${escapeHtml(row.name)}" class="flex items-center gap-1.5 text-micro font-bold text-ink-muted">
-                <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span> CHECKING...
+                <span class="w-1.5 h-1.5 rounded-full bg-ink-faint"></span> CHECKING...
               </div>
             </div>
           `;
@@ -49,8 +49,8 @@ $(document).ready(function () {
         data: "models",
         render: (data, type, row) => `
           <button type="button" data-action="view-models" data-id="${escapeHtml(String(row.name))}" class="group flex items-center gap-2 cursor-pointer" title="View available models" aria-label="View available models">
-            <span class="px-2 py-0.5 bg-surface-inset group-hover:bg-blue-500/10 group-hover:text-blue-400 rounded-lg text-ink font-bold text-xs border border-hairline group-hover:border-blue-500/30 transition-colors">${data ? data.length : 0}</span>
-            <span class="flex items-center gap-1 text-ink-muted group-hover:text-blue-400 text-micro font-bold uppercase tracking-widest transition-colors">Models <i data-lucide="eye" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+            <span class="px-2 py-0.5 bg-surface-inset group-hover:bg-accent/10 group-hover:text-accent rounded-lg text-ink font-bold text-xs border border-hairline group-hover:border-accent/25 transition-colors">${data ? data.length : 0}</span>
+            <span class="flex items-center gap-1 text-ink-muted group-hover:text-accent text-micro font-bold uppercase tracking-widest transition-colors">Models <i data-lucide="eye" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
           </button>
         `,
       },
@@ -64,14 +64,14 @@ $(document).ready(function () {
             const manageBtn =
               // Pulling/deleting models changes the Ollama host's disk: admin-only.
               row.backend_type === "ollama" && USER_ROLE === "admin"
-                ? `<button type="button" data-action="manage" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-lg transition-all border border-indigo-500/20 cursor-pointer" title="Manage Models" aria-label="Manage Models"><i data-lucide="boxes" class="w-4 h-4"></i></button>`
-                : `<button type="button" data-action="sync" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all border border-blue-500/20 cursor-pointer" title="Sync Models" aria-label="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
+                ? `<button type="button" data-action="manage" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-accent/10 text-accent hover:bg-accent hover:text-accent-ink rounded-lg transition-all border border-accent/25 cursor-pointer" title="Manage Models" aria-label="Manage Models"><i data-lucide="boxes" class="w-4 h-4"></i></button>`
+                : `<button type="button" data-action="sync" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-accent/10 text-accent hover:bg-accent hover:text-accent-ink rounded-lg transition-all border border-accent/25 cursor-pointer" title="Sync Models" aria-label="Sync Models"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`;
 
             return `
               <div class="flex justify-end gap-2">
                 ${manageBtn}
                 <button type="button" data-action="edit" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-surface-inset text-ink hover:bg-hairline rounded-lg transition-all border border-hairline cursor-pointer" title="Edit" aria-label="Edit"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                <button type="button" data-action="delete" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Delete" aria-label="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                <button type="button" data-action="delete" data-id="${safeName}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-down/10 text-down hover:bg-down hover:text-down-ink rounded-lg transition-all border border-down/25 cursor-pointer" title="Delete" aria-label="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
               </div>
             `;
           }
@@ -309,18 +309,18 @@ function openManageModelsModal(name) {
       data.models.forEach((model) => {
         const li = document.createElement("li");
         li.className =
-          "flex justify-between items-center p-4 hover:bg-slate-800/50 transition-colors group";
+          "flex justify-between items-center p-4 hover:bg-surface-inset transition-colors group";
         const escapedModel = escapeHtml(model);
         const safeModel = escapedModel;
         const safeBackend = escapeHtml(String(name));
         li.innerHTML = `
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xs">
+            <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent font-bold text-xs">
               <i data-lucide="box" class="w-4 h-4"></i>
             </div>
             <span class="text-ink font-medium text-sm">${escapedModel}</span>
           </div>
-          <button type="button" data-action="delete-model" data-backend="${safeBackend}" data-model="${safeModel}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 text-ink-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer" title="Delete model" aria-label="Delete model">
+          <button type="button" data-action="delete-model" data-backend="${safeBackend}" data-model="${safeModel}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 text-ink-muted hover:text-down transition-colors opacity-0 group-hover:opacity-100 cursor-pointer" title="Delete model" aria-label="Delete model">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         `;
@@ -360,9 +360,9 @@ function openModelsPopup(name) {
       list.innerHTML = "";
       data.models.forEach((model) => {
         const li = document.createElement("li");
-        li.className = "flex items-center gap-3 p-3 hover:bg-slate-800/50 transition-colors";
+        li.className = "flex items-center gap-3 p-3 hover:bg-surface-inset transition-colors";
         li.innerHTML = `
-          <div class="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+          <div class="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center text-accent shrink-0">
             <i data-lucide="box" class="w-3.5 h-3.5"></i>
           </div>
           <span class="text-ink font-medium text-sm break-all">${escapeHtml(String(model))}</span>
@@ -431,13 +431,13 @@ async function checkBackendHealth(name) {
     });
     const data = await res.json();
     if (data.status === "healthy") {
-      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span class="text-ok">ONLINE</span>`;
+      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-ok animate-pulse"></span> <span class="text-ok">ONLINE</span>`;
     } else {
-      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> <span class="text-red-400">OFFLINE</span>`;
+      el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-down"></span> <span class="text-down">OFFLINE</span>`;
     }
   } catch (e) {
     const label = e && e.name === "AbortError" ? "TIMEOUT" : "ERROR";
-    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> <span class="text-rose-400">${label}</span>`;
+    el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-down"></span> <span class="text-down">${label}</span>`;
   } finally {
     clearTimeout(timer);
   }

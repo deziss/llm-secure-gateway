@@ -42,7 +42,7 @@ $(document).ready(function () {
           const initials = getInitials(name);
           return `
             <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/10" style="background:${bg}">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-accent/10" style="background:${bg}">
                 ${initials}
               </div>
               <div class="flex flex-col">
@@ -59,8 +59,8 @@ $(document).ready(function () {
         render: (data) => {
           const cls =
             data === "project"
-              ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
-              : "bg-blue-500/10 text-blue-400 border-blue-500/20";
+              ? "bg-accent-2/10 text-accent-2 border-accent-2/25"
+              : "bg-accent/10 text-accent border-accent/25";
           const icon =
             data === "project" ? "layers" : "user";
           return `<span class="px-2.5 py-1 rounded-lg text-micro font-bold border ${cls} uppercase flex items-center gap-1.5 w-fit"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i> ${data === "project" ? "Team" : "Personal"}</span>`;
@@ -76,22 +76,22 @@ $(document).ready(function () {
         data: "block_endpoints",
         render: (data, type, row) => {
           const statusCls = data
-            ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+            ? "bg-down/10 text-down border-down/25"
+            : "bg-ok/10 text-ok border-ok/25";
           const statusText = data ? "HARDENED" : "UNRESTRICTED";
           const isActive = row.is_active !== false;
           const activeCls = isActive
-            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-            : "bg-slate-500/10 text-ink-muted border-slate-500/20";
+            ? "bg-ok/10 text-ok border-ok/25"
+            : "bg-surface-inset text-ink-muted border-hairline";
           const activeText = isActive ? "ACTIVE" : "INACTIVE";
           return `
             <div class="flex flex-col gap-1">
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold border ${statusCls} w-fit">
-                <span class="w-1 h-1 rounded-full ${data ? "bg-rose-400" : "bg-emerald-400"} mr-1.5"></span>
+                <span class="w-1 h-1 rounded-full ${data ? "bg-down" : "bg-ok"} mr-1.5"></span>
                 ${statusText}
               </span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro font-bold border ${activeCls} w-fit">
-                <span class="w-1 h-1 rounded-full ${isActive ? "bg-emerald-400" : "bg-slate-400"} mr-1.5"></span>
+                <span class="w-1 h-1 rounded-full ${isActive ? "bg-ok" : "bg-ink-faint"} mr-1.5"></span>
                 ${activeText}
               </span>
             </div>
@@ -104,12 +104,12 @@ $(document).ready(function () {
         render: function (data) {
           const safeId = escapeHtml(String(data));
           let btns = `
-            <button type="button" data-action="keys" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white rounded-lg transition-all border border-amber-500/20 cursor-pointer" title="Manage API Keys" aria-label="Manage API Keys"><i data-lucide="key" class="w-4 h-4"></i></button>
-            <button type="button" data-action="perms" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20 cursor-pointer" title="Access Grants" aria-label="Access Grants"><i data-lucide="shield-check" class="w-4 h-4"></i></button>
+            <button type="button" data-action="keys" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-accent/10 text-accent hover:bg-accent hover:text-accent-ink rounded-lg transition-all border border-accent/25 cursor-pointer" title="Manage API Keys" aria-label="Manage API Keys"><i data-lucide="key" class="w-4 h-4"></i></button>
+            <button type="button" data-action="perms" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-ok/10 text-ok hover:bg-ok hover:text-ok-ink rounded-lg transition-all border border-ok/25 cursor-pointer" title="Access Grants" aria-label="Access Grants"><i data-lucide="shield-check" class="w-4 h-4"></i></button>
             <button type="button" data-action="edit" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-surface-inset text-ink hover:bg-hairline rounded-lg transition-all border border-hairline cursor-pointer" title="Edit Profile" aria-label="Edit Profile"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
           `;
           if (["admin", "manager"].includes(USER_ROLE)) {
-            btns += `<button type="button" data-action="delete" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 cursor-pointer" title="Revoke Owner" aria-label="Revoke Owner"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+            btns += `<button type="button" data-action="delete" data-id="${safeId}" class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 bg-down/10 text-down hover:bg-down hover:text-down-ink rounded-lg transition-all border border-down/25 cursor-pointer" title="Revoke Owner" aria-label="Revoke Owner"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
           }
           return `<div class="flex justify-end gap-2">${btns}</div>`;
         },
@@ -341,21 +341,21 @@ async function loadKeys(ownerId) {
       <tr class="hover:bg-surface-inset transition-colors">
         <td class="p-4 font-mono font-bold text-ink tracking-wider">
           <span class="inline-flex items-center gap-2 whitespace-nowrap">
-            <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500" aria-hidden="true"></i>${escapeHtml(k.prefix)}••••••••
+            <i data-lucide="key" class="w-3.5 h-3.5 text-accent" aria-hidden="true"></i>${escapeHtml(k.prefix)}••••••••
           </span>
         </td>
         <td class="p-4">
           <div class="flex flex-wrap gap-1">
-            ${(k.scopes || []).map(s => `<span class="px-2 py-0.5 rounded text-micro font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${escapeHtml(s)}</span>`).join('')}
+            ${(k.scopes || []).map(s => `<span class="px-2 py-0.5 rounded text-micro font-bold bg-accent/10 text-accent border border-accent/25">${escapeHtml(s)}</span>`).join('')}
           </div>
         </td>
         <td class="p-4 text-xs text-ink-muted whitespace-nowrap">${keyDate(k.created_at, "—")}</td>
         <td class="p-4 text-xs text-ink-muted whitespace-nowrap">${keyDate(k.expires_at, "Never")}</td>
         <td class="p-4 text-right whitespace-nowrap">
-          <button type="button" data-action="connect-key" data-prefix="${escapeHtml(k.prefix)}" class="text-indigo-400 hover:text-indigo-300 transition-colors p-1.5 rounded-lg hover:bg-indigo-500/10 cursor-pointer mr-1" title="Connect Client" aria-label="Connect Client">
+          <button type="button" data-action="connect-key" data-prefix="${escapeHtml(k.prefix)}" class="text-accent hover:text-accent-hover transition-colors p-1.5 rounded-lg hover:bg-accent/10 cursor-pointer mr-1" title="Connect Client" aria-label="Connect Client">
             <i data-lucide="plug" class="w-4 h-4"></i>
           </button>
-          <button type="button" data-action="revoke-key" data-prefix="${escapeHtml(k.prefix)}" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer" title="Revoke Key" aria-label="Revoke key">
+          <button type="button" data-action="revoke-key" data-prefix="${escapeHtml(k.prefix)}" class="text-down hover:text-accent-2 transition-colors p-1.5 rounded-lg hover:bg-down/10 cursor-pointer" title="Revoke Key" aria-label="Revoke key">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </td>
@@ -365,7 +365,7 @@ async function loadKeys(ownerId) {
       .join("");
     if (window.lucide) window.lucide.createIcons();
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-400">Failed to load keys: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-down">Failed to load keys: ${e.message}</td></tr>`;
   }
 }
 
@@ -430,21 +430,21 @@ async function createKeyFromModal() {
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", "newKeyTitle");
     modal.innerHTML = `
-      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-5 rounded-panel w-full max-w-lg shadow-overlay text-center max-h-[90vh] overflow-y-auto">
-        <div class="w-12 h-12 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-lg shadow-lg shadow-emerald-500/20" aria-hidden="true">
+      <div class="bg-surface-raised border border-hairline p-5 sm:p-5 rounded-panel w-full max-w-lg shadow-overlay text-center max-h-[90vh] overflow-y-auto">
+        <div class="w-12 h-12 bg-ok/20 text-ok rounded-2xl flex items-center justify-center mx-auto mb-4 text-lg shadow-lg shadow-ok/20" aria-hidden="true">
           <i data-lucide="key" class="w-6 h-6"></i>
         </div>
-        <h3 id="newKeyTitle" class="text-lg font-bold text-slate-900 dark:text-white mb-2">New API Key Issued</h3>
-        <p class="text-ink-muted dark:text-ink-muted text-sm mb-4">Store this key securely. It will never be shown again.</p>
+        <h3 id="newKeyTitle" class="text-lg font-bold text-ink mb-2">New API Key Issued</h3>
+        <p class="text-ink-muted text-sm mb-4">Store this key securely. It will never be shown again.</p>
         <div class="relative group mb-5">
-          <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-20 transition"></div>
-          <div id="newKeyValue" class="relative bg-black border border-slate-700 p-4 rounded-xl font-mono text-sm text-ok break-all select-all"></div>
+          <div class="absolute -inset-0.5 bg-gradient-to-r from-accent to-accent-2 rounded-xl blur opacity-20 transition"></div>
+          <div id="newKeyValue" class="relative bg-black border border-hairline p-4 rounded-xl font-mono text-sm text-ok break-all select-all"></div>
         </div>
         <div class="flex flex-col gap-2 mb-2">
           <button type="button" id="newKeySnippetsBtn" class="w-full min-h-touch py-2.5 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition cursor-pointer flex items-center justify-center gap-2">
             <i data-lucide="terminal" class="w-4 h-4"></i> Client Setup Snippets
           </button>
-          <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-2.5 bg-slate-900 text-white dark:bg-white dark:text-black font-bold rounded-control hover:opacity-90 transition cursor-pointer">
+          <button type="button" id="newKeyCloseBtn" aria-label="Close: I have saved the new API key" class="w-full min-h-touch py-2.5 bg-ink text-surface-raised font-bold rounded-control hover:opacity-90 transition cursor-pointer">
             Acknowledged &amp; Saved
           </button>
         </div>
@@ -494,20 +494,20 @@ async function loadPermissions(ownerId) {
     <tr class="hover:bg-surface-inset transition-colors">
       <td class="p-4">
         <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></div>
+          <div class="w-2 h-2 rounded-full bg-accent shadow-sm shadow-accent"></div>
           <span class="font-bold text-ink tracking-wide">${escapeHtml(p.backend_name)}</span>
         </div>
       </td>
       <td class="p-4">
         <div class="flex flex-wrap gap-1">
-          ${(p.allowed_models || []).map((m) => `<span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-micro text-ink-muted font-mono">${escapeHtml(m)}</span>`).join("")}
+          ${(p.allowed_models || []).map((m) => `<span class="px-1.5 py-0.5 bg-surface-inset border border-hairline rounded text-micro text-ink-muted font-mono">${escapeHtml(m)}</span>`).join("")}
         </div>
       </td>
       <td class="p-4 text-right">
         ${
           USER_ROLE === "admin" || USER_ROLE === "manager"
             ? `
-          <button type="button" data-action="delete-perm" data-id="${escapeHtml(String(p.id))}" class="text-ink-muted hover:text-red-500 transition-colors p-1 cursor-pointer" title="Remove Grant" aria-label="Remove grant">
+          <button type="button" data-action="delete-perm" data-id="${escapeHtml(String(p.id))}" class="text-ink-muted hover:text-down transition-colors p-1 cursor-pointer" title="Remove Grant" aria-label="Remove grant">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>`
             : ""
@@ -690,7 +690,7 @@ function renderActiveSnippet() {
         "snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-accent text-accent-ink border-transparent shadow-sm";
     } else {
       btn.className =
-        "snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/50";
+        "snippet-tab-btn px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted hover:bg-hairline border-hairline";
     }
   });
 
@@ -711,8 +711,8 @@ function renderActiveSnippet() {
     if (titleEl) titleEl.textContent = currentPythonVariant === "openai" ? "Python (OpenAI SDK)" : "Python (Anthropic SDK)";
     if (variantButtons) {
       variantButtons.innerHTML = `
-        <button type="button" onclick="setSnippetVariant('openai')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentPythonVariant === 'openai' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">OpenAI SDK</button>
-        <button type="button" onclick="setSnippetVariant('anthropic')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentPythonVariant === 'anthropic' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">Anthropic SDK</button>
+        <button type="button" onclick="setSnippetVariant('openai')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentPythonVariant === 'openai' ? 'bg-surface-raised text-ink shadow-sm font-bold' : 'text-ink-muted'}">OpenAI SDK</button>
+        <button type="button" onclick="setSnippetVariant('anthropic')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentPythonVariant === 'anthropic' ? 'bg-surface-raised text-ink shadow-sm font-bold' : 'text-ink-muted'}">Anthropic SDK</button>
       `;
     }
     codeEl.textContent = (currentPythonVariant === "openai" ? currentSnippets.python_openai : currentSnippets.python_anthropic) || "";
@@ -721,8 +721,8 @@ function renderActiveSnippet() {
     if (titleEl) titleEl.textContent = currentCurlVariant === "openai" ? "cURL (OpenAI Chat API)" : "cURL (Anthropic Messages API)";
     if (variantButtons) {
       variantButtons.innerHTML = `
-        <button type="button" onclick="setSnippetVariant('openai')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentCurlVariant === 'openai' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">OpenAI Format</button>
-        <button type="button" onclick="setSnippetVariant('anthropic')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentCurlVariant === 'anthropic' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400'}">Anthropic Format</button>
+        <button type="button" onclick="setSnippetVariant('openai')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentCurlVariant === 'openai' ? 'bg-surface-raised text-ink shadow-sm font-bold' : 'text-ink-muted'}">OpenAI Format</button>
+        <button type="button" onclick="setSnippetVariant('anthropic')" class="px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentCurlVariant === 'anthropic' ? 'bg-surface-raised text-ink shadow-sm font-bold' : 'text-ink-muted'}">Anthropic Format</button>
       `;
     }
     codeEl.textContent = (currentCurlVariant === "openai" ? currentSnippets.curl_openai : currentSnippets.curl_anthropic) || "";

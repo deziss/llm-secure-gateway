@@ -353,7 +353,7 @@
     _renderError(msg) {
       const tbody = this.table.querySelector("tbody") || this.table.appendChild(document.createElement("tbody"));
       const colCount = Math.max(1, this.options.columns.length || this.table.querySelectorAll("thead th").length);
-      tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center py-8 text-rose-500 text-xs">
+      tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center py-8 text-down text-xs">
         <div class="font-bold mb-1">Failed to load data</div>
         <div class="text-micro text-ink-muted mb-3">${escapeText(msg)}</div>
         <button type="button" class="px-3 py-1 bg-surface-inset hover:bg-hairline text-ink rounded-control border border-hairline font-medium text-xs cursor-pointer">

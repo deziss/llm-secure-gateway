@@ -177,9 +177,9 @@ if (window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable) {
     if (tableNode) {
       const colCount = $(tableNode).find('thead th').length || 1;
       $(tableNode).find('tbody').html(
-        '<tr><td colspan="' + colCount + '" class="text-center py-8 text-red-500">' +
+        '<tr><td colspan="' + colCount + '" class="text-center py-8 text-down">' +
         '<div class="font-bold mb-1">Failed to load data</div>' +
-        '<div class="text-xs text-slate-500">' + $('<div>').text(detail.trim()).html() + '</div>' +
+        '<div class="text-xs text-ink-muted">' + $('<div>').text(detail.trim()).html() + '</div>' +
         '</td></tr>'
       );
     }

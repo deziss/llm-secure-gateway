@@ -15,7 +15,7 @@
     <div class="flex flex-wrap items-center gap-2 text-caption">
       <span id="obsScope" class="rounded-control border border-hairline px-2 py-1 text-ink-muted">scope: —</span>
       <span id="obsInstance" class="rounded-control border border-hairline px-2 py-1 text-ink-muted">instance: —</span>
-      <span id="obsStorage" class="rounded-control border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-medium text-emerald-400 flex items-center gap-1.5" title="Background telemetry worker actively persists rollups to PostgreSQL">
+      <span id="obsStorage" class="rounded-control border border-ok/25 bg-ok/10 px-2 py-1 font-medium text-ok flex items-center gap-1.5" title="Background telemetry worker actively persists rollups to PostgreSQL">
         <i data-lucide="database" class="h-3 w-3" aria-hidden="true"></i> DB Rollups Active
       </span>
       <span id="obsReplicas" class="rounded-control border border-hairline px-2 py-1 text-ink-muted hidden"></span>
@@ -62,14 +62,14 @@
       <!-- Inline token throughput (was standalone stat cards; compacted to save space) -->
       <div class="flex items-center gap-2 flex-wrap ml-auto">
         <div class="flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1" title="Live tokens/sec — instantaneous, all models (last snapshot / 10s window)">
-          <i data-lucide="gauge" class="h-3.5 w-3.5 text-cyan-400 shrink-0" aria-hidden="true"></i>
+          <i data-lucide="gauge" class="h-3.5 w-3.5 text-accent shrink-0" aria-hidden="true"></i>
           <span class="text-micro font-bold uppercase tracking-wider text-ink-muted">Live</span>
           <span id="obsLiveTokTotal" class="text-sm font-extrabold text-ink tabular-nums" role="status" aria-live="polite">&ndash;</span>
           <span class="text-micro text-ink-muted">tok/s</span>
           <span id="obsLiveTokBreakdown" class="text-micro text-ink-muted"></span>
         </div>
         <div class="flex items-center gap-1.5 rounded-control border border-hairline bg-surface-inset px-2.5 py-1" title="Average output-token throughput across all models for the selected window">
-          <i data-lucide="bar-chart-3" class="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden="true"></i>
+          <i data-lucide="bar-chart-3" class="h-3.5 w-3.5 text-ok shrink-0" aria-hidden="true"></i>
           <span class="text-micro font-bold uppercase tracking-wider text-ink-muted">Avg</span>
           <span id="obsAvgTokTotal" class="text-sm font-extrabold text-ink tabular-nums" role="status">&ndash;</span>
           <span class="text-micro text-ink-muted">tok/s</span>
@@ -77,7 +77,7 @@
         </div>
       </div>
       <div class="text-caption text-ink-muted flex items-center gap-1.5" id="obsTimeframeIndicator">
-        <span id="obsLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 hidden" aria-hidden="true"></span>
+        <span id="obsLiveDot" class="inline-block h-2 w-2 rounded-full bg-ok hidden" aria-hidden="true"></span>
         <span id="obsTimeframeLabel">Historical rollups (1h) · Auto-persisted</span>
       </div>
     </div>
@@ -243,20 +243,20 @@
     <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-4 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <i data-lucide="piggy-bank" class="h-5 w-5 text-emerald-400" aria-hidden="true"></i>
+          <i data-lucide="piggy-bank" class="h-5 w-5 text-ok" aria-hidden="true"></i>
           <div>
             <h2 class="text-sm font-bold text-ink">Cost Avoidance &amp; Economic Governance</h2>
             <p class="text-caption text-ink-muted">Savings achieved through prompt caching, semantic deduplication, and dynamic complexity routing.</p>
           </div>
         </div>
-        <span class="rounded-control border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400 self-start sm:self-auto">
+        <span class="rounded-control border border-ok/25 bg-ok/10 px-2.5 py-1 text-xs font-semibold text-ok self-start sm:self-auto">
           Cache Optimization Active
         </span>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
         <div class="rounded-control border border-hairline bg-surface-inset p-3">
           <span class="block text-caption text-ink-muted">USD Saved (Avoided)</span>
-          <span id="costSavedTotal" class="text-lg font-bold text-emerald-400">$0.00</span>
+          <span id="costSavedTotal" class="text-lg font-bold text-ok">$0.00</span>
           <span class="block text-micro text-ink-muted mt-0.5">Semantic + Prompt Cache Hits</span>
         </div>
         <div class="rounded-control border border-hairline bg-surface-inset p-3">
@@ -271,7 +271,7 @@
         </div>
         <div class="rounded-control border border-hairline bg-surface-inset p-3">
           <span class="block text-caption text-ink-muted">Cost Reduction Ratio</span>
-          <span id="costReductionPct" class="text-lg font-bold text-emerald-400">0.0%</span>
+          <span id="costReductionPct" class="text-lg font-bold text-ok">0.0%</span>
           <span class="block text-micro text-ink-muted mt-0.5">Avoided cost percentage</span>
         </div>
       </div>
@@ -412,7 +412,7 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <span id="obsTracesLiveDot" class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
+        <span id="obsTracesLiveDot" class="inline-block h-2 w-2 rounded-full bg-ok animate-pulse" aria-hidden="true"></span>
         <span id="obsTracesLiveStatus" class="text-caption text-ink-muted">Polling live (3s)</span>
         <button type="button" id="obsTracesRefreshBtn" data-action="traces-refresh" class="rounded-control border border-hairline px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-inset flex items-center gap-1.5">
           <i data-lucide="refresh-cw" class="h-3 w-3" aria-hidden="true"></i> Refresh
@@ -520,7 +520,7 @@
             <!-- Accounting & Token Metrics -->
             <div class="rounded-panel border border-hairline bg-surface-inset p-4 space-y-2">
               <h4 class="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="coins" class="h-3.5 w-3.5 text-emerald-400" aria-hidden="true"></i> Economic &amp; Token Accounting
+                <i data-lucide="coins" class="h-3.5 w-3.5 text-ok" aria-hidden="true"></i> Economic &amp; Token Accounting
               </h4>
               <dl class="grid grid-cols-2 gap-3 text-sm">
                 <div>
@@ -537,18 +537,18 @@
                 </div>
                 <div>
                   <dt class="text-caption text-ink-muted">Estimated Cost</dt>
-                  <dd id="drawerCost" class="font-bold text-emerald-400">$0.000000</dd>
+                  <dd id="drawerCost" class="font-bold text-ok">$0.000000</dd>
                 </div>
               </dl>
             </div>
 
             <!-- Diagnostics & Error Taxonomy (if any) -->
-            <div id="drawerErrorSection" class="hidden rounded-panel border border-red-500/30 bg-red-500/10 p-4 space-y-1 text-red-300">
-              <h4 class="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+            <div id="drawerErrorSection" class="hidden rounded-panel border border-down/25 bg-down/10 p-4 space-y-1 text-down">
+              <h4 class="text-xs font-bold text-down uppercase tracking-wider flex items-center gap-1.5">
                 <i data-lucide="alert-triangle" class="h-3.5 w-3.5" aria-hidden="true"></i> Error Taxonomy &amp; Diagnostics
               </h4>
               <p id="drawerErrorType" class="font-mono text-xs font-bold"></p>
-              <p id="drawerErrorDetail" class="text-caption text-red-200"></p>
+              <p id="drawerErrorDetail" class="text-caption text-down"></p>
             </div>
           </div>
         </div>
@@ -558,7 +558,7 @@
 
   <!-- ── Alert Center ──────────────────────────────────────── -->
   <section id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts" data-panel="alerts" class="hidden space-y-4">
-    <p id="obsAlertsNote" class="rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-400 hidden" role="status">Alert Center unavailable — the alerts backend may not be deployed yet.</p>
+    <p id="obsAlertsNote" class="rounded-control border border-warn/25 bg-warn/10 px-3 py-2 text-caption text-warn hidden" role="status">Alert Center unavailable — the alerts backend may not be deployed yet.</p>
 
     <!-- Toolbar: summary stats on the left, controls on the right -->
     <div class="flex flex-wrap items-center gap-3">
@@ -659,7 +659,7 @@
       <!-- Rule editor (create / edit, hidden until New rule or Edit) -->
       <form id="obsAlertRuleForm" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3 text-sm" autocomplete="off">
         <p id="obsAlertRuleFormTitle" class="md:col-span-2 text-sm font-bold text-ink">New rule</p>
-        <p id="obsAlertRuleMsg" class="md:col-span-2 hidden rounded-control border border-red-500/30 bg-red-500/10 px-3 py-2 text-caption text-red-400" role="alert"></p>
+        <p id="obsAlertRuleMsg" class="md:col-span-2 hidden rounded-control border border-down/25 bg-down/10 px-3 py-2 text-caption text-down" role="alert"></p>
         <input type="hidden" name="original_id" value="" />
         <label class="block">
           <span class="block text-caption font-medium text-ink-muted mb-1">Name</span>
@@ -748,7 +748,7 @@
 
   <!-- ── Agent Intelligence ────────────────────────────────── -->
   <section id="panel-agents" role="tabpanel" aria-labelledby="tab-agents" data-panel="agents" class="hidden space-y-4">
-    <p id="obsAgentsNote" class="rounded-control border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-400 hidden" role="status">Agent Intelligence unavailable — the agent-runs backend may not be deployed yet.</p>
+    <p id="obsAgentsNote" class="rounded-control border border-warn/25 bg-warn/10 px-3 py-2 text-caption text-warn hidden" role="status">Agent Intelligence unavailable — the agent-runs backend may not be deployed yet.</p>
 
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-2">
@@ -772,7 +772,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="rounded-control border border-hairline bg-surface-inset p-3">
         <span class="block text-caption text-ink-muted">Active runs</span>
-        <span id="obsAgentsActiveRuns" class="text-lg font-bold text-sky-400">0</span>
+        <span id="obsAgentsActiveRuns" class="text-lg font-bold text-accent">0</span>
         <span class="block text-micro text-ink-muted mt-0.5">Agent runs currently in progress</span>
       </div>
       <div class="rounded-control border border-hairline bg-surface-inset p-3">
@@ -949,15 +949,15 @@
         </div>
         <div class="rounded-panel border border-hairline bg-surface-raised p-3" title="SSE delta (chunk) events streamed for this model">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Δ Events</div>
-          <div id="telemetryStatTotalDeltas" class="text-xl sm:text-2xl font-extrabold text-sky-400 tabular-nums">–</div>
+          <div id="telemetryStatTotalDeltas" class="text-xl sm:text-2xl font-extrabold text-accent tabular-nums">–</div>
         </div>
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Avg tok/s</div>
-          <div id="telemetryStatAvgTps" class="text-xl sm:text-2xl font-extrabold text-cyan-300 tabular-nums">–</div>
+          <div id="telemetryStatAvgTps" class="text-xl sm:text-2xl font-extrabold text-accent tabular-nums">–</div>
         </div>
         <div class="rounded-panel border border-hairline bg-surface-raised p-3">
           <div class="text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">Live tok/s</div>
-          <div id="telemetryStatLiveTps" class="text-xl sm:text-2xl font-extrabold text-emerald-400 tabular-nums">–</div>
+          <div id="telemetryStatLiveTps" class="text-xl sm:text-2xl font-extrabold text-ok tabular-nums">–</div>
         </div>
       </div>
 
@@ -981,7 +981,7 @@
           <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
             <div class="flex items-center justify-between mb-2">
               <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
-                <i data-lucide="zap" class="h-4 w-4 text-emerald-400" aria-hidden="true"></i> Token Generation &amp; Throughput
+                <i data-lucide="zap" class="h-4 w-4 text-ok" aria-hidden="true"></i> Token Generation &amp; Throughput
               </h3>
               <span class="text-micro text-ink-muted uppercase tracking-wider">Volume &amp; Decode TPS</span>
             </div>
@@ -994,7 +994,7 @@
           <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
             <div class="flex items-center justify-between mb-2">
               <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
-                <i data-lucide="clock" class="h-4 w-4 text-amber-400" aria-hidden="true"></i> Latency Distribution
+                <i data-lucide="clock" class="h-4 w-4 text-warn" aria-hidden="true"></i> Latency Distribution
               </h3>
               <span class="text-micro text-ink-muted uppercase tracking-wider">TTFT P50/P90, ITL in ms</span>
             </div>
@@ -1007,7 +1007,7 @@
           <div class="rounded-panel border border-hairline bg-surface-raised p-4 flex flex-col justify-between">
             <div class="flex items-center justify-between mb-2">
               <h3 class="text-sm font-bold text-ink flex items-center gap-1.5">
-                <i data-lucide="cpu" class="h-4 w-4 text-purple-400" aria-hidden="true"></i> Concurrency &amp; Hardware Health
+                <i data-lucide="cpu" class="h-4 w-4 text-accent" aria-hidden="true"></i> Concurrency &amp; Hardware Health
               </h3>
               <span class="text-micro text-ink-muted uppercase tracking-wider">Queue, Running &amp; KV Cache %</span>
             </div>

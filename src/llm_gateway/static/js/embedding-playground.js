@@ -25,7 +25,7 @@
   const ASSET_V = (document.currentScript && document.currentScript.dataset.assetV) || "";
   const WORKER_URL = "/static/js/embedding-worker.js" + (ASSET_V ? "?v=" + ASSET_V : "");
   const PALETTE = ["#60A5FA", "#F472B6", "#FBBF24", "#34D399", "#C084FC", "#F87171", "#22D3EE", "#FB923C", "#A3E635", "#818CF8", "#2DD4BF", "#E879F9"];
-  const NEUTRAL = "#94A3B8";
+  const NEUTRAL = "#A8A29E";
   const EDGE_LIMIT = 20000;
   const BATCH = 64;
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -61,8 +61,8 @@
       grid: rgb("--ink-muted", dark ? 0.06 : 0.09), line: (a) => rgb("--ink-muted", a),
       halo: rgb("--surface-raised"), bgTri: tri("--surface-raised"),
     };
-    // Matrix colour ramp: page surface → teal → emerald → pale lime.
-    STOPS = [theme.bgTri, dark ? [23, 64, 92] : [167, 214, 228], [20, 184, 138], dark ? [230, 245, 160] : [6, 95, 70]];
+    // Matrix colour ramp: page surface → warm amber → green → deep/pale green.
+    STOPS = [theme.bgTri, dark ? [120, 53, 15] : [253, 230, 138], dark ? [34, 197, 94] : [22, 163, 74], dark ? [187, 247, 208] : [20, 83, 45]];
     const g = $("#epHmGrad");
     if (g) g.style.background = `linear-gradient(90deg, ${STOPS.map((s) => `rgb(${s.join(",")})`).join(",")})`;
   }
@@ -539,7 +539,7 @@
         const a = L.ids[e.a], b = L.ids[e.b], pa = SCR.get(a), pb = SCR.get(b);
         if (!pa || !pb) continue;
         const t = max > min ? (e.s - min) / (max - min) : 1, involved = pinned != null && (a === pinned || b === pinned);
-        if (involved) { c.strokeStyle = `rgba(16,185,129,${0.55 + 0.4 * t})`; c.lineWidth = 1.4 + 1.6 * t; }
+        if (involved) { c.strokeStyle = `rgba(22,163,74,${0.55 + 0.4 * t})`; c.lineWidth = 1.4 + 1.6 * t; }
         else { c.strokeStyle = theme.line((0.1 + 0.4 * t) * (dimOthers ? 0.35 : 1)); c.lineWidth = 0.6 + 1.3 * t; }
         c.beginPath(); c.moveTo(pa[0], pa[1]); c.lineTo(pb[0], pb[1]); c.stroke();
         if (involved || showAll) scoreLabels.push([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, e.m, involved]);
@@ -552,7 +552,7 @@
         const q = SCR.get(nb.id); if (!q) continue;
         const already = scoreLabels.some((s) => s[3] && Math.abs(s[0] - (pp[0] + q[0]) / 2) < 0.5 && Math.abs(s[1] - (pp[1] + q[1]) / 2) < 0.5);
         if (already) continue;
-        c.setLineDash([4, 4]); c.strokeStyle = "rgba(16,185,129,0.55)"; c.lineWidth = 1.2;
+        c.setLineDash([4, 4]); c.strokeStyle = "rgba(22,163,74,0.55)"; c.lineWidth = 1.2;
         c.beginPath(); c.moveTo(pp[0], pp[1]); c.lineTo(q[0], q[1]); c.stroke(); c.setLineDash([]);
         scoreLabels.push([(pp[0] + q[0]) / 2, (pp[1] + q[1]) / 2, nb.s, true]);
       }
@@ -571,7 +571,7 @@
       c.globalAlpha = 1;
       if (p.id === pinned) { c.strokeStyle = theme.ink; c.lineWidth = 2; c.beginPath(); c.arc(x, y, r + 4, 0, Math.PI * 2); c.stroke(); }
       else if (p.id === state.hover) { c.strokeStyle = theme.muted; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r + 3, 0, Math.PI * 2); c.stroke(); }
-      else if (hl && hl.has(p.id)) { c.strokeStyle = "#10B981"; c.lineWidth = 2; c.beginPath(); c.arc(x, y, r + 4, 0, Math.PI * 2); c.stroke(); }
+      else if (hl && hl.has(p.id)) { c.strokeStyle = "#16A34A"; c.lineWidth = 2; c.beginPath(); c.arc(x, y, r + 4, 0, Math.PI * 2); c.stroke(); }
     }
 
     if (scoreLabels.length) {
@@ -580,7 +580,7 @@
         const txt = settings.metric === "cosine" ? s.toFixed(2) : fmt(s), w = c.measureText(txt).width + 10;
         c.fillStyle = inv ? "rgba(3,36,26,.92)" : theme.dark ? "rgba(9,15,30,.88)" : "rgba(255,255,255,.92)";
         roundRect(c, x - w / 2, y - 9, w, 18, 5); c.fill();
-        c.fillStyle = inv ? "#5EF0C2" : theme.ink; c.fillText(txt, x, y + 0.5);
+        c.fillStyle = inv ? "#22C55E" : theme.ink; c.fillText(txt, x, y + 0.5);
       }
     }
 

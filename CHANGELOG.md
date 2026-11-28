@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### 🔥 Phoenix color scheme
+
+- Every design token now resolves to the Phoenix palette: a warm parchment canvas (`#FCFAF8`) with white panels and warm-charcoal ink in light mode, and a low-lightness warm charcoal (`#0D0B0A`) world in dark mode. Brand accent is amber (`#D97706` light / `#F59E0B` dark) with an ember-red secondary (`#DC2626` / `#EF4444`); `--phoenix-gradient` carries the amber→ember ramp.
+- Status colours are semantic, not decorative: `ok`, `warn` and `down` tokens replace the ad-hoc emerald / amber / rose classes, each with an `*-ink` counterpart so text on a solid status colour keeps its contrast in both themes.
+- Roughly 470 hard-coded Tailwind hue classes across 21 templates and 12 scripts were migrated to the semantic tokens (`text-ink-muted` instead of `text-slate-500 dark:text-slate-300`, and so on), which also removed almost every remaining per-element `dark:` pair.
+- Charts, sparklines and canvas drawings draw from a warm ramp (`#D97706`, `#E8590C`, `#DC2626`, `#EAB308`, …) instead of the old blue/purple/pink set; categorical palettes that encode identity (embedding scatter points) stay multi-hue on purpose.
+- Selection, caret and scrollbar colours now follow the accent, `meta[name=theme-color]` tracks the in-app theme switch, and markdown code blocks use a warm-dark chrome that matches the palette rather than GitHub's blue-black.
+
 ### 🧹 Dashboard badges and Alert Center toolbar
 
 - Removed the always-on "Cluster Online" and uptime pills from the Operations Dashboard header; the timeframe control and "Updated …" timestamp remain. The "LIVE" indicator on the Connected Clients card is unchanged.

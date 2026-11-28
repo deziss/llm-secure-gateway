@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#FCFAF8" />
     <title>{% block title %}LLM Gateway Admin{% endblock %}</title>
     <!-- Tailwind — compiled locally at build time, zero external requests -->
     <link rel="stylesheet" href="/static/css/tailwind.min.css?v={{ asset_v }}" />
@@ -50,6 +51,17 @@
             var dark = saved === 'dark' ||
                 (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
             document.documentElement.classList.toggle('dark', dark);
+            // Keep the browser chrome (mobile URL bar) in sync with the theme.
+            function paintThemeColor() {
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) {
+                    meta.setAttribute('content',
+                        document.documentElement.classList.contains('dark') ? '#0D0B0A' : '#FCFAF8');
+                }
+            }
+            paintThemeColor();
+            new MutationObserver(paintThemeColor)
+                .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         })();
     </script>
   </head>
@@ -84,7 +96,7 @@
     <div id="globalConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4" role="alertdialog" aria-modal="true" aria-labelledby="globalConfirmTitle" aria-describedby="globalConfirmMessage">
       <div class="bg-surface-raised border border-hairline p-5 rounded-panel w-full max-w-md shadow-overlay transform transition-all scale-95 opacity-0 duration-200" id="globalConfirmContent">
         <div class="text-center">
-          <div class="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
+          <div class="w-12 h-12 bg-down/10 text-down rounded-full flex items-center justify-center mx-auto mb-4 border border-down/20">
             <i data-lucide="alert-triangle" class="w-6 h-6" aria-hidden="true"></i>
           </div>
           <h3 class="text-lg font-bold text-ink mb-2" id="globalConfirmTitle">Confirm Action</h3>
@@ -93,7 +105,7 @@
             <button id="globalConfirmCancel" class="flex-1 px-4 py-2.5 bg-surface-inset hover:bg-hairline text-ink rounded-control font-medium text-sm transition-all border border-hairline">
               Cancel
             </button>
-            <button id="globalConfirmAction" class="flex-1 px-4 py-2.5 bg-down hover:opacity-90 text-white rounded-control font-medium text-sm transition-all">
+            <button id="globalConfirmAction" class="flex-1 px-4 py-2.5 bg-down hover:opacity-90 text-down-ink rounded-control font-medium text-sm transition-all">
               Confirm
             </button>
           </div>

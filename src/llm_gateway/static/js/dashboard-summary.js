@@ -71,7 +71,7 @@
 
   function tokenColor(name, alpha) {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v ? `rgb(${v.split(/\s+/).join(", ")}${alpha !== undefined ? ", " + alpha : ""})` : "#6366f1";
+    return v ? `rgb(${v.split(/\s+/).join(", ")}${alpha !== undefined ? ", " + alpha : ""})` : "#D97706";
   }
 
   const prefs = DC.loadPrefs(USER);

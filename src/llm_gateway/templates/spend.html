@@ -59,7 +59,7 @@
   <div class="rounded-panel border border-hairline bg-surface-raised shadow-rest p-5 sm:p-6">
     <div class="flex items-center justify-between">
       <span class="text-caption font-medium text-ink-muted">Total Invocations</span>
-      <div class="w-10 h-10 shrink-0 rounded-control bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-lg">
+      <div class="w-10 h-10 shrink-0 rounded-control bg-accent/10 text-accent flex items-center justify-center font-bold text-lg">
         <i data-lucide="zap" class="w-5 h-5"></i>
       </div>
     </div>
@@ -72,7 +72,7 @@
 <div class="mb-8 rounded-panel border border-hairline bg-surface-raised shadow-rest overflow-hidden">
   <div class="p-6 border-b border-hairline flex justify-between items-center">
     <h2 class="text-lg font-semibold text-ink flex items-center gap-2">
-      <i data-lucide="users" class="text-blue-500 w-5 h-5"></i> Spend by Owner
+      <i data-lucide="users" class="text-accent w-5 h-5"></i> Spend by Owner
     </h2>
   </div>
   <div class="p-1 overflow-x-auto">
@@ -150,7 +150,7 @@
       </button>
       <button
         onclick="openAddPricingModal()"
-        class="px-3.5 py-1.5 text-xs bg-accent hover:bg-accent/90 text-white rounded-control font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+        class="px-3.5 py-1.5 text-xs bg-accent hover:bg-accent-hover text-accent-ink rounded-control font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
       >
         <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add / Override Rate
       </button>
@@ -316,7 +316,7 @@
         <button
           type="submit"
           id="btnSavePricing"
-          class="px-5 py-2 text-xs font-semibold rounded-control bg-accent hover:bg-accent/90 text-white transition-colors"
+          class="px-5 py-2 text-xs font-semibold rounded-control bg-accent hover:bg-accent-hover text-accent-ink transition-colors"
         >
           Save Rate Rule
         </button>
@@ -414,8 +414,8 @@ function renderPricingTable(rules) {
   tbody.innerHTML = rules.map(r => {
     const isManual = r.source === 'manual';
     const sourceBadge = isManual
-      ? `<span class="px-2.5 py-0.5 text-micro font-semibold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">Manual Override</span>`
-      : `<span class="px-2.5 py-0.5 text-micro font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Auto-Detected</span>`;
+      ? `<span class="px-2.5 py-0.5 text-micro font-semibold rounded-full bg-accent/10 text-accent border border-accent/25">Manual Override</span>`
+      : `<span class="px-2.5 py-0.5 text-micro font-semibold rounded-full bg-ok/10 text-ok border border-ok/25">Auto-Detected</span>`;
 
     const cachedStr = (r.cached_input_cost_per_1m != null)
       ? `$${Number(r.cached_input_cost_per_1m).toFixed(4)}`
@@ -456,7 +456,7 @@ function renderPricingTable(rules) {
             type="button"
             data-action="delete-pricing"
             data-id="${r.id}"
-            class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+            class="inline-flex items-center justify-center min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-down/25 bg-down/10 text-down hover:bg-down hover:text-down-ink transition-all cursor-pointer"
             title="Delete pricing rule"
             aria-label="Delete token rate for ${r.model}"
           >

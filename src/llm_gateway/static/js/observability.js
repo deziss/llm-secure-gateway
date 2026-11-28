@@ -608,7 +608,7 @@
       const liveTok = isLive ? (isNum(srvTok) ? srvTok : (isNum(tokThruLive) ? tokThruLive : null)) : null;
       const liveCell = td(isNum(liveTok) ? fmt(liveTok, 1) : (isNum(tokThruLive) ? fmt(tokThruLive, 1) : DASH), "text-right tabular-nums");
       if (isLive && liveTok && liveTok > 0) {
-        liveCell.classList.add("text-emerald-400", "font-semibold");
+        liveCell.classList.add("text-ok", "font-semibold");
         liveCell.title = "Current generation speed" + (isNum(tokDecodeLive) ? ` · decode ${fmt(tokDecodeLive, 1)} tok/s` : "");
       } else if (isNum(tokDecodeLive)) {
         liveCell.title = `decode ${fmt(tokDecodeLive, 1)} tok/s`;
@@ -623,7 +623,7 @@
         : "SSE delta events per second";
       const deltaCell = td(isNum(deltaVal) ? fmt(deltaVal, 1) : DASH, "text-right tabular-nums");
       deltaCell.title = deltaTitle;
-      if (isLive && isNum(deltaLive) && deltaLive > 0) deltaCell.classList.add("text-sky-400");
+      if (isLive && isNum(deltaLive) && deltaLive > 0) deltaCell.classList.add("text-accent");
       tr.appendChild(deltaCell);
       tr.appendChild(td(fmtMs(ttftP50), "text-right tabular-nums"));
       tr.appendChild(td(fmt(srvRps, 2), "text-right tabular-nums"));
@@ -720,21 +720,21 @@
           : "No live traffic — showing window average";
       const chips = [
         el("span", {
-          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 " + (liveActive ? "bg-emerald-500/10 text-emerald-400" : "bg-surface-inset text-ink-muted"),
+          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 " + (liveActive ? "bg-ok/10 text-ok" : "bg-surface-inset text-ink-muted"),
           attrs: { title: liveTitle + (e.decodeLive != null && liveActive ? ` · decode ${e.decodeLive.toFixed(1)} tok/s` : "") }
         }, [
           el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "live" }),
           el("span", { cls: "text-sm font-extrabold tabular-nums", text: e.live.toFixed(1) })
         ]),
         el("span", {
-          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 bg-cyan-500/10 text-cyan-400",
+          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 bg-accent/10 text-accent",
           attrs: { title: `Average tok/s over ${isLive ? "the last 60s" : `the ${state.timeframe} window`}` }
         }, [
           el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "avg" }),
           el("span", { cls: "text-sm font-extrabold tabular-nums", text: e.avg != null ? e.avg.toFixed(1) : DASH })
         ]),
         el("span", {
-          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 " + ((isFinite(e.deltaLive) && e.deltaLive > 0) ? "bg-sky-500/10 text-sky-400" : "bg-surface-inset text-ink-muted"),
+          cls: "inline-flex items-baseline gap-1 rounded-control px-1.5 py-0.5 " + ((isFinite(e.deltaLive) && e.deltaLive > 0) ? "bg-accent/10 text-accent" : "bg-surface-inset text-ink-muted"),
           attrs: { title: `SSE delta (chunk) events/s — live ${e.deltaLive != null ? e.deltaLive.toFixed(1) : DASH} · avg ${e.deltaAvg != null ? e.deltaAvg.toFixed(1) : DASH}` }
         }, [
           el("span", { cls: "text-micro font-bold uppercase tracking-wider", text: "Δ/s" }),
@@ -938,24 +938,24 @@
     const baseScales = {
       x: {
         grid: { color: "rgba(255, 255, 255, 0.05)" },
-        ticks: { color: "#64748b", font: { size: 10 }, maxRotation: 0 }
+        ticks: { color: "#68605A", font: { size: 10 }, maxRotation: 0 }
       },
       y: {
         beginAtZero: true,
         grid: { color: "rgba(255, 255, 255, 0.05)" },
-        ticks: { color: "#64748b", font: { size: 10 } }
+        ticks: { color: "#68605A", font: { size: 10 } }
       }
     };
     const basePlugins = {
       legend: {
         display: true,
         position: "top",
-        labels: { color: "#94a3b8", font: { size: 11 }, boxWidth: 10 }
+        labels: { color: "#9C928B", font: { size: 11 }, boxWidth: 10 }
       },
       tooltip: {
-        backgroundColor: "#0f172a",
-        titleColor: "#f8fafc",
-        bodyColor: "#e2e8f0",
+        backgroundColor: "#1C1917",
+        titleColor: "#EAE3DC",
+        bodyColor: "#EAE3DC",
         borderColor: "rgba(255, 255, 255, 0.1)",
         borderWidth: 1,
         padding: 8
@@ -973,8 +973,8 @@
             {
               label: "RPS",
               data: timeseries.map((p) => Number(p.rps || 0)),
-              borderColor: "#38bdf8",
-              backgroundColor: "rgba(56, 189, 248, 0.1)",
+              borderColor: "#D97706",
+              backgroundColor: "rgba(217, 119, 6, 0.1)",
               fill: true,
               tension: 0.25,
               pointRadius: 2,
@@ -983,8 +983,8 @@
             {
               label: "Errors",
               data: timeseries.map((p) => Number(p.errors || 0)),
-              borderColor: "#f43f5e",
-              backgroundColor: "rgba(244, 63, 94, 0.2)",
+              borderColor: "#DC2626",
+              backgroundColor: "rgba(220, 38, 38, 0.2)",
               tension: 0.2,
               pointRadius: 2,
               yAxisID: "yErr",
@@ -1001,8 +1001,8 @@
               beginAtZero: true,
               position: "right",
               grid: { drawOnChartArea: false },
-              ticks: { color: "#f43f5e", font: { size: 10 }, precision: 0 },
-              title: { display: true, text: "Errors", color: "#f43f5e" }
+              ticks: { color: "#DC2626", font: { size: 10 }, precision: 0 },
+              title: { display: true, text: "Errors", color: "#DC2626" }
             }
           }
         }
@@ -1020,7 +1020,7 @@
               type: "bar",
               label: "Prompt Tokens",
               data: timeseries.map((p) => Number(p.prompt_tokens || 0)),
-              backgroundColor: "rgba(99, 102, 241, 0.75)",
+              backgroundColor: "rgba(146, 64, 14, 0.75)",
               stack: "tok",
               yAxisID: "y",
             },
@@ -1028,7 +1028,7 @@
               type: "bar",
               label: "Completion Tokens",
               data: timeseries.map((p) => Number(p.completion_tokens || 0)),
-              backgroundColor: "rgba(16, 185, 129, 0.75)",
+              backgroundColor: "rgba(249, 115, 22, 0.75)",
               stack: "tok",
               yAxisID: "y",
             },
@@ -1036,7 +1036,7 @@
               type: "line",
               label: "tok/s Decode",
               data: timeseries.map((p) => Number(p.tok_s_decode || 0)),
-              borderColor: "#f59e0b",
+              borderColor: "#D97706",
               backgroundColor: "transparent",
               tension: 0.25,
               pointRadius: 2,
@@ -1051,7 +1051,7 @@
                 const secs = Number(p.bucket_seconds || 60) || 60;
                 return Number(p.delta_events || 0) / secs;
               }),
-              borderColor: "#38bdf8",
+              borderColor: "#E8590C",
               backgroundColor: "transparent",
               borderDash: [4, 3],
               tension: 0.25,
@@ -1070,8 +1070,8 @@
               beginAtZero: true,
               position: "right",
               grid: { drawOnChartArea: false },
-              ticks: { color: "#f59e0b", font: { size: 10 } },
-              title: { display: true, text: "tok/s", color: "#f59e0b" }
+              ticks: { color: "#D97706", font: { size: 10 } },
+              title: { display: true, text: "tok/s", color: "#D97706" }
             }
           }
         }
@@ -1089,15 +1089,15 @@
             {
               label: "TTFT P50 (ms)",
               data: timeseries.map((p) => (p.ttft_p50_ms !== undefined ? p.ttft_p50_ms : null)),
-              borderColor: "#22c55e",
-              backgroundColor: "rgba(34, 197, 94, 0.08)",
+              borderColor: "#D97706",
+              backgroundColor: "rgba(217, 119, 6, 0.08)",
               tension: 0.25,
               pointRadius: 2,
             },
             {
               label: "TTFT P90 (ms)",
               data: timeseries.map((p) => (p.ttft_p90_ms !== undefined ? p.ttft_p90_ms : null)),
-              borderColor: "#eab308",
+              borderColor: "#EAB308",
               backgroundColor: "rgba(234, 179, 8, 0.08)",
               tension: 0.25,
               pointRadius: 2,
@@ -1105,8 +1105,8 @@
             {
               label: "ITL (ms)",
               data: timeseries.map((p) => (p.itl_ms !== undefined ? p.itl_ms : null)),
-              borderColor: "#a855f7",
-              backgroundColor: "rgba(168, 85, 247, 0.08)",
+              borderColor: "#E8590C",
+              backgroundColor: "rgba(232, 89, 12, 0.08)",
               tension: 0.25,
               pointRadius: 2,
             }
@@ -1120,7 +1120,7 @@
             ...baseScales,
             y: {
               ...baseScales.y,
-              title: { display: true, text: "Latency (ms)", color: "#64748b" }
+              title: { display: true, text: "Latency (ms)", color: "#68605A" }
             }
           }
         }
@@ -1138,7 +1138,7 @@
             {
               label: "Generating",
               data: timeseries.map((p) => Number(p.generating || 0)),
-              borderColor: "#3b82f6",
+              borderColor: "#92400E",
               backgroundColor: "transparent",
               tension: 0.25,
               pointRadius: 2,
@@ -1147,7 +1147,7 @@
             {
               label: "Waiting",
               data: timeseries.map((p) => Number(p.waiting || 0)),
-              borderColor: "#f59e0b",
+              borderColor: "#D97706",
               backgroundColor: "transparent",
               tension: 0.25,
               pointRadius: 2,
@@ -1156,7 +1156,7 @@
             {
               label: "Server Run",
               data: timeseries.map((p) => Number(p.server_running || 0)),
-              borderColor: "#8b5cf6",
+              borderColor: "#EAB308",
               borderDash: [4, 4],
               backgroundColor: "transparent",
               tension: 0.2,
@@ -1166,7 +1166,7 @@
             {
               label: "Server Wait",
               data: timeseries.map((p) => Number(p.server_waiting || 0)),
-              borderColor: "#ef4444",
+              borderColor: "#DC2626",
               borderDash: [4, 4],
               backgroundColor: "transparent",
               tension: 0.2,
@@ -1176,7 +1176,7 @@
             {
               label: "KV Cache %",
               data: timeseries.map((p) => Number(p.kv_cache_pct || 0)),
-              borderColor: "#ec4899",
+              borderColor: "#F97316",
               backgroundColor: "transparent",
               tension: 0.25,
               pointRadius: 2,
@@ -1192,15 +1192,15 @@
             ...baseScales,
             y: {
               ...baseScales.y,
-              title: { display: true, text: "Requests / Slots", color: "#64748b" }
+              title: { display: true, text: "Requests / Slots", color: "#68605A" }
             },
             yPct: {
               beginAtZero: true,
               max: 100,
               position: "right",
               grid: { drawOnChartArea: false },
-              ticks: { color: "#ec4899", font: { size: 10 } },
-              title: { display: true, text: "KV Cache %", color: "#ec4899" }
+              ticks: { color: "#F97316", font: { size: 10 } },
+              title: { display: true, text: "KV Cache %", color: "#F97316" }
             }
           }
         }
@@ -1541,7 +1541,7 @@
       ]);
       const actions = el("div", { cls: "flex shrink-0 gap-2" }, [
         el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-hairline bg-surface-inset text-ink hover:bg-hairline transition-all", attrs: { type: "button", title: "Edit GPU host", "aria-label": "Edit GPU host " + h.name }, data: { action: "host-edit", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "edit-3", "aria-hidden": "true" } })]),
-        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all", attrs: { type: "button", title: "Delete GPU host", "aria-label": "Delete GPU host " + h.name }, data: { action: "host-delete", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]),
+        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-down/25 bg-down/10 text-down hover:bg-accent-2 hover:text-accent-2-ink transition-all", attrs: { type: "button", title: "Delete GPU host", "aria-label": "Delete GPU host " + h.name }, data: { action: "host-delete", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]),
       ]);
       return el("li", { cls: "flex items-start gap-3 py-2" }, [label, actions]);
     });
@@ -1688,7 +1688,7 @@
       ]);
       const actions = el("div", { cls: "flex shrink-0 gap-2" }, [
         el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-hairline bg-surface-inset text-ink hover:bg-hairline transition-all", attrs: { type: "button", title: "Edit node", "aria-label": "Edit node " + h.name }, data: { action: "node-edit", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "edit-3", "aria-hidden": "true" } })]),
-        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all", attrs: { type: "button", title: "Delete node", "aria-label": "Delete node " + h.name }, data: { action: "node-delete", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]),
+        el("button", { cls: "min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-2 rounded-lg border border-down/25 bg-down/10 text-down hover:bg-accent-2 hover:text-accent-2-ink transition-all", attrs: { type: "button", title: "Delete node", "aria-label": "Delete node " + h.name }, data: { action: "node-delete", name: h.name } }, [el("i", { cls: "w-4 h-4", attrs: { "data-lucide": "trash-2", "aria-hidden": "true" } })]),
       ]);
       return el("li", { cls: "flex items-start gap-3 py-2" }, [label, actions]);
     });
@@ -1846,7 +1846,7 @@
   // Chart colours come from CSS tokens; rebuild when the theme flips.
   function tokenColor(name, alpha) {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v ? `rgb(${v.split(/\s+/).join(", ")}${alpha !== undefined ? ", " + alpha : ""})` : "#6366f1";
+    return v ? `rgb(${v.split(/\s+/).join(", ")}${alpha !== undefined ? ", " + alpha : ""})` : "#D97706";
   }
 
   document.addEventListener("admin:themechange", () => {
@@ -2473,9 +2473,9 @@
   function severityBadge(sev) {
     const s = norm(sev);
     const tones = {
-      critical: "bg-red-500/10 text-red-400 border-red-500/30",
-      warning: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-      info: "bg-sky-500/10 text-sky-400 border-sky-500/30",
+      critical: "bg-down/10 text-down border-down/25",
+      warning: "bg-warn/10 text-warn border-warn/25",
+      info: "bg-accent/10 text-accent border-accent/25",
     };
     return el("span", {
       cls: "inline-flex items-center rounded-control border px-2 py-0.5 text-caption font-semibold capitalize " + (tones[s] || "bg-surface-inset text-ink-muted border-hairline"),
@@ -2656,7 +2656,7 @@
       const enabled = !!r.enabled;
       const channels = Array.isArray(r.channels) ? r.channels.join(", ") : String(r.channels || "");
       const toggle = el("button", {
-        cls: "min-h-touch rounded-control border px-3 py-1 text-xs font-semibold " + (enabled ? "border-hairline text-ok bg-emerald-500/10" : "border-hairline text-ink-muted hover:bg-surface-inset"),
+        cls: "min-h-touch rounded-control border px-3 py-1 text-xs font-semibold " + (enabled ? "border-hairline text-ok bg-ok/10" : "border-hairline text-ink-muted hover:bg-surface-inset"),
         text: enabled ? "Enabled" : "Disabled",
         attrs: {
           type: "button",
@@ -3178,13 +3178,13 @@
     let label = String(status || 200);
 
     if (status === 200) {
-      cls = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+      cls = "bg-ok/10 text-ok border-ok/25";
       label = "200 OK";
     } else if (status === 429) {
-      cls = "bg-amber-500/10 text-amber-400 border-amber-500/30";
+      cls = "bg-warn/10 text-warn border-warn/25";
       label = "429 Rate Limit";
     } else if (status === 400 || status === 403) {
-      cls = "bg-purple-500/10 text-purple-400 border-purple-500/30";
+      cls = "bg-accent/10 text-accent border-accent/25";
       if (errorType === "guardrail_blocked") {
         label = "Blocked (Shield)";
       } else if (status === 403) {
@@ -3193,10 +3193,10 @@
         label = "400 Bad Request";
       }
     } else if (status >= 500) {
-      cls = "bg-red-500/10 text-red-400 border-red-500/30";
+      cls = "bg-down/10 text-down border-down/25";
       label = `${status} Upstream Err`;
     } else if (status === 499) {
-      cls = "bg-gray-500/10 text-gray-400 border-gray-500/30";
+      cls = "bg-surface-inset text-ink-muted border-hairline";
       label = "499 Client Abort";
     }
 
@@ -3269,7 +3269,7 @@
         el("td", { cls: "p-3 text-right font-mono text-xs text-ink", text: ttftStr }),
         el("td", { cls: "p-3 text-right font-mono text-xs font-semibold text-ink", text: durStr }),
         el("td", { cls: "p-3 text-right font-mono text-xs text-ink-muted", text: tokensStr }),
-        el("td", { cls: "p-3 text-right font-mono text-xs text-emerald-400 font-medium", text: costStr }),
+        el("td", { cls: "p-3 text-right font-mono text-xs text-ok font-medium", text: costStr }),
         el("td", { cls: "p-3 text-center" }, [inspectBtn]),
       ]);
       return tr;
@@ -3306,7 +3306,7 @@
     const cacheEl = $("drawerCache");
     if (cacheEl) {
       cacheEl.textContent = t.cache_hit ? "HIT (Avoided)" : "MISS";
-      cacheEl.className = t.cache_hit ? "font-bold text-emerald-400" : "font-bold text-ink-muted";
+      cacheEl.className = t.cache_hit ? "font-bold text-ok" : "font-bold text-ink-muted";
     }
 
     // Accounting
@@ -3347,21 +3347,21 @@
     const policyMs = recordedPhases.policy || Math.min(1.0, totalMs * 0.03);
     const guardrailMs = recordedPhases.guardrail || Math.min(3.0, totalMs * 0.08);
 
-    phases.push({ name: "Ingress & TLS", ms: ingressMs, color: "bg-cyan-500", dot: "bg-cyan-500" });
-    phases.push({ name: "Auth & Key Check", ms: authMs, color: "bg-blue-500", dot: "bg-blue-500" });
-    phases.push({ name: "Policy & Routing", ms: policyMs, color: "bg-indigo-500", dot: "bg-indigo-500" });
-    phases.push({ name: "Shield & Guardrails", ms: guardrailMs, color: "bg-purple-500", dot: "bg-purple-500" });
+    phases.push({ name: "Ingress & TLS", ms: ingressMs, color: "bg-accent", dot: "bg-accent" });
+    phases.push({ name: "Auth & Key Check", ms: authMs, color: "bg-accent", dot: "bg-accent" });
+    phases.push({ name: "Policy & Routing", ms: policyMs, color: "bg-accent", dot: "bg-accent" });
+    phases.push({ name: "Shield & Guardrails", ms: guardrailMs, color: "bg-accent", dot: "bg-accent" });
 
     if (t.ttft_ms && t.ttft_ms > 0) {
       const ttftWait = Math.max(0, t.ttft_ms - (ingressMs + authMs + policyMs + guardrailMs));
-      phases.push({ name: "Upstream First Token (TTFT)", ms: ttftWait, color: "bg-amber-400", dot: "bg-amber-400" });
+      phases.push({ name: "Upstream First Token (TTFT)", ms: ttftWait, color: "bg-warn", dot: "bg-warn" });
       const streamMs = Math.max(0, totalMs - t.ttft_ms);
       if (streamMs > 0) {
-        phases.push({ name: "Stream Token Generation", ms: streamMs, color: "bg-emerald-400", dot: "bg-emerald-400" });
+        phases.push({ name: "Stream Token Generation", ms: streamMs, color: "bg-ok", dot: "bg-ok" });
       }
     } else {
       const upstreamWait = Math.max(0, totalMs - (ingressMs + authMs + policyMs + guardrailMs));
-      phases.push({ name: "Upstream Inference", ms: upstreamWait, color: "bg-emerald-400", dot: "bg-emerald-400" });
+      phases.push({ name: "Upstream Inference", ms: upstreamWait, color: "bg-ok", dot: "bg-ok" });
     }
 
     // Waterfall bar segments
@@ -3457,9 +3457,9 @@
   function agentStatusBadge(status) {
     const s = norm(status);
     const tones = {
-      active: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-      completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-      failed: "bg-red-500/10 text-red-400 border-red-500/30",
+      active: "bg-accent/10 text-accent border-accent/25",
+      completed: "bg-ok/10 text-ok border-ok/25",
+      failed: "bg-down/10 text-down border-down/25",
     };
     return el("span", {
       cls: "inline-flex items-center rounded-control border px-2 py-0.5 text-caption font-semibold " + (tones[s] || "bg-surface-inset text-ink-muted border-hairline"),
@@ -3544,7 +3544,7 @@
       td(fmtInt(a.runs_1h), "text-right tabular-nums"),
       el("td", { cls: "px-3 py-2 text-right tabular-nums " + (Number(a.errors_1h) > 0 ? "text-down font-semibold" : ""), text: fmtInt(a.errors_1h) }),
       td(fmtInt(a.tokens_1h), "text-right tabular-nums"),
-      td(isNum(a.cost_1h_usd) ? "$" + a.cost_1h_usd.toFixed(4) : DASH, "text-right tabular-nums text-emerald-400"),
+      td(isNum(a.cost_1h_usd) ? "$" + a.cost_1h_usd.toFixed(4) : DASH, "text-right tabular-nums text-ok"),
     ]));
     tbody.replaceChildren(...rows);
   }
@@ -3580,7 +3580,7 @@
         td(fmtInt(run.requests), "text-right tabular-nums"),
         el("td", { cls: "px-3 py-2 text-right tabular-nums " + (errors > 0 ? "text-down font-semibold" : ""), text: fmtInt(run.errors) }),
         td(`${fmtInt(run.tokens_in)} / ${fmtInt(run.tokens_out)}`, "text-right font-mono text-xs tabular-nums"),
-        td(isNum(run.cost_usd) ? "$" + run.cost_usd.toFixed(4) : DASH, "text-right font-mono text-xs tabular-nums text-emerald-400"),
+        td(isNum(run.cost_usd) ? "$" + run.cost_usd.toFixed(4) : DASH, "text-right font-mono text-xs tabular-nums text-ok"),
       ]);
       nodes.push(tr);
       if (expanded) {
@@ -3662,7 +3662,7 @@
       idRow.appendChild(el("span", { cls: "text-micro text-ink-muted", text: "handoffs:" }));
       for (const h of handoffs) {
         idRow.appendChild(el("span", {
-          cls: "inline-flex items-center rounded-control border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-micro font-medium text-violet-300",
+          cls: "inline-flex items-center rounded-control border border-accent/25 bg-accent/10 px-2 py-0.5 text-micro font-medium text-accent",
           text: `${h.from != null ? h.from : DASH} \u2192 ${h.to != null ? h.to : DASH}`,
           attrs: { title: h.ts ? String(h.ts) : "" },
         }));
@@ -3675,7 +3675,7 @@
       return wrap;
     }
     if (detail.error) {
-      wrap.appendChild(el("p", { cls: "text-caption text-amber-400", text: "Step detail unavailable — run-steps endpoint may not be deployed yet." }));
+      wrap.appendChild(el("p", { cls: "text-caption text-warn", text: "Step detail unavailable — run-steps endpoint may not be deployed yet." }));
       return wrap;
     }
 
@@ -3699,9 +3699,9 @@
     }
 
     const KIND_CLS = {
-      llm: "bg-indigo-500",
-      tool: "bg-amber-500",
-      mcp: "bg-violet-500",
+      llm: "bg-accent",
+      tool: "bg-warn",
+      mcp: "bg-accent",
     };
     const ordered = steps.slice().sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0));
 
@@ -3740,7 +3740,7 @@
       if (s.agent) tipBits.push("agent: " + String(s.agent));
 
       const bar = el("div", {
-        cls: "h-3 rounded-sm opacity-90 hover:opacity-100 " + (KIND_CLS[kind] || "bg-gray-500") + (failed ? " ring-2 ring-red-500" : ""),
+        cls: "h-3 rounded-sm opacity-90 hover:opacity-100 " + (KIND_CLS[kind] || "bg-ink-faint") + (failed ? " ring-2 ring-down" : ""),
         attrs: { style: `margin-left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;`, title: tipBits.join(" · ") },
       });
       const labelTitle = [s.kind, s.agent, s.model, s.tool, s.server, s.error].filter(Boolean).join(" · ");
@@ -3757,10 +3757,10 @@
 
     // Legend
     wrap.appendChild(el("div", { cls: "flex flex-wrap items-center gap-3 text-micro text-ink-muted" }, [
-      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-indigo-500" }), el("span", { text: "LLM" })]),
-      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-amber-500" }), el("span", { text: "Tool" })]),
-      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-violet-500" }), el("span", { text: "MCP" })]),
-      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm ring-2 ring-red-500" }), el("span", { text: "Failed step" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-accent" }), el("span", { text: "LLM" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-warn" }), el("span", { text: "Tool" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm bg-accent" }), el("span", { text: "MCP" })]),
+      el("span", { cls: "flex items-center gap-1" }, [el("span", { cls: "inline-block h-2 w-2 rounded-sm ring-2 ring-down" }), el("span", { text: "Failed step" })]),
     ]));
     return wrap;
   }

@@ -97,23 +97,23 @@ async function loadInvites() {
     tbody.innerHTML = invites
       .map((i) => {
         const statusCls = i.is_used
-          ? "bg-slate-500/10 text-slate-500 border-slate-500/20"
-          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+          ? "bg-surface-inset text-ink-muted border-hairline"
+          : "bg-ok/10 text-ok border-ok/25";
         const statusText = i.is_used ? "EXHAUSTED" : "AVAILABLE";
         return `
         <tr class="hover:bg-surface-inset transition-all group">
-          <td class="p-4 font-mono text-blue-600 dark:text-blue-400 select-all font-bold tracking-tighter">${escapeHtml(i.code)}</td>
-          <td class="p-4 text-slate-500 text-xs font-medium">${escapeHtml(window.formatDateTime ? window.formatDateTime(i.created_at) : new Date(i.created_at).toLocaleString())}</td>
+          <td class="p-4 font-mono text-accent select-all font-bold tracking-tighter">${escapeHtml(i.code)}</td>
+          <td class="p-4 text-ink-muted text-xs font-medium">${escapeHtml(window.formatDateTime ? window.formatDateTime(i.created_at) : new Date(i.created_at).toLocaleString())}</td>
           <td class="p-4">
             <div class="flex items-center gap-3">
               <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${statusCls}">${statusText}</span>
-              <span class="text-[10px] text-slate-500 font-bold uppercase truncate max-w-[120px]">${escapeHtml(i.used_by || i.created_by || "")}</span>
+              <span class="text-[10px] text-ink-muted font-bold uppercase truncate max-w-[120px]">${escapeHtml(i.used_by || i.created_by || "")}</span>
             </div>
           </td>
           <td class="p-4 text-right">
             <div class="flex justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
-              <button type="button" data-action="copy" data-code="${escapeHtml(i.code)}" aria-label="Copy token" class="p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-700" title="Copy Token"><i data-lucide="copy" class="w-4 h-4"></i></button>
-              <button type="button" data-action="delete" data-code="${escapeHtml(i.code)}" aria-label="Invalidate token" class="p-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg border border-rose-500/20" title="Invalidate"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+              <button type="button" data-action="copy" data-code="${escapeHtml(i.code)}" aria-label="Copy token" class="p-1.5 bg-surface-inset text-ink-muted hover:text-ink rounded-lg border border-hairline" title="Copy Token"><i data-lucide="copy" class="w-4 h-4"></i></button>
+              <button type="button" data-action="delete" data-code="${escapeHtml(i.code)}" aria-label="Invalidate token" class="p-1.5 bg-down/10 text-down hover:bg-down hover:text-down-ink rounded-lg border border-down/25" title="Invalidate"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
           </td>
         </tr>
@@ -268,11 +268,11 @@ async function loadScopeRules() {
     .map(
       (rule, idx) => `
       <tr class="hover:bg-surface-inset transition-colors">
-        <td class="p-4 font-mono text-violet-400 font-bold">${escapeHtml(rule[0])}</td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-amber-500/10 text-warn border border-amber-500/20 rounded text-micro font-bold">Custom</span></td>
+        <td class="p-4 font-mono text-accent font-bold">${escapeHtml(rule[0])}</td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-accent/10 text-accent border border-accent/25 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-warn/10 text-warn border border-warn/25 rounded text-micro font-bold">Custom</span></td>
         <td class="p-4 text-right">
-          <button type="button" data-action="remove-rule" data-idx="${idx}" aria-label="Remove rule ${escapeHtml(rule[0])}" class="text-slate-500 hover:text-red-500 transition-colors p-2 min-h-touch min-w-touch inline-flex items-center justify-center" title="Remove rule">
+          <button type="button" data-action="remove-rule" data-idx="${idx}" aria-label="Remove rule ${escapeHtml(rule[0])}" class="text-ink-muted hover:text-down transition-colors p-2 min-h-touch min-w-touch inline-flex items-center justify-center" title="Remove rule">
             <i data-lucide="x-circle" class="w-4 h-4"></i>
           </button>
         </td>
@@ -283,9 +283,9 @@ async function loadScopeRules() {
   const builtinHtml = BUILTIN_RULES.map(
     (rule) => `
       <tr class="hover:bg-surface-inset transition-colors ">
-        <td class="p-4 font-mono text-slate-400">${escapeHtml(rule[0])}</td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-400 border border-slate-500/20 rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
-        <td class="p-4"><span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded text-micro font-bold">Built-in</span></td>
+        <td class="p-4 font-mono text-ink-muted">${escapeHtml(rule[0])}</td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-surface-inset text-ink-muted border border-hairline rounded text-micro font-bold">${escapeHtml(rule[1])}</span></td>
+        <td class="p-4"><span class="px-2 py-0.5 bg-surface-inset text-ink-muted border border-hairline rounded text-micro font-bold">Built-in</span></td>
         <td class="p-4 text-right text-ink-muted text-micro">read-only</td>
       </tr>`,
   ).join("");
@@ -371,13 +371,10 @@ function applyTheme(theme) {
 function updateThemeButtons(active) {
   document.querySelectorAll("#themeToggle .theme-btn").forEach((btn) => {
     const isActive = btn.dataset.theme === active;
-    btn.classList.toggle("bg-white", isActive);
-    btn.classList.toggle("dark:bg-slate-600", isActive);
-    btn.classList.toggle("text-slate-900", isActive);
-    btn.classList.toggle("dark:text-white", isActive);
+    btn.classList.toggle("bg-surface-raised", isActive);
+    btn.classList.toggle("text-ink", isActive);
     btn.classList.toggle("shadow-sm", isActive);
-    btn.classList.toggle("text-slate-500", !isActive);
-    btn.classList.toggle("dark:text-slate-400", !isActive);
+    btn.classList.toggle("text-ink-muted", !isActive);
   });
 }
 
@@ -433,9 +430,9 @@ async function loadLicenseStatus() {
       badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
       badge.className = "px-2.5 py-1 text-xs font-semibold rounded-control inline-flex items-center";
       if (tier === "enterprise") {
-        badge.classList.add("bg-emerald-500/10", "text-emerald-400", "border", "border-emerald-500/20");
+        badge.classList.add("bg-ok/10", "text-ok", "border", "border-ok/25");
       } else if (tier === "pro") {
-        badge.classList.add("bg-cyan-500/10", "text-cyan-400", "border", "border-cyan-500/20");
+        badge.classList.add("bg-accent/10", "text-accent", "border", "border-accent/25");
       } else {
         badge.classList.add("bg-surface-base", "text-ink-muted", "border", "border-hairline");
       }

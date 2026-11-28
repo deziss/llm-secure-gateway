@@ -90,7 +90,7 @@ block content %}
             type="text"
             id="addOwnerId"
             name="id"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
             placeholder="e.g. user_123"
             required
           />
@@ -105,7 +105,7 @@ block content %}
             type="text"
             id="addOwnerName"
             name="name"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
             placeholder="John Doe"
             required
           />
@@ -124,7 +124,7 @@ block content %}
             type="email"
             id="addOwnerEmail"
             name="email"
-            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
             placeholder="team@example.com"
           />
         </div>
@@ -139,7 +139,7 @@ block content %}
         <select
           id="addOwnerType"
           name="type"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition cursor-pointer"
         >
           <option value="user">Personal (one person)</option>
           <option value="project">Team or service</option>
@@ -156,7 +156,7 @@ block content %}
           id="addOwnerDescription"
           name="description"
           rows="2"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition resize-none"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition resize-none"
           placeholder="What is this project used for?"
         ></textarea>
       </div>
@@ -173,20 +173,20 @@ block content %}
           name="max_keys"
           value="5"
           min="1"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
           required
         />
       </div>
 
       <div
-        class="bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-panel flex items-start gap-4"
+        class="bg-accent/10 border border-accent/25 p-5 rounded-panel flex items-start gap-4"
       >
-        <div class="bg-indigo-500/20 p-2.5 rounded-control">
+        <div class="bg-accent/20 p-2.5 rounded-control">
           <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-sm font-bold text-slate-700 dark:text-slate-200"
+            <span class="text-sm font-bold text-ink"
               >Security Hardening</span
             >
             <label class="relative inline-flex items-center cursor-pointer">
@@ -198,7 +198,7 @@ block content %}
                 checked
               />
               <div
-                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
+                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-hairline after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"
               ></div>
             </label>
           </div>
@@ -241,7 +241,7 @@ block content %}
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit project
+        <i data-lucide="edit-3" class="text-accent w-5 h-5" aria-hidden="true"></i> Edit project
       </h2>
       <button
         onclick="closeEditModal()"
@@ -265,7 +265,7 @@ block content %}
           type="text"
           name="name"
           id="editName"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
           required
         />
       </div>
@@ -280,7 +280,7 @@ block content %}
           type="email"
           name="email"
           id="editEmail"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
         />
       </div>
 
@@ -293,7 +293,7 @@ block content %}
         <select
           name="type"
           id="editType"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition cursor-pointer"
         >
           <option value="user">Personal (one person)</option>
           <option value="project">Team or service</option>
@@ -303,12 +303,12 @@ block content %}
       <div
         class="bg-surface-inset/50 border border-hairline p-5 rounded-panel flex items-start gap-4"
       >
-        <div class="bg-indigo-500/20 p-2.5 rounded-control">
+        <div class="bg-accent/20 p-2.5 rounded-control">
           <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-sm font-bold text-slate-700 dark:text-slate-200"
+            <span class="text-sm font-bold text-ink"
               >Security Hardening</span
             >
             <label class="relative inline-flex items-center cursor-pointer">
@@ -319,7 +319,7 @@ block content %}
                 class="sr-only peer"
               />
               <div
-                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"
+                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-hairline after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"
               ></div>
             </label>
           </div>
@@ -332,12 +332,12 @@ block content %}
       <div
         class="bg-surface-inset/50 border border-hairline p-5 rounded-panel flex items-start gap-4"
       >
-        <div class="bg-emerald-500/20 p-2.5 rounded-control">
+        <div class="bg-ok/20 p-2.5 rounded-control">
           <i class="fas fa-toggle-on text-ok" aria-hidden="true"></i>
         </div>
         <div class="flex-1">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Active Status</span>
+            <span class="text-sm font-bold text-ink">Active Status</span>
             <label class="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -347,7 +347,7 @@ block content %}
                 checked
               />
               <div
-                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"
+                class="w-10 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-hairline after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-ok"
               ></div>
             </label>
           </div>
@@ -367,7 +367,7 @@ block content %}
           name="description"
           id="editDescription"
           rows="2"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition resize-none"
           placeholder="What is this project used for?"
         ></textarea>
       </div>
@@ -384,7 +384,7 @@ block content %}
           id="editMaxKeys"
           min="1"
           max="100"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition"
         />
       </div>
 
@@ -423,7 +423,7 @@ block content %}
     >
       <div>
         <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-          <i data-lucide="shield-check" class="text-emerald-500 w-5 h-5" aria-hidden="true"></i> Server access
+          <i data-lucide="shield-check" class="text-ok w-5 h-5" aria-hidden="true"></i> Server access
         </h2>
         <p
           class="text-ok text-sm font-mono font-bold mt-1"
@@ -494,7 +494,7 @@ block content %}
               >
               <select
                 id="permBackend"
-                class="w-full bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                class="w-full bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-accent/50 transition"
                 required
               ></select>
             </div>
@@ -519,14 +519,14 @@ block content %}
               type="text"
               id="permModels"
               value="*"
-              class="w-full bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+              class="w-full bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-accent/50 transition"
               required
             />
           </div>
           <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
             <button
               type="submit"
-              class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-control transition"
+              class="min-h-touch px-6 py-3 bg-accent hover:bg-accent-hover text-accent-ink font-bold rounded-control transition"
             >
               Add Permission Grant
             </button>
@@ -542,7 +542,7 @@ block content %}
   <div class="bg-surface-raised border border-hairline rounded-panel w-full max-w-4xl lg:max-w-5xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform transition-all modal-xl">
     <div class="p-4 sm:p-5 border-b border-hairline flex justify-between items-center bg-surface-inset/50">
       <div>
-        <h2 class="text-lg font-bold text-ink flex items-center gap-3"><i data-lucide="key" class="text-amber-500 w-5 h-5" aria-hidden="true"></i> Manage API Keys</h2>
+        <h2 class="text-lg font-bold text-ink flex items-center gap-3"><i data-lucide="key" class="text-accent w-5 h-5" aria-hidden="true"></i> Manage API Keys</h2>
         <p class="text-warn text-sm font-mono font-bold mt-1" id="keysOwnerIdDisplay"></p>
       </div>
       <button type="button" onclick="closeKeysModal()" class="text-ink-muted hover:text-ink transition" aria-label="Close modal" title="Close"><i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i></button>
@@ -573,30 +573,30 @@ block content %}
           <i class="fas fa-shield-alt text-accent" aria-hidden="true"></i> New Key Scopes
         </h3>
         <div id="scopeCheckboxes" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
-            <input type="checkbox" name="newKeyScope" value="llm:chat" checked class="accent-indigo-500" />
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-accent/50 transition has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+            <input type="checkbox" name="newKeyScope" value="llm:chat" checked class="accent-accent" />
             <span class="text-xs font-bold text-ink">llm:chat</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
-            <input type="checkbox" name="newKeyScope" value="llm:embed" class="accent-indigo-500" />
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-accent/50 transition has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+            <input type="checkbox" name="newKeyScope" value="llm:embed" class="accent-accent" />
             <span class="text-xs font-bold text-ink">llm:embed</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
-            <input type="checkbox" name="newKeyScope" value="llm:read" class="accent-indigo-500" />
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-accent/50 transition has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+            <input type="checkbox" name="newKeyScope" value="llm:read" class="accent-accent" />
             <span class="text-xs font-bold text-ink">llm:read</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
-            <input type="checkbox" name="newKeyScope" value="llm:*" class="accent-indigo-500" />
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-accent/50 transition has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+            <input type="checkbox" name="newKeyScope" value="llm:*" class="accent-accent" />
             <span class="text-xs font-bold text-ink">llm:*</span>
             <span class="text-micro text-ink-muted">(all)</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-indigo-500/50 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-500/10">
-            <input type="checkbox" name="newKeyScope" value="admin:*" class="accent-indigo-500" />
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-hairline rounded-control cursor-pointer hover:border-accent/50 transition has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+            <input type="checkbox" name="newKeyScope" value="admin:*" class="accent-accent" />
             <span class="text-xs font-bold text-ink">admin:*</span>
           </label>
-          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-rose-700/50 rounded-control cursor-pointer hover:border-rose-500/50 transition has-[:checked]:border-rose-500 has-[:checked]:bg-rose-500/10">
-            <input type="checkbox" name="newKeyScope" value="*" class="accent-rose-500" />
-            <span class="text-xs font-bold text-rose-400">* (full)</span>
+          <label class="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-down/50 rounded-control cursor-pointer hover:border-down/50 transition has-[:checked]:border-down has-[:checked]:bg-down/10">
+            <input type="checkbox" name="newKeyScope" value="*" class="accent-down" />
+            <span class="text-xs font-bold text-down">* (full)</span>
           </label>
         </div>
         <div class="flex flex-col sm:flex-row sm:justify-end pt-2">
@@ -628,7 +628,7 @@ block content %}
 
     <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4">
       <!-- Target Key & Model Configuration Strip -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-100/60 dark:bg-slate-800/40 p-3.5 rounded-control border border-hairline">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-surface-inset/60 p-3.5 rounded-control border border-hairline">
         <div>
           <label for="snippetApiKeyInput" class="block text-micro font-bold uppercase tracking-wider text-ink-muted mb-1">
             API Key
@@ -636,7 +636,7 @@ block content %}
           <input
             type="text"
             id="snippetApiKeyInput"
-            class="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none"
+            class="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:ring-2 focus:ring-accent/50 outline-none"
             placeholder="YOUR_API_KEY"
           />
         </div>
@@ -647,7 +647,7 @@ block content %}
           <input
             type="text"
             id="snippetModelInput"
-            class="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none"
+            class="w-full bg-surface-raised border border-hairline rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:ring-2 focus:ring-accent/50 outline-none"
             value="default"
             placeholder="default or model-name"
           />
@@ -665,28 +665,28 @@ block content %}
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted hover:bg-hairline border-hairline"
           data-tab="cursor"
         >
           <i data-lucide="code" class="w-3.5 h-3.5"></i> Cursor
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted hover:bg-hairline border-hairline"
           data-tab="python_sdk"
         >
           <i data-lucide="file-code" class="w-3.5 h-3.5"></i> Python SDK
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted hover:bg-hairline border-hairline"
           data-tab="continue_dev"
         >
           <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Continue.dev
         </button>
         <button
           type="button"
-          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border-hairline"
+          class="snippet-tab-btn px-3 py-2 text-xs font-bold rounded-control transition cursor-pointer border flex items-center gap-1.5 bg-surface-inset/60 text-ink-muted hover:bg-hairline border-hairline"
           data-tab="curl"
         >
           <i data-lucide="send" class="w-3.5 h-3.5"></i> cURL
@@ -696,20 +696,20 @@ block content %}
       <!-- Sub-variant selector (for Python SDK & cURL variants) -->
       <div id="snippetVariantBar" class="hidden flex items-center justify-between text-xs">
         <span class="text-ink-muted font-medium" id="snippetVariantLabel">SDK Flavor:</span>
-        <div class="inline-flex rounded-lg p-0.5 bg-slate-200 dark:bg-slate-800 border border-hairline" id="snippetVariantButtons">
+        <div class="inline-flex rounded-lg p-0.5 bg-surface-inset border border-hairline" id="snippetVariantButtons">
           <!-- Populated dynamically (OpenAI vs Anthropic) -->
         </div>
       </div>
 
       <!-- Code Snippet Display Block with Copy button -->
-      <div class="relative rounded-control border border-slate-300 dark:border-slate-800 bg-slate-950 text-slate-100 overflow-hidden shadow-sm">
-        <div class="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800">
+      <div class="relative rounded-control border border-hairline bg-surface-base text-ink overflow-hidden shadow-sm">
+        <div class="flex items-center justify-between px-4 py-2.5 bg-surface-inset border-b border-hairline">
           <span class="text-micro font-mono font-bold text-ink-muted tracking-wider uppercase" id="snippetFormatTitle">Snippet</span>
           <button
             type="button"
             id="copySnippetBtn"
             onclick="copySnippetCode()"
-            class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-md transition cursor-pointer border border-slate-700 active:scale-95"
+            class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-raised hover:bg-hairline text-ink text-xs font-semibold rounded-md transition cursor-pointer border border-hairline active:scale-95"
             aria-label="Copy snippet to clipboard"
           >
             <i data-lucide="copy" class="w-3.5 h-3.5" id="copySnippetIcon"></i>
@@ -717,7 +717,7 @@ block content %}
           </button>
         </div>
         <div class="p-4 overflow-x-auto max-h-[360px]">
-          <pre id="snippetCodeDisplay" class="font-mono text-xs text-emerald-400 dark:text-emerald-300 whitespace-pre select-all leading-relaxed"></pre>
+          <pre id="snippetCodeDisplay" class="font-mono text-xs text-ok whitespace-pre select-all leading-relaxed"></pre>
         </div>
       </div>
     </div>
@@ -726,7 +726,7 @@ block content %}
       <button
         type="button"
         onclick="closeSnippetsModal()"
-        class="min-h-touch px-6 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-ink font-bold rounded-control transition text-xs cursor-pointer"
+        class="min-h-touch px-6 py-2.5 bg-surface-inset hover:bg-hairline text-ink font-bold rounded-control transition text-xs cursor-pointer"
       >
         Done
       </button>

@@ -16,7 +16,7 @@ block content %}
       type="button"
       id="addUserBtn"
       onclick="openAddUserModal()"
-      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent/90 rounded-control transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
+      class="min-h-touch px-5 py-2.5 bg-accent hover:bg-accent-hover rounded-control transition-all font-bold text-accent-ink text-sm flex items-center justify-center gap-2 cursor-pointer"
     >
       <i data-lucide="user-plus" class="w-4 h-4" aria-hidden="true"></i>
       <span>Add User</span>
@@ -71,7 +71,7 @@ block content %}
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-        <i class="fas fa-user-edit text-blue-500" aria-hidden="true"></i> Edit User
+        <i class="fas fa-user-edit text-accent" aria-hidden="true"></i> Edit User
       </h2>
       <button
         onclick="closeEditModal()"
@@ -116,7 +116,7 @@ block content %}
           <select
             id="editRole"
             name="role"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition cursor-pointer"
           >
             <option value="VIEWER">Viewer</option>
             <option value="DEVELOPER">Developer</option>
@@ -126,13 +126,13 @@ block content %}
         </div>
         <div class="flex flex-col justify-end">
           <label
-            class="flex items-center gap-3 cursor-pointer group bg-surface-inset/50 p-3 rounded-control border border-hairline hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+            class="flex items-center gap-3 cursor-pointer group bg-surface-inset/50 p-3 rounded-control border border-hairline hover:bg-surface-inset transition"
           >
             <input
               type="checkbox"
               name="is_active"
               id="editActive"
-              class="w-5 h-5 rounded border-hairline bg-surface-raised text-blue-600 focus:ring-0 focus:ring-offset-0"
+              class="w-5 h-5 rounded border-hairline bg-surface-raised text-accent focus:ring-0 focus:ring-offset-0"
             />
             <span
               class="text-sm font-medium text-ink group-hover:text-ink transition"
@@ -152,7 +152,7 @@ block content %}
         </button>
         <button
           type="submit"
-          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition"
+          class="min-h-touch px-5 py-3 bg-accent hover:bg-accent-hover text-accent-ink font-bold rounded-control transition"
         >
           Save Changes
         </button>
@@ -173,20 +173,20 @@ block content %}
         <label for="addUserEmail" class="block text-caption font-medium text-ink-muted mb-2">User Email</label>
         <div class="relative">
           <i data-lucide="mail" class="w-4 h-4 text-ink-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
-          <input type="email" id="addUserEmail" name="email" class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="admin@example.com" />
+          <input type="email" id="addUserEmail" name="email" class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition" required placeholder="admin@example.com" />
         </div>
       </div>
       <div>
         <label for="addUserPassword" class="block text-caption font-medium text-ink-muted mb-2">Password</label>
         <div class="relative">
           <i data-lucide="lock" class="w-4 h-4 text-ink-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
-          <input type="password" id="addUserPassword" name="password" minlength="8" class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition" required placeholder="Min 8 characters" />
+          <input type="password" id="addUserPassword" name="password" minlength="8" class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition" required placeholder="Min 8 characters" />
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label for="addUserRole" class="block text-caption font-medium text-ink-muted mb-2">Role</label>
-          <select id="addUserRole" name="role" class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-indigo-500/50 outline-none transition cursor-pointer">
+          <select id="addUserRole" name="role" class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/50 outline-none transition cursor-pointer">
             <option value="VIEWER">Viewer</option>
             <option value="DEVELOPER">Developer</option>
             <option value="MANAGER">Manager</option>
@@ -194,15 +194,15 @@ block content %}
           </select>
         </div>
         <div class="flex flex-col justify-end">
-          <label class="flex items-center gap-3 cursor-pointer group bg-surface-inset/50 p-3 rounded-control border border-hairline hover:bg-slate-200 dark:hover:bg-slate-800 transition">
-            <input type="checkbox" id="addUserActive" name="is_active" checked class="w-5 h-5 rounded border-hairline bg-surface-raised text-indigo-600 focus:ring-0 focus:ring-offset-0" />
+          <label class="flex items-center gap-3 cursor-pointer group bg-surface-inset/50 p-3 rounded-control border border-hairline hover:bg-surface-inset transition">
+            <input type="checkbox" id="addUserActive" name="is_active" checked class="w-5 h-5 rounded border-hairline bg-surface-raised text-accent focus:ring-0 focus:ring-offset-0" />
             <span class="text-sm font-medium text-ink group-hover:text-ink transition">Active Account</span>
           </label>
         </div>
       </div>
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-5 pt-4 border-t border-hairline">
         <button type="button" onclick="closeAddUserModal()" class="min-h-touch px-6 py-3 bg-surface-inset hover:bg-hairline text-ink font-bold rounded-control transition">Cancel</button>
-        <button type="submit" class="min-h-touch px-5 py-3 bg-accent hover:bg-accent/90 text-accent-ink font-bold rounded-control transition">Register</button>
+        <button type="submit" class="min-h-touch px-5 py-3 bg-accent hover:bg-accent-hover text-accent-ink font-bold rounded-control transition">Register</button>
       </div>
     </form>
   </div>
@@ -221,7 +221,7 @@ block content %}
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-        <i data-lucide="key" class="text-rose-500 w-5 h-5" aria-hidden="true"></i> Reset Password
+        <i data-lucide="key" class="text-down w-5 h-5" aria-hidden="true"></i> Reset Password
       </h2>
       <button
         onclick="
@@ -235,12 +235,12 @@ block content %}
       </button>
     </div>
 
-    <div class="bg-rose-500/10 border border-rose-500/20 p-4 rounded-panel mb-6">
-      <p class="text-rose-400 text-sm leading-relaxed">
+    <div class="bg-down/10 border border-down/25 p-4 rounded-panel mb-6">
+      <p class="text-down text-sm leading-relaxed">
         You are overriding the password for
         <span
           id="resetEmail"
-          class="font-bold text-ink underline decoration-rose-500/50"
+          class="font-bold text-ink underline decoration-down/50"
         ></span
         >. The user will not be notified of this change automatically.
       </p>
@@ -260,7 +260,7 @@ block content %}
             type="password"
             id="resetNewPassword"
             name="password"
-            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-rose-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-down/50 outline-none transition"
             required
             minlength="8"
             placeholder="Enter at least 8 characters"
@@ -282,7 +282,7 @@ block content %}
         </button>
         <button
           type="submit"
-          class="min-h-touch px-5 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-control transition"
+          class="min-h-touch px-5 py-3 bg-accent-2 hover:bg-accent-2-hover text-accent-ink font-bold rounded-control transition"
         >
           Force Reset
         </button>

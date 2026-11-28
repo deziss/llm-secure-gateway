@@ -16,13 +16,13 @@
       onclick="openAddChainModal()"
       class="min-h-touch px-4 py-2 bg-surface-inset hover:opacity-80 border border-hairline rounded-control transition-opacity font-semibold text-sm flex items-center gap-2 text-ink cursor-pointer"
     >
-      <i data-lucide="link" class="text-purple-400 w-4 h-4" aria-hidden="true"></i>
+      <i data-lucide="link" class="text-accent w-4 h-4" aria-hidden="true"></i>
       New Fallback Chain
     </button>
     <button
       id="btnAddAlias"
       onclick="openAddAliasModal()"
-      class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 rounded-control transition-opacity font-semibold text-white text-sm flex items-center gap-2 cursor-pointer"
+      class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 rounded-control transition-opacity font-semibold text-accent-ink text-sm flex items-center gap-2 cursor-pointer"
     >
       <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
       Add Alias
@@ -118,7 +118,7 @@
       </div>
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
         <button type="button" onclick="closeAddAliasModal()" class="min-h-touch rounded-control px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">Cancel</button>
-        <button type="submit" class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 text-white rounded-control text-sm font-semibold transition-opacity">Save Alias</button>
+        <button type="submit" class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 text-accent-ink rounded-control text-sm font-semibold transition-opacity">Save Alias</button>
       </div>
     </form>
   </div>
@@ -129,7 +129,7 @@
   <div class="bg-surface-raised border border-hairline rounded-panel p-4 sm:p-5 max-w-lg w-full shadow-overlay overflow-y-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh]">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-bold text-ink flex items-center gap-2">
-        <i data-lucide="link" class="w-5 h-5 text-purple-400"></i> Create Fallback Chain
+        <i data-lucide="link" class="w-5 h-5 text-accent"></i> Create Fallback Chain
       </h3>
       <button type="button" onclick="closeAddChainModal()" aria-label="Close dialog" class="min-h-touch min-w-touch shrink-0 -mr-2 rounded-control flex items-center justify-center text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">
         <i data-lucide="x" class="w-5 h-5" aria-hidden="true"></i>
@@ -156,7 +156,7 @@
 
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
         <button type="button" onclick="closeAddChainModal()" class="min-h-touch rounded-control px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-surface-inset hover:text-ink transition-colors">Cancel</button>
-        <button type="submit" class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 text-white rounded-control text-sm font-semibold transition-opacity">Save Chain</button>
+        <button type="submit" class="min-h-touch px-5 py-2 bg-accent hover:opacity-90 text-accent-ink rounded-control text-sm font-semibold transition-opacity">Save Chain</button>
       </div>
     </form>
   </div>

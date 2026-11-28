@@ -5,7 +5,7 @@
 >
   <div>
     <h1 class="text-xl sm:text-2xl font-bold text-ink flex items-center gap-2">
-      <i data-lucide="server" class="h-5 w-5 shrink-0 text-blue-500" aria-hidden="true"></i> Model servers
+      <i data-lucide="server" class="h-5 w-5 shrink-0 text-accent" aria-hidden="true"></i> Model servers
     </h1>
     <p class="text-ink-muted text-xs sm:text-sm mt-0.5">
       The upstream servers and provider accounts the gateway routes to: Ollama hosts, vLLM clusters, OpenAI and others.
@@ -78,7 +78,7 @@
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-        <i data-lucide="plus-circle" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Add model server
+        <i data-lucide="plus-circle" class="text-accent w-5 h-5" aria-hidden="true"></i> Add model server
       </h2>
       <button
         type="button"
@@ -103,7 +103,7 @@
             type="text"
             id="addBackendName"
             name="name"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition"
             placeholder="e.g. Local Ollama, vLLM Node"
             required
           />
@@ -117,7 +117,7 @@
           <select
             id="addBackendType"
             name="backend_type"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition cursor-pointer"
           >
             <option value="ollama">Ollama</option>
             <option value="vllm">vLLM</option>
@@ -146,7 +146,7 @@
             type="text"
             id="addBackendUrl"
             name="base_url"
-            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition"
             placeholder="http://localhost:11434 or http://host.docker.internal:11434"
             required
           />
@@ -170,7 +170,7 @@
             type="password"
             id="addBackendApiKey"
             name="api_key"
-            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition"
             placeholder="Leave empty for local Ollama / vLLM without auth"
           />
         </div>
@@ -186,7 +186,7 @@
           <select
             id="addTranslationMode"
             name="translation_mode"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition cursor-pointer"
           >
             <option value="none">None (Pass-through)</option>
             <option value="anthropic_to_openai">Anthropic ➔ OpenAI</option>
@@ -206,7 +206,7 @@
               class="sr-only peer"
             />
             <div
-              class="w-9 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"
+              class="w-9 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-hairline after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"
             ></div>
           </label>
         </div>
@@ -245,7 +245,7 @@
   >
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-        <i data-lucide="edit-3" class="text-blue-500 w-5 h-5" aria-hidden="true"></i> Edit model server
+        <i data-lucide="edit-3" class="text-accent w-5 h-5" aria-hidden="true"></i> Edit model server
       </h2>
       <button
         type="button"
@@ -277,7 +277,7 @@
             type="text"
             id="editBaseUrl"
             name="base_url"
-            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition"
             required
           />
         </div>
@@ -299,7 +299,7 @@
             type="password"
             id="editBackendApiKey"
             name="api_key"
-            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+            class="w-full bg-surface-inset border border-hairline rounded-control pl-12 pr-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition"
             placeholder="••••••••••••"
           />
         </div>
@@ -315,7 +315,7 @@
           <select
             id="editTranslationMode"
             name="translation_mode"
-            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-blue-500/50 outline-none transition cursor-pointer"
+            class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink focus:ring-2 focus:ring-accent/30 outline-none transition cursor-pointer"
           >
             <option value="none">None (Pass-through)</option>
             <option value="anthropic_to_openai">Anthropic ➔ OpenAI</option>
@@ -335,7 +335,7 @@
               class="sr-only peer"
             />
             <div
-              class="w-9 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"
+              class="w-9 h-5 bg-hairline peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-hairline after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"
             ></div>
           </label>
         </div>
@@ -352,7 +352,7 @@
           id="editAllowedEndpoints"
           name="allowed_endpoints"
           rows="4"
-          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink font-mono text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition resize-none"
+          class="w-full bg-surface-inset border border-hairline rounded-control px-4 py-3 text-ink font-mono text-sm focus:ring-2 focus:ring-accent/30 outline-none transition resize-none"
           placeholder="/api/chat&#10;/api/embeddings&#10;/v1/chat/completions"
           aria-describedby="editAllowedEndpointsHint"
         ></textarea>
@@ -419,7 +419,7 @@
       <!-- Pull Section -->
       <div class="relative group">
         <div
-          class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-panel blur opacity-20 group-hover:opacity-30 transition"
+          class="absolute -inset-0.5 bg-gradient-to-r from-accent to-accent-2 rounded-panel blur opacity-20 group-hover:opacity-30 transition"
         ></div>
         <div
           class="relative bg-surface-inset/50 border border-hairline p-4 rounded-panel"
@@ -434,13 +434,13 @@
               id="pullModelName"
               placeholder="e.g. llama3.1:8b"
               aria-label="Model name to pull"
-              class="flex-1 bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+              class="flex-1 bg-surface-raised border border-hairline rounded-control px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-accent/30 transition"
             />
             <button
               type="button"
               onclick="pullModel()"
               id="pullBtn"
-              class="min-h-touch px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-control transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+              class="min-h-touch px-6 py-3 bg-accent hover:bg-accent-hover text-accent-ink font-bold rounded-control transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
             >
               <i data-lucide="download" class="w-4 h-4" aria-hidden="true"></i> Start Pull
             </button>
@@ -487,11 +487,11 @@
     >
       <div>
         <h2 class="text-lg font-bold text-ink flex items-center gap-3">
-          <i data-lucide="boxes" class="text-blue-500 w-5 h-5" aria-hidden="true"></i>
+          <i data-lucide="boxes" class="text-accent w-5 h-5" aria-hidden="true"></i>
           Available Models
           <span id="popupModelsCount" class="px-2 py-0.5 bg-surface-inset rounded-lg text-ink font-bold text-xs border border-hairline"></span>
         </h2>
-        <p class="text-blue-400 text-sm font-bold mt-1" id="popupBackendName"></p>
+        <p class="text-accent text-sm font-bold mt-1" id="popupBackendName"></p>
       </div>
       <button
         type="button"

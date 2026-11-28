@@ -163,7 +163,7 @@ function clearChat() {
   // Keep only empty state
   container.innerHTML = `<div id="empty-state" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;opacity:0.6;">
     <div class="text-5xl mb-4 opacity-30">&#x1F4AC;</div>
-    <p class="text-slate-500 text-sm">Start a conversation</p><p class="text-ink-muted text-xs mt-1">Select a model and type a message below</p></div>`;
+    <p class="text-ink-muted text-sm">Start a conversation</p><p class="text-ink-muted text-xs mt-1">Select a model and type a message below</p></div>`;
   convo.turns = convo.prompt = convo.completion = convo.lastPrompt = 0;
   convo.estimated = false;
   document.getElementById("tokenCount").textContent = "";
@@ -492,10 +492,10 @@ async function _sendMessage() {
 
 function setStatus(text, color) {
   const colors = {
-    green: "bg-green-500",
-    yellow: "bg-yellow-500",
-    blue: "bg-blue-500",
-    red: "bg-red-500",
+    green: "bg-ok",
+    yellow: "bg-warn",
+    blue: "bg-accent",
+    red: "bg-down",
   };
   const statusEl = document.getElementById("statusDisplay");
   statusEl.innerHTML = `<span class="status-dot ${colors[color]}"></span> ${text}`;

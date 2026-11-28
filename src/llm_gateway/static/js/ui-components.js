@@ -13,11 +13,11 @@ function showConfirm(title, message, isDangerous = true) {
     if (msgEl) msgEl.innerText = message;
 
     if (isDangerous) {
-      actionBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500', 'shadow-indigo-600/20');
-      actionBtn.classList.add('bg-red-600', 'hover:bg-red-500', 'shadow-red-600/20');
+      actionBtn.classList.remove('bg-accent', 'hover:bg-accent-hover', 'shadow-accent/20');
+      actionBtn.classList.add('bg-accent-2', 'hover:bg-accent-2-hover', 'shadow-accent-2/20');
     } else {
-      actionBtn.classList.remove('bg-red-600', 'hover:bg-red-500', 'shadow-red-600/20');
-      actionBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500', 'shadow-indigo-600/20');
+      actionBtn.classList.remove('bg-accent-2', 'hover:bg-accent-2-hover', 'shadow-accent-2/20');
+      actionBtn.classList.add('bg-accent', 'hover:bg-accent-hover', 'shadow-accent/20');
     }
 
     const previousFocus = document.activeElement;
@@ -124,13 +124,13 @@ function showToast(titleOrMsg, msgOrType = '', type = 'success') {
 
     if (icon) {
         if (actualType === 'success') {
-            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
+            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-ok/10 text-ok border border-ok/25';
             icon.innerHTML = '<i data-lucide="check-circle-2" class="w-5 h-5"></i>';
         } else if (actualType === 'warning') {
-            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-amber-500/10 text-amber-500 border border-amber-500/20';
+            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-warn/10 text-warn border border-warn/25';
             icon.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>';
         } else {
-            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-red-500/10 text-red-500 border border-red-500/20';
+            icon.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-down/10 text-down border border-down/25';
             icon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5"></i>';
         }
     }
@@ -162,14 +162,14 @@ function getInitials(name) {
 }
 
 const AVATAR_COLORS = [
-  ["#6366f1", "#fff"],
-  ["#8b5cf6", "#fff"],
-  ["#06b6d4", "#fff"],
-  ["#10b981", "#fff"],
-  ["#f59e0b", "#fff"],
-  ["#ef4444", "#fff"],
-  ["#ec4899", "#fff"],
-  ["#3b82f6", "#fff"],
+  ["#D97706", "#fff"],
+  ["#B45309", "#fff"],
+  ["#DC2626", "#fff"],
+  ["#92400E", "#fff"],
+  ["#E8590C", "#fff"],
+  ["#7C2D12", "#fff"],
+  ["#15803D", "#fff"],
+  ["#78716C", "#fff"],
 ];
 
 function getAvatarColor(str) {
