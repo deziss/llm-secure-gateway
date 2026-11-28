@@ -1029,7 +1029,13 @@ async def _proxy_request_core(
         raise e
 
 
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"])
+@router.api_route("/{path:path}", methods=["GET"])
+@router.api_route("/{path:path}", methods=["POST"])
+@router.api_route("/{path:path}", methods=["PUT"])
+@router.api_route("/{path:path}", methods=["DELETE"])
+@router.api_route("/{path:path}", methods=["OPTIONS"])
+@router.api_route("/{path:path}", methods=["HEAD"])
+@router.api_route("/{path:path}", methods=["PATCH"])
 async def proxy_request(
     path: str,
     request: Request,

@@ -1,6 +1,13 @@
+## [Unreleased]
+
+### 🧪 Test and async correctness
+
+- Fixed key rotation to await SQLAlchemy's async refresh calls.
+- Removed legacy pytest event-loop fixtures, fixed mock AsyncSession result types, and resolved duplicate proxy operation IDs and test-only deprecation/security warnings.
+
 ## [0.21.0] - 2026-11-28
 
-### 📊 Operations dashboard: instant paint, customisation, deeper KPIs
+### 📊 Operations dashboard
 
 Refreshing the dashboard no longer blanks and re-loads everything. The page now paints immediately from a **versioned stale-while-revalidate cache in localStorage** and refreshes quietly in the background.
 
@@ -14,7 +21,7 @@ Refreshing the dashboard no longer blanks and re-loads everything. The page now 
 - **Observability GPU tab layout & popups**: each GPU host card is now two side-by-side boxes (GPU table | combined per-process table) with capped height, independent scrolling and sticky headers — the old stack of per-GPU `<details>` sections is gone. The "GPU hosts" form and the "Link a model server to GPUs" form moved out of the page into **Add server / Add link popup dialogs** built on the shared `AdminModal` (focus trap, Escape, click-outside close, scroll lock); Edit still opens the same popup prefilled.
 - **Integrations cards responsive**: the tool-card grid now shows 3 cards per row by default (2 on tablet, 1 on mobile), and the card you open (Configure / How to connect) spans the full row so its form and instructions are never squeezed into a single column.
 
-### 🪪 Licencia upgrade failures now say what actually went wrong
+### 🪪 Licencia diagnostics
 
 "Upgrade Failed — Could not validate the new license key" previously blamed the licensing server even when the gateway never contacted it. Investigation of a failed upgrade showed the real cause was a missing `LICENCIA_API_KEY` on the gateway (the provider was up and answering — not a `licencia.deziss.com` outage).
 
@@ -23,7 +30,7 @@ Refreshing the dashboard no longer blanks and re-loads everything. The page now 
 - Default `LICENCIA_URL` for an unset env var changed from the LAN dev box `http://172.20.0.11:3000` to the production `https://licencia.deziss.com`; `.env.example` documents all four `LICENCIA_*` variables. (Changes take effect on next container restart.)
 - Tests: 3 new regression tests in `tests/test_licencia_client.py` (fail-fast without API key proves no HTTP call is made; real fingerprint in Community mode; rejection reason recorded) — 37 licensing/settings tests pass.
 
-### 🐳 Deployment: smaller, faster, health-gated images (500MB -> 312MB)
+### 🐳 Smaller deployment image
 
 The published image is now built by a multi-stage, [uv](https://docs.astral.sh/uv/)-based `Dockerfile` (`uv` -> `base` -> `builder` -> `test-builder` -> `runtime` -> `ci`) and is **312 MB** instead of 500 MB, with a full `--no-cache` cold build at ~10 s versus 45.7 s previously.
 
@@ -35,7 +42,7 @@ The published image is now built by a multi-stage, [uv](https://docs.astral.sh/u
 - **The image `CMD` no longer bakes in `--loop uvloop`** — uvicorn is started plain so `UVICORN_LOOP`/`UVICORN_WORKERS` actually work (uvicorn's click CLI uses `auto_envvar_prefix=UVICORN`, so an explicit flag silently overrides them). uvloop is still the loop you get: `--loop auto` picks it whenever it is installed. See [UPGRADE.md](./UPGRADE.md).
 - **Image `HEALTHCHECK` is stdlib-only** (`python -c "import urllib.request; ..."` on `/health`). It previously relied on `curl`, which does not exist in `python:3.14.7-slim`.
 
-### 🛡️ Deploy configs: readiness that actually works
+### 🛡️ Deployment health checks
 
 - **`docker-compose.prod.yml`: the gateway healthcheck could never pass.** It tested `curl`, which isn't in the slim base image, so the containers stayed `starting` forever and nginx — which now waits on `condition: service_healthy` — never started. Both healthchecks are the stdlib probe now, with `start_period: 20s` and `stop_grace_period: 120s` so in-flight LLM streams drain on redeploy. Also added: `nginx:1.29-alpine` (was untagged `latest`), `depends_on` health gating, `image:` names for rolling deploys, pinned `redis:7.4-alpine` and `edoburu/pgbouncer:v1.26.1-p0`, a fixed multi-line `DATABASE_URL` scalar, and removal of `UVICORN_LOOP=asyncio` so uvloop is used.
 - **`nginx.conf` rewritten for real passive HA:** `least_conn` with `max_fails=3 fail_timeout=15s` on both upstreams, `keepalive 64` / `keepalive_requests 1000` to the backends, `proxy_next_upstream error timeout http_502 http_503 http_504` so a dying gateway is skipped instead of surfaced, `proxy_request_buffering off` for streaming, and `worker_connections 2048` / `backlog=4096`.
@@ -48,7 +55,7 @@ The published image is now built by a multi-stage, [uv](https://docs.astral.sh/u
 - `UPGRADE.md`: corrected the stale "Event loop is now uvloop (`--loop uvloop` in the image CMD)" note for the new `CMD`.
 
 
-### 📦 Alert rules export / import + Alert rules toolbar alignment
+### 📦 Alert rule import and export
 
 - **`GET /admin/alerts/rules/export`** streams a portable JSON document (`format: "deziss-alert-rules"`, `format_version: 1`) of all alert rules with a `Content-Disposition` filename (`deziss-alert-rules-<timestamp>.json`); `?custom_only=true` limits it to user-created rules. Derived fields (`custom`, `target_kind`) are excluded so documents stay portable.
 - **`POST /admin/alerts/rules/import`** applies such a document: rules are matched by `id` then by name; built-in rules are updated in place (never re-keyed) when `update_existing` is true (default) and skipped when false; new rules always get freshly generated custom ids so a document can never overwrite a built-in id. Per-rule results (`created` / `updated` / `skipped` / `errors`) are reported and one bad entry never aborts the batch. Guards: foreign `format` values and too-new `format_version` are rejected with 422, per-entry validation via the same `_validate_rule_fields` used by the create endpoint, max 200 rules per import.

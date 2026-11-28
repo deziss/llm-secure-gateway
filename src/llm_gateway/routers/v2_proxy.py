@@ -62,7 +62,11 @@ async def get_federated_models(
     return {"object": "list", "data": models_list}
 
 
-@router.api_route("/direct/{backend_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@router.api_route("/direct/{backend_name}/{path:path}", methods=["GET"])
+@router.api_route("/direct/{backend_name}/{path:path}", methods=["POST"])
+@router.api_route("/direct/{backend_name}/{path:path}", methods=["PUT"])
+@router.api_route("/direct/{backend_name}/{path:path}", methods=["DELETE"])
+@router.api_route("/direct/{backend_name}/{path:path}", methods=["PATCH"])
 async def direct_proxy(
     backend_name: str,
     path: str,
@@ -363,7 +367,11 @@ async def aggregate_v2_openai_models(
     return {"object": "list", "data": models_list}
 
 
-@router.api_route("/provider/{provider}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@router.api_route("/provider/{provider}/{path:path}", methods=["GET"])
+@router.api_route("/provider/{provider}/{path:path}", methods=["POST"])
+@router.api_route("/provider/{provider}/{path:path}", methods=["PUT"])
+@router.api_route("/provider/{provider}/{path:path}", methods=["DELETE"])
+@router.api_route("/provider/{provider}/{path:path}", methods=["PATCH"])
 async def dynamic_proxy(
     provider: str,
     path: str,

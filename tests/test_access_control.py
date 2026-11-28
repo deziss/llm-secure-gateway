@@ -162,6 +162,13 @@ def test_owners_routes_are_deprecated_in_openapi():
     spec = app.openapi()["paths"]
     assert spec["/admin/owners"]["get"].get("deprecated") is True
     assert not spec["/admin/projects"]["get"].get("deprecated")
+    operation_ids = [
+        operation["operationId"]
+        for path_item in spec.values()
+        for operation in path_item.values()
+        if isinstance(operation, dict) and "operationId" in operation
+    ]
+    assert len(operation_ids) == len(set(operation_ids))
 
 
 def test_owners_page_redirects_to_projects():

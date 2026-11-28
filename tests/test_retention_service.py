@@ -22,6 +22,17 @@ def _utcnow_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+class _NoopAudit:
+    def log(self, *args, **kwargs):
+        pass
+
+
+def _disable_audit_db(monkeypatch):
+    import llm_gateway.audit as audit
+
+    monkeypatch.setattr(audit, "get_audit_logger", lambda: _NoopAudit())
+
+
 # ── Config defaults ───────────────────────────────────────────────────
 
 
@@ -68,6 +79,7 @@ async def test_retention_deletes_old_preserves_fresh(db_session, monkeypatch):
     monkeypatch.setattr(config, "RETENTION_DAYS_AUDIT", 0)      # keep forever
     monkeypatch.setattr(config, "RETENTION_DAYS_TRACES", 90)
     monkeypatch.setattr(config, "RETENTION_DAYS_SPEND_METRICS", 30)
+    _disable_audit_db(monkeypatch)
 
     await _seed(db_session)
 
@@ -113,6 +125,7 @@ async def test_retention_audit_window_deletes_audit_rows(db_session, monkeypatch
     monkeypatch.setattr(config, "RETENTION_DAYS_AUDIT", 60)
     monkeypatch.setattr(config, "RETENTION_DAYS_TRACES", 0)
     monkeypatch.setattr(config, "RETENTION_DAYS_SPEND_METRICS", 0)
+    _disable_audit_db(monkeypatch)
 
     await _seed(db_session)
 

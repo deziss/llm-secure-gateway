@@ -78,6 +78,20 @@ def _make_anthropic_sse(events: list[dict]) -> bytes:
     ).encode("utf-8")
 
 
+def _mock_async_session():
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from unittest.mock import AsyncMock
+
+    session = AsyncMock(spec=AsyncSession)
+    result = MagicMock()
+    scalar_result = MagicMock()
+    scalar_result.first.return_value = None
+    scalar_result.all.return_value = []
+    result.scalars.return_value = scalar_result
+    session.execute.return_value = result
+    return session
+
+
 # =============================================================================
 # 1. Streaming Anthropic Telemetry (Tokens, Metrics, Phoenix Span, Live Stats)
 # =============================================================================
@@ -695,7 +709,7 @@ async def test_anthropic_messages_endpoint_non_streaming():
     backend.base_url = "https://api.anthropic.com"
     backend.fallback_urls = []
 
-    session = AsyncMock()
+    session = _mock_async_session()
 
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -764,7 +778,7 @@ async def test_anthropic_messages_endpoint_streaming():
     backend.base_url = "https://api.anthropic.com"
     backend.fallback_urls = []
 
-    session = AsyncMock()
+    session = _mock_async_session()
 
     events = [
         {"type": "message_start", "message": {"usage": {"input_tokens": 10, "output_tokens": 1}}},
@@ -833,7 +847,7 @@ async def test_anthropic_messages_endpoint_error_handling():
     backend.base_url = "https://api.anthropic.com"
     backend.fallback_urls = []
 
-    session = AsyncMock()
+    session = _mock_async_session()
 
     mock_client = AsyncMock()
     mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))

@@ -2,16 +2,6 @@
 Pytest configuration and fixtures for llm-gateway-v3 tests.
 """
 import pytest
-import asyncio
-
-@pytest.fixture(autouse=True)
-def ensure_event_loop():
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    yield loop
 
 from typing import AsyncGenerator, Generator
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -21,19 +11,11 @@ import os
 # Set test environment variables before imports
 # Generate a valid Fernet key: base64.urlsafe_b64encode(os.urandom(32))
 os.environ["ENCRYPTION_KEY"] = "llJ1KD2l7NnR9z00fRiXAcJm_SflxW-uoIOqWOwqX5w="
-os.environ["AUTH_SECRET"] = "test-auth-secret"
+os.environ["AUTH_SECRET"] = "test-auth-secret-for-unit-test-signing-only-32bytes"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
 from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture

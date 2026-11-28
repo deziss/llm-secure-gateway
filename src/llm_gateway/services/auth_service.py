@@ -152,8 +152,8 @@ class AuthService:
         session.add(old)
         session.add(new)
         await session.commit()
-        session.refresh(old)
-        session.refresh(new)
+        await session.refresh(old)
+        await session.refresh(new)
 
         # Invalidate the old key's cached validation so the new expiry applies at once.
         _key_cache.invalidate(old.key_hash)

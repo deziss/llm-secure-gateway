@@ -77,11 +77,22 @@ def test_license_refresh_endpoint():
 def test_license_deactivate_endpoint():
     from llm_gateway.routers.settings import router
     from fastapi import FastAPI
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from llm_gateway.database import get_session
     app = FastAPI()
     app.include_router(router)
 
     from llm_gateway.routers.admin import require_admin
     app.dependency_overrides[require_admin] = lambda: {"email": "admin@example.com"}
+    session = AsyncMock(spec=AsyncSession)
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = None
+    session.execute.return_value = result
+
+    async def override_session():
+        yield session
+
+    app.dependency_overrides[get_session] = override_session
 
     with patch("llm_gateway.routers.settings.get_licencia_client") as mock_get:
         mock_client = MagicMock()
@@ -92,4 +103,5 @@ def test_license_deactivate_endpoint():
         res = client.post("/admin/license/deactivate")
         assert res.status_code == 200
         assert res.json()["success"] is True
+        session.execute.assert_awaited_once()
         mock_client.deactivate.assert_called_once()
