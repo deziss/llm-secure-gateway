@@ -4,6 +4,7 @@
 
 - Fixed key rotation to await SQLAlchemy's async refresh calls.
 - Removed legacy pytest event-loop fixtures, fixed mock AsyncSession result types, and resolved duplicate proxy operation IDs and test-only deprecation/security warnings.
+- The development Compose service now starts Uvicorn explicitly while retaining the CI image's test tooling.
 
 ## [0.21.0] - 2026-11-28
 
