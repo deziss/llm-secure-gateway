@@ -16,6 +16,11 @@
 #
 # `--wait` only gates on healthchecks, which every long-running service below
 # therefore defines.
+#
+# When switching this same checkout from the development Compose stack to this
+# production stack, first run `docker compose down` (without `-v`) to release
+# the shared fixed container names and development network. Named DB volumes
+# are preserved.
 
 services:
 
@@ -53,7 +58,9 @@ services:
     # Tagged so a rolling deploy can swap one replica at a time (`pull` then
     # `up -d --no-deps gateway-1`), and so local builds get a stable name.
     image: llm-secure-gateway:${GATEWAY_TAG:-local}
-    build: .
+    build:
+      context: .
+      target: runtime
     container_name: llm-gateway-1
     env_file:
     - path: .env
@@ -111,7 +118,9 @@ services:
 
   gateway-2:
     image: llm-secure-gateway:${GATEWAY_TAG:-local}
-    build: .
+    build:
+      context: .
+      target: runtime
     container_name: llm-gateway-2
     env_file:
     - path: .env

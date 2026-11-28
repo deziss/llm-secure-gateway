@@ -9,6 +9,8 @@
 ### 🧰 Redis
 
 - Updated development, production, and deployment Compose files to the pinned `redis:8.12.0-alpine` image.
+- Production gateway services explicitly build the Dockerfile's `runtime` target so Compose starts Uvicorn rather than the CI test command.
+- Documented the safe dev-to-production Compose switch: remove the old containers and network without deleting named database volumes.
 
 ## [0.21.0] - 2026-11-28
 
