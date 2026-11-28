@@ -213,7 +213,7 @@ psutil==7.2.2
     # via llm-gateway (pyproject.toml)
 psycopg2-binary==2.9.13
     # via llm-gateway (pyproject.toml)
-pwdlib==0.3.0
+pwdlib==0.4.2
     # via fastapi-users
 pycparser==3.12
     # via cffi
